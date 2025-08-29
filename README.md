@@ -1,6 +1,12 @@
-<p align="center"> 
-<strong>让开发如丝般顺滑的开箱即用组件库</strong> 
-</p>
+<div align="center">
+
+# silky-starter - 让每一次开发都如丝般顺滑
+
+[![体验-丝滑一般顺滑](https://img.shields.io/badge/体验-丝滑一般顺滑-ff69b4.svg)]()
+[![特性-开箱即用](https://img.shields.io/badge/特性-开箱即用-green.svg)]()
+[![目标-高效开发](https://img.shields.io/badge/目标-高效开发-blue.svg)]()
+</div>
+
 <div align="center">
 
 [![Java 1.8+](https://img.shields.io/badge/Java-1.8+-orange.svg)]()
@@ -9,6 +15,8 @@
 [![License Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-lightgrey.svg)]()
 
 </div>
+
+
 
 ## 📚 简介
 
@@ -349,19 +357,19 @@ public class OssTemplateTest extends OssApplicationTest {
 
 ## 🆘 获取帮助
 
-1. 如在使用过程中遇到问题，可通过以下方式获取支持：824414828@qq.com
+1. 如在使用过程中遇到问题，可通过以下方式获取支持：824414828@qq.com或者添加微信号:824414828
 2. 查看组件源码：silky-oss-spring-boot-starter。
 3. 参考测试示例：silky-starter-oss-test。
 4. 联系开发团队获取技术支持。
 
 
-<div align="center">
+### 💳捐赠
+如果你觉得我的工作对你有帮助，可以点个 Star 或捐赠请作者喝杯咖啡~，在此表示感谢！
 
-# silky-starter - 让每一次开发都如丝般顺滑
+<img src="https://petsgo.oss-cn-shenzhen.aliyuncs.com/prod/wx.jpg" height="300px" alt="微信"><img src="https://petsgo.oss-cn-shenzhen.aliyuncs.com/prod/alipay.jpg" height="300px" alt="支付宝"> 
 
-[![体验-丝滑一般顺滑](https://img.shields.io/badge/体验-丝滑一般顺滑-ff69b4.svg)]()
-[![特性-开箱即用](https://img.shields.io/badge/特性-开箱即用-green.svg)]()
-[![目标-高效开发](https://img.shields.io/badge/目标-高效开发-blue.svg)]()
-</div>
+或者点击以下链接，将页面拉到最下方点击“捐赠”即可
 
+[Gitee上捐赠](https://gitee.com/zeng_er/silky-starter)
 
+-------
