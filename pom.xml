@@ -11,6 +11,14 @@
 
     <name>silky-starter</name>
     <description>silky组件</description>
+    <url>https://gitee.com/zeng_er/silky-starter</url>
+
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
 
     <properties>
         <revision>1.0.0</revision>
