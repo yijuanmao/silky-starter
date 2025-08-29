@@ -1,0 +1,9 @@
+# 项目相关配置
+silky:
+  oss:
+    access-key: 你的AccessKey
+    secret-key: 你的SecretKey
+    provider: aliyun
+    bucket: 你的Bucket
+    aliyun :
+      endpoint: 你的Endpoint

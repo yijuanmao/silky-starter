@@ -37,7 +37,7 @@ import java.util.List;
 })
 public class OssAutoConfiguration {
 
-    private static final String OSS_PROVIDER_PROPERTY = "fenmi.oss.provider";
+    private static final String OSS_PROVIDER_PROPERTY = "silky.oss.provider";
 
 
     @Bean

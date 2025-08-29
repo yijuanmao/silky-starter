@@ -10,7 +10,7 @@
     <packaging>pom</packaging>
 
     <name>silky-starter</name>
-    <description>分米组件</description>
+    <description>silky组件</description>
 
     <properties>
         <revision>1.0.0</revision>
@@ -29,6 +29,8 @@
     <modules>
         <module>silky-oss-spring-boot-starter</module>
         <module>silky-starter-core</module>
+        <module>silky-starter-test</module>
+        <module>silky-starter-test/silky-starter-oss-test</module>
     </modules>
 
     <dependencyManagement>

@@ -19,7 +19,7 @@ public class OssConstants {
     /**
      * 配置属性前缀
      */
-    public static final String CONFIGURATION_PREFIX = "fenmi.oss";
+    public static final String CONFIGURATION_PREFIX = "silky.oss";
 
     /**
      * 临时文件

@@ -44,7 +44,7 @@ public class OssUploadParam implements Serializable {
     private LocalDateTime expiration;
 
     /**
-     * 内容类型,参照枚举类:{@link com.fenmi.starter.oss.core.enums.OssFileTypeEnum}
+     * 内容类型,参照枚举类:{@link com.silky.starter.oss.core.enums.OssFileTypeEnum}
      */
     private String contentType;
 
