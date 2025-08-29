@@ -1,6 +1,6 @@
 package com.silky.starter.oss.manage;
 
-import com.fenmi.starter.oss.model.progress.UploadProgress;
+import com.silky.starter.oss.model.progress.UploadProgress;
 
 /**
  * 上传管理操作接口，定义了上传相关的管理操作。

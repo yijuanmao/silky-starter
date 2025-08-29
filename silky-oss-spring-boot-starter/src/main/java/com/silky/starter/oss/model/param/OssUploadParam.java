@@ -1,6 +1,6 @@
 package com.silky.starter.oss.model.param;
 
-import com.fenmi.starter.oss.core.enums.OssFileTypeEnum;
+import com.silky.starter.oss.core.enums.OssFileTypeEnum;
 
 import java.io.File;
 import java.io.InputStream;

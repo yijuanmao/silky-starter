@@ -1,6 +1,6 @@
 package com.silky.starter.oss.properties;
 
-import com.fenmi.starter.oss.core.constant.OssConstants;
+import com.silky.starter.oss.core.constant.OssConstants;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -13,7 +13,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class OssProperties {
 
     /**
-     * 服务商类型,参照枚举类:{@link com.fenmi.starter.oss.core.enums.ProviderType}
+     * 服务商类型,参照枚举类:{@link com.silky.starter.oss.core.enums.ProviderType}
      */
     private String provider;
 

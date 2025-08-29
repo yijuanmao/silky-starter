@@ -1,6 +1,6 @@
 package com.silky.starter.oss.model.progress;
 
-import com.fenmi.starter.oss.core.enums.UploadType;
+import com.silky.starter.oss.core.enums.UploadType;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;

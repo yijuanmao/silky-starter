@@ -1,6 +1,6 @@
 package com.silky.starter.oss.core.enums;
 
-import com.fenmi.starter.oss.core.constant.OssConstants;
+import com.silky.starter.oss.core.constant.OssConstants;
 
 /**
  * oss服务提供商枚举

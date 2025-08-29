@@ -1,9 +1,9 @@
 package com.silky.starter.oss.service.strategy;
 
-import com.fenmi.starter.oss.core.exception.OssException;
-import com.fenmi.starter.oss.model.param.OssUploadParam;
-import com.fenmi.starter.oss.model.result.OssUploadResult;
-import com.fenmi.starter.oss.template.OssTemplate;
+import com.silky.starter.oss.core.exception.OssException;
+import com.silky.starter.oss.model.param.OssUploadParam;
+import com.silky.starter.oss.model.result.OssUploadResult;
+import com.silky.starter.oss.template.OssTemplate;
 
 /**
  * OSS上传策略接口
