@@ -20,6 +20,12 @@
         </license>
     </licenses>
 
+    <scm>
+        <connection>scm:git:git@github.com:yijuanmao/silky-starter.git</connection>
+        <developerConnection>scm:git:git@github.com:yijuanmao/silky-starter.git</developerConnection>
+        <url>git@github.com:yijuanmao/silky-starter.git</url>
+    </scm>
+
     <properties>
         <revision>1.0.0</revision>
         <java.version>1.8</java.version>
@@ -111,8 +117,12 @@
     <!-- 开发者信息 -->
     <developers>
         <developer>
+            <id>zengyi</id>
             <name>zengyi</name>
             <email>824414828@qq.com</email>
+            <roles>
+                <role>Owner</role>
+            </roles>
         </developer>
     </developers>
 
