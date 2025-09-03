@@ -142,8 +142,8 @@ silky:
 |-----------------|------------------|----------------------|
 | smartUpload     | 智能上传（自动选择最佳上传方式） | OssUploadParam       |
 | downloadFile    | 下载文件到本地          | DownloadFileOssParam |
-| getFileMetadata | 删除云端文件           | DeleteFileOssParam   |
-| deleteFile      | 获取文件元数据          | GetFileMetadataParam |
+| deleteFile | 删除云端文件           | DeleteFileOssParam   |
+| getFileMetadata      | 获取文件元数据          | GetFileMetadataParam |
 | genPreSignedUrl | 生成预签名URL         | GenPreSignedUrlParam |
 
 ### 高级上传功能
@@ -357,7 +357,7 @@ public class OssTemplateTest extends OssApplicationTest {
 
 ## 🆘 获取帮助
 
-1. 如在使用过程中遇到问题，可通过以下方式获取支持：824414828@qq.com或者添加微信号:824414828
+1. 如在使用过程中遇到问题，可以提Issue，或通过以下方式获取支持：824414828@qq.com或者添加微信号:824414828
 2. 查看组件源码：silky-oss-spring-boot-starter。
 3. 参考测试示例：silky-starter-oss-test。
 4. 联系开发团队获取技术支持。
