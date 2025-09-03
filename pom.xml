@@ -21,15 +21,23 @@
     </licenses>
 
     <scm>
-        <connection>github.com:yijuanmao/silky-starter.git</connection>
+        <connection>https://github.com/yijuanmao/silky-starter.git</connection>
         <developerConnection>scm:git:ssh://git@github.com:yijuanmao/silky-starter.git</developerConnection>
-        <url>https://git@github.com:yijuanmao/silky-starter.git</url>
+        <url>https://github.com/yijuanmao/silky-starter/tree/master</url>
     </scm>
+
+    <modules>
+        <module>silky-oss-spring-boot-starter</module>
+        <module>silky-starter-core</module>
+        <module>silky-starter-test</module>
+    </modules>
 
     <properties>
         <revision>1.0.0</revision>
         <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
         <lombok.version>1.18.38</lombok.version>
         <maven-compiler-plugin.version>3.10.1</maven-compiler-plugin.version>
         <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
@@ -41,13 +49,6 @@
         <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
         <maven-gpg-plugin.version>1.6</maven-gpg-plugin.version>
     </properties>
-
-    <modules>
-        <module>silky-oss-spring-boot-starter</module>
-        <module>silky-starter-core</module>
-        <module>silky-starter-test</module>
-        <module>silky-starter-test/silky-starter-oss-test</module>
-    </modules>
 
     <dependencyManagement>
         <dependencies>
@@ -139,6 +140,7 @@
                     <source>${java.version}</source>
                     <target>${java.version}</target>
                     <encoding>${project.build.sourceEncoding}</encoding>
+
                 </configuration>
             </plugin>
 
@@ -163,7 +165,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>2.2.1</version>
+                <version>${maven-resources-plugin.version}</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -181,6 +183,28 @@
                 <version>${maven-javadoc-plugin.version}</version>
                 <configuration>
                     <doclint>none</doclint>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <docencoding>${project.build.sourceEncoding}</docencoding>
+                    <charset>${project.build.sourceEncoding}</charset>
+                    <additionalJOption>-J-Dfile.encoding=UTF-8</additionalJOption>
+<!--                    <additionalOptions>-->
+<!--                        <additionalOption>-encoding UTF-8</additionalOption>-->
+<!--                        <additionalOption>-charset UTF-8</additionalOption>-->
+<!--                        <additionalOption>-docencoding UTF-8</additionalOption>-->
+<!--                    </additionalOptions>-->
+                    <!-- 需要包含作者和版本信息 -->
+                    <show>public</show>
+                    <author>true</author>
+                    <version>true</version>
+                    <use>true</use>
+
+                    <tags>
+                        <tag>
+                            <name>date</name>
+                            <placement>a</placement>
+                            <head>日期:</head>
+                        </tag>
+                    </tags>
                 </configuration>
                 <executions>
                     <execution>
@@ -198,11 +222,11 @@
                 <version>${maven-gpg-plugin.version}</version>
                 <executions>
                     <execution>
-                        <id>oss</id>
+<!--                        <id>oss</id>-->
+                        <phase>verify</phase>
                         <goals>
                             <goal>sign</goal>
                         </goals>
-                        <phase>verify</phase>
                     </execution>
                 </executions>
             </plugin>
