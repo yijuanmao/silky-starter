@@ -16,15 +16,15 @@
 
 </div>
 
-
-
 ## 📚 简介
 
-silky-starter 是一款专为提升开发效率而设计的丝滑组件库，取名"silky"寓意开发体验如丝绸般顺滑。组件库提供统一的OSS文件操作接口，支持多种云存储平台，采用智能策略模式设计，让文件上传、下载和管理变得异常简单和高效。
+silky-starter 是一款专为提升开发效率而设计的丝滑组件库，取名"silky"
+寓意开发体验如丝绸般顺滑。组件库提供统一的OSS文件操作接口，支持多种云存储平台，采用智能策略模式设计，让文件上传、下载和管理变得异常简单和高效。
 
 丝滑体验，开箱即用 - 只需简单配置，即可享受丝滑般的开发体验，大幅减少重复代码编写，提升项目质量和稳定性。
 
 ## ✨ 丝滑特性
+
 - 🧊 丝滑体验: 简洁API设计，让每次调用都如丝般顺滑
 - 🚀 智能上传: 根据文件大小自动选择最佳上传方式，智能又省心
 - ⚡ 多云支持: 阿里云OSS、华为云OBS等（可扩展），切换如丝顺滑
@@ -34,6 +34,7 @@ silky-starter 是一款专为提升开发效率而设计的丝滑组件库，取
 - 📦 开箱即用: 简单配置即可快速集成，真正实现五分钟上手
 
 ## 📋 目录
+
 - [丝滑特性](#丝滑特性)
 - [技术栈要求](#技术栈要求)
 - [项目结构](#项目结构)
@@ -142,8 +143,8 @@ silky:
 |-----------------|------------------|----------------------|
 | smartUpload     | 智能上传（自动选择最佳上传方式） | OssUploadParam       |
 | downloadFile    | 下载文件到本地          | DownloadFileOssParam |
-| deleteFile | 删除云端文件           | DeleteFileOssParam   |
-| getFileMetadata      | 获取文件元数据          | GetFileMetadataParam |
+| deleteFile      | 删除云端文件           | DeleteFileOssParam   |
+| getFileMetadata | 获取文件元数据          | GetFileMetadataParam |
 | genPreSignedUrl | 生成预签名URL         | GenPreSignedUrlParam |
 
 ### 高级上传功能
@@ -362,11 +363,11 @@ public class OssTemplateTest extends OssApplicationTest {
 3. 参考测试示例：silky-starter-oss-test。
 4. 联系开发团队获取技术支持。
 
-
 ### 💳捐赠
+
 如果你觉得我的工作对你有帮助，可以点个 Star 或捐赠请作者喝杯咖啡~，在此表示感谢！
 
-<img src="https://petsgo.oss-cn-shenzhen.aliyuncs.com/prod/wx.jpg" height="300px" alt="微信"><img src="https://petsgo.oss-cn-shenzhen.aliyuncs.com/prod/alipay.jpg" height="300px" alt="支付宝"> 
+<img src="https://petsgo.oss-cn-shenzhen.aliyuncs.com/prod/wx.jpg" height="300px" alt="微信"><img src="https://petsgo.oss-cn-shenzhen.aliyuncs.com/prod/alipay.jpg" height="300px" alt="支付宝">
 
 或者点击以下链接，将页面拉到最下方点击“捐赠”即可
 
