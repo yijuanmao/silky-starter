@@ -3,7 +3,7 @@ package com.silky.starter.mongodb.wrapper;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.mongodb.support.SerializableFunction;
-import com.silky.starter.mongodb.utils.ReflectionUtil;
+import com.silky.starter.mongodb.core.utils.ReflectionUtil;
 import com.silky.starter.mongodb.wrapper.query.CriteriaOrWrapper;
 import org.springframework.data.mongodb.core.query.Criteria;
 

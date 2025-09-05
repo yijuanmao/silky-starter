@@ -14,14 +14,13 @@ import com.silky.starter.mongodb.annotation.IgnoreColumn;
 import com.silky.starter.mongodb.annotation.InitValue;
 import com.silky.starter.mongodb.annotation.UpdateTime;
 import com.silky.starter.mongodb.build.SortBuilder;
-import com.silky.starter.mongodb.constant.MongodbConstant;
+import com.silky.starter.mongodb.core.utils.FormatUtils;
+import com.silky.starter.mongodb.core.utils.ReflectionUtil;
 import com.silky.starter.mongodb.model.base.BaseMongodbModel;
 import com.silky.starter.mongodb.model.page.Page;
 import com.silky.starter.mongodb.properties.MongodbProperties;
 import com.silky.starter.mongodb.support.SerializableFunction;
 import com.silky.starter.mongodb.template.MongodbTemplate;
-import com.silky.starter.mongodb.utils.FormatUtils;
-import com.silky.starter.mongodb.utils.ReflectionUtil;
 import com.silky.starter.mongodb.wrapper.CriteriaWrapper;
 import com.silky.starter.mongodb.wrapper.query.CriteriaAndWrapper;
 import org.bson.Document;
@@ -48,6 +47,9 @@ import java.util.*;
 public class DefaultMongodbTemplateImpl implements MongodbTemplate {
 
     private static final Logger log = LoggerFactory.getLogger(MongodbTemplate.class);
+
+    private static final String MONGO_ID_FIELD = "mongoId";
+    private static final String ID_FIELD = "_id";
 
     /**
      * 是否打印日志
@@ -253,9 +255,9 @@ public class DefaultMongodbTemplateImpl implements MongodbTemplate {
         Query query = new Query(criteria.build());
         query.fields().include(ReflectionUtil.getFieldName(property));
         Long systemTime = System.currentTimeMillis();
-        List<?> list = mongoTemplate.find(query, documentClass);
+        List<?> documents = mongoTemplate.find(query, documentClass);
         logQuery(documentClass, query, systemTime);
-        return extractProperty(list, ReflectionUtil.getFieldName(property), propertyClass);
+        return extractProperty(documents, ReflectionUtil.getFieldName(property), propertyClass);
     }
 
     /**
@@ -323,11 +325,11 @@ public class DefaultMongodbTemplateImpl implements MongodbTemplate {
         long count;
         Query query = new Query(criteriaWrapper.build());
         if (query.getQueryObject().isEmpty()) {
-            count = mongoTemplate.getCollection(mongoTemplate.getCollectionName(clazz)).estimatedDocumentCount();
+            count = mongoTemplate.estimatedCount(clazz);
         } else {
             count = mongoTemplate.count(query, clazz);
         }
-        logCount(clazz, query, systemTime);
+        this.logOperation("count", clazz, query, systemTime);
         return count;
     }
 
@@ -340,7 +342,7 @@ public class DefaultMongodbTemplateImpl implements MongodbTemplate {
     @Override
     public String insert(Object object) {
         insertOrUpdate(object);
-        return (String) ReflectUtil.getFieldValue(object, MongodbConstant.ID);
+        return (String) ReflectUtil.getFieldValue(object, ID_FIELD);
     }
 
     /**
@@ -357,10 +359,10 @@ public class DefaultMongodbTemplateImpl implements MongodbTemplate {
         for (Object object : list) {
             Field[] fields = ReflectUtil.getFields(object.getClass());
             // 去除id以便插入
-            String id = Convert.toStr(ReflectUtil.getFieldValue(object, MongodbConstant.ID));
+            String id = Convert.toStr(ReflectUtil.getFieldValue(object, ID_FIELD));
             if (StrUtil.isNotBlank(id)) {
                 // 去除id值
-                ReflectUtil.setFieldValue(object, MongodbConstant.ID, null);
+                ReflectUtil.setFieldValue(object, ID_FIELD, null);
             }
             // 设置插入时间
             setCreateTime(object, now);
@@ -377,7 +379,7 @@ public class DefaultMongodbTemplateImpl implements MongodbTemplate {
         logSave(listClone, time, true);
         List<String> ids = new ArrayList<>(list.size());
         for (Object object : listClone) {
-            String id = (String) ReflectUtil.getFieldValue(object, MongodbConstant.ID);
+            String id = (String) ReflectUtil.getFieldValue(object, ID_FIELD);
             ids.add(id);
         }
         return ids;
@@ -404,7 +406,7 @@ public class DefaultMongodbTemplateImpl implements MongodbTemplate {
     public String insertOrUpdate(Object object) {
         Long time = System.currentTimeMillis();
         LocalDateTime now = LocalDateTimeUtil.now();
-        String id = (String) ReflectUtil.getFieldValue(object, MongodbConstant.ID);
+        String id = (String) ReflectUtil.getFieldValue(object, ID_FIELD);
         Object objectOrg = StrUtil.isNotEmpty(id) ? findById(id, object.getClass()) : null;
 
         if (objectOrg == null) {
@@ -419,21 +421,21 @@ public class DefaultMongodbTemplateImpl implements MongodbTemplate {
             setDefaultValue(object, fields);
             //校验是否有mongoid主键
 //            boolean annotation = isIdAnnotation(fields);
-            id = Convert.toStr(ReflectUtil.getFieldValue(object, MongodbConstant.ID));
+            id = Convert.toStr(ReflectUtil.getFieldValue(object, ID_FIELD));
             if (StrUtil.isNotBlank(id)) {
                 // 去除id值
-                ReflectUtil.setFieldValue(object, MongodbConstant.ID, null);
+                ReflectUtil.setFieldValue(object, ID_FIELD, null);
             }
             // 克隆一个@IgnoreColumn的字段设为null的对象;
             Object objectClone = BeanUtil.copyProperties(object, object.getClass());
             ignoreColumn(objectClone);
 
             mongoTemplate.save(objectClone);
-            id = (String) ReflectUtil.getFieldValue(objectClone, MongodbConstant.ID);
+            id = (String) ReflectUtil.getFieldValue(objectClone, ID_FIELD);
 
             if (StrUtil.isNotBlank(id)) {
                 // 设置id值
-                ReflectUtil.setFieldValue(object, MongodbConstant.ID, id);
+                ReflectUtil.setFieldValue(object, ID_FIELD, id);
             }
             logSave(objectClone, time, true);
         } else {
@@ -441,7 +443,7 @@ public class DefaultMongodbTemplateImpl implements MongodbTemplate {
             Field[] fields = ReflectUtil.getFields(object.getClass());
             // 拷贝属性
             for (Field field : fields) {
-                if (!field.getName().equals(MongodbConstant.ID) && ReflectUtil.getFieldValue(object, field) != null) {
+                if (!field.getName().equals(ID_FIELD) && ReflectUtil.getFieldValue(object, field) != null) {
                     ReflectUtil.setFieldValue(objectOrg, field, ReflectUtil.getFieldValue(object, field));
                 }
             }
@@ -499,7 +501,7 @@ public class DefaultMongodbTemplateImpl implements MongodbTemplate {
         Long time = System.currentTimeMillis();
         Query query = new Query(criteriaWrapper.build());
         DeleteResult deleteResult = mongoTemplate.remove(query, clazz);
-        logDelete(clazz, query, time);
+        logOperation("remove", clazz, query, time);
         return deleteResult;
     }
 
@@ -585,6 +587,8 @@ public class DefaultMongodbTemplateImpl implements MongodbTemplate {
         long queryTime = System.currentTimeMillis() - startTime;
         // 打印语句
         DefaultMongodbTemplateImpl.log.info(log + "\n执行时间:" + queryTime + "ms");
+
+        this.logOperation("count", clazz, query, startTime);
     }
 
     /**
@@ -715,7 +719,7 @@ public class DefaultMongodbTemplateImpl implements MongodbTemplate {
         for (Object item : list) {
             JSONObject jsonObject = JSONObject.from(item);
             if (isInsert) {
-                jsonObject.remove(MongodbConstant.ID);
+                jsonObject.remove(ID_FIELD);
             }
             cloneList.add(jsonObject);
         }
@@ -736,26 +740,37 @@ public class DefaultMongodbTemplateImpl implements MongodbTemplate {
     }
 
     /**
-     * 打印查询语句
+     * 打印日志语句
      *
+     * @param operation 操作
      * @param clazz     类
      * @param query     查询对象
      * @param startTime 查询开始时间
      */
-    private void logDelete(Class<?> clazz, Query query, Long startTime) {
+    private void logOperation(String operation, Class<?> clazz, Query query, Long startTime) {
         if (!print) {
             return;
         }
+
         MongoPersistentEntity<?> entity = mongoConverter.getMappingContext().getPersistentEntity(clazz);
         Document mappedQuery = queryMapper.getMappedObject(query.getQueryObject(), entity);
 
-        String logParam = "\ndb." + ReflectionUtil.getCollectionName(clazz) + ".remove(";
-        logParam += FormatUtils.bson(mappedQuery.toJson()) + ")";
-        logParam += ";";
+        StringBuilder logBuilder = new StringBuilder("\ndb.")
+                .append(ReflectionUtil.getCollectionName(clazz))
+                .append(".")
+                .append(operation)
+                .append("(")
+                .append(FormatUtils.bson(mappedQuery.toJson()))
+                .append(")");
 
-        // 记录慢查询
+        // 添加执行时间
         long queryTime = System.currentTimeMillis() - startTime;
-        // 打印语句
-        log.info(logParam + "\n执行时间:" + queryTime + "ms");
+        logBuilder.append(";\n执行时间:").append(queryTime).append("ms");
+
+        // 可选：记录慢查询
+        if (queryTime > 5000L) {
+            log.warn("Slow query detected: " + queryTime + "ms");
+        }
+        log.info(logBuilder + "\n执行时间:" + queryTime + "ms");
     }
 }

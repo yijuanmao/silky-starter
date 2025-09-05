@@ -1,4 +1,4 @@
-package com.silky.starter.mongodb.utils;
+package com.silky.starter.mongodb.core.utils;
 
 import java.util.ArrayList;
 import java.util.List;

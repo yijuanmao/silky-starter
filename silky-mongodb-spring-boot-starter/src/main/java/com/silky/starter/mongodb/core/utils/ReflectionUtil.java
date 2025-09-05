@@ -1,4 +1,4 @@
-package com.silky.starter.mongodb.utils;
+package com.silky.starter.mongodb.core.utils;
 
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.mongodb.support.SerializableFunction;
