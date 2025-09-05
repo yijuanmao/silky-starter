@@ -30,6 +30,7 @@
         <module>silky-oss-spring-boot-starter</module>
         <module>silky-starter-core</module>
         <module>silky-starter-test</module>
+        <module>silky-mongodb-spring-boot-starter</module>
     </modules>
 
     <properties>
@@ -48,6 +49,7 @@
         <commons-io.version>2.20.0</commons-io.version>
         <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
         <maven-gpg-plugin.version>1.6</maven-gpg-plugin.version>
+        <fastjson2.version>2.0.58</fastjson2.version>
     </properties>
 
     <dependencyManagement>
@@ -111,6 +113,13 @@
                 <groupId>com.huaweicloud</groupId>
                 <artifactId>esdk-obs-java</artifactId>
                 <version>${com.huaweicloud.version}</version>
+            </dependency>
+
+
+            <dependency>
+                <groupId>com.alibaba.fastjson2</groupId>
+                <artifactId>fastjson2</artifactId>
+                <version>${fastjson2.version}</version>
             </dependency>
 
         </dependencies>

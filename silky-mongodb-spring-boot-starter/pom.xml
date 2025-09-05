@@ -9,28 +9,28 @@
         <version>${revision}</version>
     </parent>
 
-    <artifactId>silky-starter-core</artifactId>
-    <description>silky核心公共模块</description>
+    <artifactId>silky-mongodb-spring-boot-starter</artifactId>
+    <description>silky-mongodb-starter</description>
     <packaging>jar</packaging>
-
 
     <dependencies>
 
-        <!-- hutool 工具类-->
+        <!-- mongodb -->
         <dependency>
-            <groupId>cn.hutool</groupId>
-            <artifactId>hutool-all</artifactId>
-        </dependency>
-
-        <!-- commons-io -->
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+            <version>${spring.boot.version}</version>
         </dependency>
 
         <dependency>
-            <groupId>com.alibaba.fastjson2</groupId>
-            <artifactId>fastjson2</artifactId>
+            <groupId>com.silky.starter</groupId>
+            <artifactId>silky-starter-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
         </dependency>
 
     </dependencies>

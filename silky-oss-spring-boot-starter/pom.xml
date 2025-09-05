@@ -10,7 +10,7 @@
     </parent>
 
     <artifactId>silky-oss-spring-boot-starter</artifactId>
-    <description>silky-OSS文件上传starter</description>
+    <description>silky-OSS-starter</description>
     <packaging>jar</packaging>
 
     <dependencies>
@@ -24,7 +24,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
-            <scope>provided</scope>
+            <optional>true</optional>
         </dependency>
 
         <dependency>
