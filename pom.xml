@@ -31,6 +31,7 @@
         <module>silky-starter-core</module>
         <module>silky-starter-test</module>
         <module>silky-mongodb-spring-boot-starter</module>
+        <module>silky-statemachine-spring-boot-starter</module>
     </modules>
 
     <properties>
@@ -50,6 +51,7 @@
         <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
         <maven-gpg-plugin.version>1.6</maven-gpg-plugin.version>
         <fastjson2.version>2.0.58</fastjson2.version>
+        <slf4j-api.version>2.0.12</slf4j-api.version>
     </properties>
 
     <dependencyManagement>
@@ -88,11 +90,11 @@
                 <version>${revision}</version>
             </dependency>
 
-            <dependency>
-                <groupId>com.silky.starter</groupId>
-                <artifactId>silky-oss-spring-boot-starter</artifactId>
-                <version>${revision}</version>
-            </dependency>
+<!--            <dependency>-->
+<!--                <groupId>com.silky.starter</groupId>-->
+<!--                <artifactId>silky-oss-spring-boot-starter</artifactId>-->
+<!--                <version>${revision}</version>-->
+<!--            </dependency>-->
 
             <!-- commons-io -->
             <dependency>
@@ -115,11 +117,16 @@
                 <version>${com.huaweicloud.version}</version>
             </dependency>
 
-
             <dependency>
                 <groupId>com.alibaba.fastjson2</groupId>
                 <artifactId>fastjson2</artifactId>
                 <version>${fastjson2.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j-api.version}</version>
             </dependency>
 
         </dependencies>
@@ -149,7 +156,6 @@
                     <source>${java.version}</source>
                     <target>${java.version}</target>
                     <encoding>${project.build.sourceEncoding}</encoding>
-
                 </configuration>
             </plugin>
 

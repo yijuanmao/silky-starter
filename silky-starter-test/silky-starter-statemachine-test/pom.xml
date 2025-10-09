@@ -9,16 +9,10 @@
         <version>${revision}</version>
     </parent>
 
-    <artifactId>silky-starter-oss-test</artifactId>
-    <description>OSS测试模块</description>
+    <artifactId>silky-starter-statemachine-test</artifactId>
+    <description>状态机测试模块</description>
 
     <dependencies>
-
-        <dependency>
-            <groupId>com.silky.starter</groupId>
-            <artifactId>silky-oss-spring-boot-starter</artifactId>
-            <version>${revision}</version>
-        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -39,18 +33,10 @@
             <artifactId>silky-starter-core</artifactId>
         </dependency>
 
-        <!-- 阿里云oss -->
         <dependency>
-            <groupId>com.aliyun.oss</groupId>
-            <artifactId>aliyun-sdk-oss</artifactId>
-            <!--            <version>3.18.3</version>-->
-        </dependency>
-
-        <!-- 华为云 OBS -->
-        <dependency>
-            <groupId>com.huaweicloud</groupId>
-            <artifactId>esdk-obs-java</artifactId>
-            <!--            <version>3.25.7</version>-->
+            <groupId>com.silky.starter</groupId>
+            <artifactId>silky-statemachine-spring-boot-starter</artifactId>
+            <version>${revision}</version>
         </dependency>
 
     </dependencies>

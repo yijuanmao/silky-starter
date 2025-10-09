@@ -66,9 +66,11 @@ silky-starter 包含以下独立组件模块：
 silky-starter
 ├─ silky-oss-spring-boot-starter（OSS组件模块，文件、图片上传下载，支持：阿里云、华为云等）
 ├─ silky-mongodb-spring-boot-starter（MongoDB组件模块）
+├─ silky-statemachine-spring-boot-starter（状态机组件模块）
 ├─ silky-starter-core（核心模块,公共常用的工具包类）
 ├─ silky-starter-test（测试模块）
 │  ├─ silky-starter-oss-test（OSS组件测试模块）
+│  ├─ silky-starter-statemachine-test（状态机测试模块）
 ```
 
 ### 1. silky-oss-spring-boot-starter
