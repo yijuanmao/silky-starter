@@ -47,11 +47,11 @@
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
 
-        <snapshotRepository>
-            <!-- 如果发布快照版本，同样需要确保 id 与 settings.xml 中的 server id 一致 -->
+<!--        <snapshotRepository>
+            &lt;!&ndash; 如果发布快照版本，同样需要确保 id 与 settings.xml 中的 server id 一致 &ndash;&gt;
             <id>central</id>
             <url>https://s01.oss.sonatype.org/content/repositories/snapshots/</url>
-        </snapshotRepository>
+        </snapshotRepository>-->
 
     </distributionManagement>
 
