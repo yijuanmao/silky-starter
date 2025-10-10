@@ -32,6 +32,7 @@
         <module>silky-starter-test</module>
         <module>silky-mongodb-spring-boot-starter</module>
         <module>silky-statemachine-spring-boot-starter</module>
+        <module>silky-rabbitmq-spring-boot-starter</module>
     </modules>
 
     <properties>
@@ -58,17 +59,25 @@
         <dependencies>
             <dependency>
                 <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-autoconfigure</artifactId>
+                <artifactId>spring-boot-dependencies</artifactId>
                 <version>${spring.boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
 
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-configuration-processor</artifactId>
-                <optional>true</optional>
-                <scope>provided</scope>
-                <version>${spring.boot.version}</version>
-            </dependency>
+<!--            <dependency>-->
+<!--                <groupId>org.springframework.boot</groupId>-->
+<!--                <artifactId>spring-boot-autoconfigure</artifactId>-->
+<!--                <version>${spring.boot.version}</version>-->
+<!--            </dependency>-->
+
+<!--            <dependency>-->
+<!--                <groupId>org.springframework.boot</groupId>-->
+<!--                <artifactId>spring-boot-configuration-processor</artifactId>-->
+<!--                <optional>true</optional>-->
+<!--                <scope>provided</scope>-->
+<!--                <version>${spring.boot.version}</version>-->
+<!--            </dependency>-->
 
             <!--lombok 插件-->
             <dependency>

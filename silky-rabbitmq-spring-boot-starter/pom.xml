@@ -9,17 +9,23 @@
         <version>${revision}</version>
     </parent>
 
-    <artifactId>silky-mongodb-spring-boot-starter</artifactId>
-    <description>silky-mongodb-starter</description>
+    <artifactId>silky-rabbitmq-spring-boot-starter</artifactId>
+    <description>silky-rabbitmq-starter</description>
     <packaging>jar</packaging>
+
 
     <dependencies>
 
-        <!-- mongodb -->
+        <!-- spring-boot 依赖 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-mongodb</artifactId>
-<!--            <version>${spring.boot.version}</version>-->
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
         </dependency>
 
         <dependency>
@@ -28,9 +34,13 @@
         </dependency>
 
         <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-configuration-processor</artifactId>
-            <optional>true</optional>
+            <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
 
     </dependencies>
