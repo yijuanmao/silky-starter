@@ -121,7 +121,7 @@ silky-starter
 <dependencies>
 
     <dependency>
-        <groupId>com.silky.starter</groupId>
+        <groupId>io.github.yijuanmao</groupId>
         <artifactId>silky-oss-spring-boot-starter</artifactId>
         <version>${最新版本}</version>
     </dependency>
@@ -195,7 +195,7 @@ silky:
 <dependencies>
 
     <dependency>
-        <groupId>com.silky.starter</groupId>
+        <groupId>io.github.yijuanmao</groupId>
         <artifactId>silky-mongodb-spring-boot-starter</artifactId>
         <version>${最新版本}</version>
     </dependency>

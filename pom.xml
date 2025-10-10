@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.silky.starter</groupId>
+    <groupId>io.github.yijuanmao</groupId>
     <artifactId>silky-starter</artifactId>
     <version>${revision}</version>
     <packaging>pom</packaging>
@@ -13,6 +13,7 @@
     <description>silky组件</description>
     <url>https://github.com/yijuanmao/silky-starter/tree/master</url>
 
+    <!-- 许可证 -->
     <licenses>
         <license>
             <name>The Apache Software License, Version 2.0</name>
@@ -20,11 +21,35 @@
         </license>
     </licenses>
 
+    <!-- 开发者信息 -->
+    <developers>
+        <developer>
+            <id>zengyi</id>
+            <name>zengyi</name>
+            <email>824414828@qq.com</email>
+            <roles>
+                <role>Owner</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <!-- SCM（版本控制）信息 -->
     <scm>
-        <connection>https://github.com/yijuanmao/silky-starter.git</connection>
-        <developerConnection>scm:git:ssh://git@github.com:yijuanmao/silky-starter.git</developerConnection>
-        <url>https://github.com/yijuanmao/silky-starter/tree/master</url>
+        <connection>scm:git:https://github.com/yijuanmao/silky-starter.git</connection>
+        <developerConnection>scm:git:https://github.com/yijuanmao/silky-starter.git</developerConnection>
+        <url>https://github.com/yijuanmao/silky-starter</url>
     </scm>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
 
     <modules>
         <module>silky-oss-spring-boot-starter</module>
@@ -85,16 +110,10 @@
             </dependency>
 
             <dependency>
-                <groupId>com.silky.starter</groupId>
+                <groupId>io.github.yijuanmao</groupId>
                 <artifactId>silky-starter-core</artifactId>
                 <version>${revision}</version>
             </dependency>
-
-<!--            <dependency>-->
-<!--                <groupId>com.silky.starter</groupId>-->
-<!--                <artifactId>silky-oss-spring-boot-starter</artifactId>-->
-<!--                <version>${revision}</version>-->
-<!--            </dependency>-->
 
             <!-- commons-io -->
             <dependency>
@@ -133,17 +152,7 @@
 
     </dependencyManagement>
 
-    <!-- 开发者信息 -->
-    <developers>
-        <developer>
-            <id>zengyi</id>
-            <name>zengyi</name>
-            <email>824414828@qq.com</email>
-            <roles>
-                <role>Owner</role>
-            </roles>
-        </developer>
-    </developers>
+
 
     <build>
         <finalName>${project.name}</finalName>
@@ -176,6 +185,7 @@
                     <tokenAuth>true</tokenAuth>
                 </configuration>
             </plugin>
+
             <!--   source源码插件 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -191,11 +201,20 @@
                 </executions>
             </plugin>
 
-            <!-- Javadoc -->
+            <!-- Javadoc插件 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>${maven-javadoc-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+<!--                        <phase>package</phase>-->
+                    </execution>
+                </executions>
                 <configuration>
                     <doclint>none</doclint>
                     <encoding>${project.build.sourceEncoding}</encoding>
@@ -212,7 +231,6 @@
                     <author>true</author>
                     <version>true</version>
                     <use>true</use>
-
                     <tags>
                         <tag>
                             <name>date</name>
@@ -221,23 +239,16 @@
                         </tag>
                     </tags>
                 </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                        <phase>package</phase>
-                    </execution>
-                </executions>
             </plugin>
-            <!-- Gpg Signature -->
+
+            <!-- Gpg 签名插件 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
                 <version>${maven-gpg-plugin.version}</version>
                 <executions>
                     <execution>
-<!--                        <id>oss</id>-->
+                        <id>sign-artifacts</id>
                         <phase>verify</phase>
                         <goals>
                             <goal>sign</goal>
@@ -245,6 +256,20 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- 发布插件（这里使用nexus-staging-maven-plugin） -->
+            <plugin>
+                <groupId>org.sonatype.plugins</groupId>
+                <artifactId>nexus-staging-maven-plugin</artifactId>
+                <version>1.6.8</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <serverId>ossrh</serverId>
+                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                    <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                </configuration>
+            </plugin>
+
         </plugins>
 
     </build>
@@ -259,6 +284,13 @@
                 <enabled>true</enabled>
             </releases>
         </repository>
+
+        <!-- 在 GitHub Actions 中自动发布 -->
+<!--        <repository>-->
+<!--            <id>github</id>-->
+<!--            <url>https://github.com/yijuanmao/silky-starter</url>-->
+<!--        </repository>-->
+
     </repositories>
 
 </project>
