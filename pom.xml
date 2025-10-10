@@ -199,6 +199,18 @@
                 </configuration>
             </plugin>-->
 
+            <!--   central发布插件    -->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.4.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <tokenAuth>true</tokenAuth>
+                </configuration>
+            </plugin>
+
             <!--   source源码插件 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
