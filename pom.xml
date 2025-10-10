@@ -35,8 +35,8 @@
 
     <!-- SCM（版本控制）信息 -->
     <scm>
-        <connection>scm:git:https://github.com/yijuanmao/silky-starter.git</connection>
-        <developerConnection>scm:git:https://github.com/yijuanmao/silky-starter.git</developerConnection>
+        <connection>scm:git:git@github.com:yijuanmao/silky-starter.git</connection>
+        <developerConnection>scm:git:git@github.com/yijuanmao/silky-starter.git</developerConnection>
         <url>https://github.com/yijuanmao/silky-starter</url>
     </scm>
 
@@ -155,7 +155,7 @@
 
 
     <build>
-        <finalName>${project.name}</finalName>
+<!--        <finalName>${project.name}</finalName>-->
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
