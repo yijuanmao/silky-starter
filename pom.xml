@@ -42,22 +42,13 @@
 
     <distributionManagement>
         <!-- 此 id 需与 settings.xml 中配置的 server id 一致 -->
-<!--        <repository>-->
-<!--            <id>central</id>-->
-<!--            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>-->
-<!--        </repository>-->
-
-<!--        <snapshotRepository>
-            &lt;!&ndash; 如果发布快照版本，同样需要确保 id 与 settings.xml 中的 server id 一致 &ndash;&gt;
-            <id>central</id>
-            <url>https://s01.oss.sonatype.org/content/repositories/snapshots/</url>
-        </snapshotRepository>-->
         <repository>
-            <id>central</id>
+            <id>silky</id>
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
+        <!--  如果发布快照版本，同样需要确保 id 与 settings.xml 中的 server id 一致 -->
         <snapshotRepository>
-            <id>central</id>
+            <id>silky</id>
             <!-- 统一使用 oss.sonatype.org -->
             <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
         </snapshotRepository>
@@ -188,25 +179,13 @@
             </plugin>
 
             <!--   central发布插件    -->
-           <!-- <plugin>
-                <groupId>org.sonatype.central</groupId>
-                <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.4.0</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <publishingServerId>central</publishingServerId>
-                    <tokenAuth>true</tokenAuth>
-                </configuration>
-            </plugin>-->
-
-            <!--   central发布插件    -->
             <plugin>
                 <groupId>org.sonatype.central</groupId>
                 <artifactId>central-publishing-maven-plugin</artifactId>
                 <version>0.4.0</version>
                 <extensions>true</extensions>
                 <configuration>
-                    <publishingServerId>central</publishingServerId>
+                    <publishingServerId>silky</publishingServerId>
                     <tokenAuth>true</tokenAuth>
                 </configuration>
             </plugin>
