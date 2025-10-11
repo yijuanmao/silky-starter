@@ -12,7 +12,7 @@
 
     <name>silky-mongodb-spring-boot-starter</name>
     <artifactId>silky-mongodb-spring-boot-starter</artifactId>
-    <description>silky-mongodb-starter</description>
+    <description>Silky MongoDB Spring Boot Starter</description>
     <packaging>jar</packaging>
 
     <dependencies>

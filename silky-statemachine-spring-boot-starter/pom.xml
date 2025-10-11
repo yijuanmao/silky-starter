@@ -12,7 +12,7 @@
 
     <name>silky-statemachine-spring-boot-starter</name>
     <artifactId>silky-statemachine-spring-boot-starter</artifactId>
-    <description>silky-statemachine-starter</description>
+    <description>Silky State Machine Spring Boot Starter</description>
     <packaging>jar</packaging>
 
     <dependencies>

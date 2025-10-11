@@ -12,7 +12,7 @@
 
     <name>silky-oss-spring-boot-starter</name>
     <artifactId>silky-oss-spring-boot-starter</artifactId>
-    <description>silky-OSS-starter</description>
+    <description>Silky Oss Spring Boot Starter</description>
     <packaging>jar</packaging>
 
     <dependencies>
