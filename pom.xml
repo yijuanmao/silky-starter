@@ -152,6 +152,30 @@
                 <version>${slf4j-api.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>io.github.yijuanmao</groupId>
+                <artifactId>silky-mongodb-spring-boot-starter</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.github.yijuanmao</groupId>
+                <artifactId>silky-oss-spring-boot-starter</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.github.yijuanmao</groupId>
+                <artifactId>silky-statemachine-spring-boot-starter</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.github.yijuanmao</groupId>
+                <artifactId>silky-starter-core</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
         </dependencies>
 
     </dependencyManagement>
