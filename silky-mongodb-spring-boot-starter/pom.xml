@@ -4,13 +4,15 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>com.silky.starter</groupId>
+        <groupId>io.github.yijuanmao</groupId>
         <artifactId>silky-starter</artifactId>
         <version>${revision}</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
 
+    <name>silky-mongodb-spring-boot-starter</name>
     <artifactId>silky-mongodb-spring-boot-starter</artifactId>
-    <description>silky-mongodb-starter</description>
+    <description>Silky MongoDB Spring Boot Starter</description>
     <packaging>jar</packaging>
 
     <dependencies>
@@ -23,7 +25,7 @@
         </dependency>
 
         <dependency>
-            <groupId>com.silky.starter</groupId>
+            <groupId>io.github.yijuanmao</groupId>
             <artifactId>silky-starter-core</artifactId>
         </dependency>
 
