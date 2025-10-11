@@ -19,7 +19,6 @@ public class FormatUtils {
      * 转换json字符串
      *
      * @param json json内容
-     * @return
      */
     public static String bson(String json) {
         json = transString(json);
