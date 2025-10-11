@@ -10,6 +10,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
+    <name>silky-mongodb-spring-boot-starter</name>
     <artifactId>silky-mongodb-spring-boot-starter</artifactId>
     <description>silky-mongodb-starter</description>
     <packaging>jar</packaging>

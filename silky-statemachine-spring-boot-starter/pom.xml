@@ -10,6 +10,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
+    <name>silky-statemachine-spring-boot-starter</name>
     <artifactId>silky-statemachine-spring-boot-starter</artifactId>
     <description>silky-statemachine-starter</description>
     <packaging>jar</packaging>
