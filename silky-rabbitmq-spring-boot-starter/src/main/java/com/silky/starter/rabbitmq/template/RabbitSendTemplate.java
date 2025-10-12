@@ -1,8 +1,9 @@
-package com.silky.starter.rabbitmq.service;
+package com.silky.starter.rabbitmq.template;
 
 import com.silky.starter.rabbitmq.core.BaseMassageSend;
 import com.silky.starter.rabbitmq.core.SendResult;
 import com.silky.starter.rabbitmq.enums.SendMode;
+import com.silky.starter.rabbitmq.service.SendCallback;
 
 /**
  * 消息发送模板接口
@@ -10,7 +11,7 @@ import com.silky.starter.rabbitmq.enums.SendMode;
  * @author zy
  * @date 2025-10-09 17:52
  **/
-public interface RabbitSenderTemplate {
+public interface RabbitSendTemplate {
 
     /**
      * 发送消息
