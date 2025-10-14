@@ -5,12 +5,15 @@ import com.silky.starter.rabbitmq.annotation.RabbitMessage;
 import com.silky.starter.rabbitmq.core.BaseMassageSend;
 import com.silky.starter.rabbitmq.core.SendResult;
 import com.silky.starter.rabbitmq.exception.RabbitMessageSendException;
+import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
 import com.silky.starter.rabbitmq.template.RabbitSendTemplate;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 /**
  * RabbitMessage 切面
@@ -19,20 +22,24 @@ import org.slf4j.LoggerFactory;
  * @date 2025-10-12 08:08
  **/
 @Aspect
+@Component
 public class RabbitMessageAspect {
 
     private final Logger log = LoggerFactory.getLogger(RabbitMessageAspect.class);
 
-    private final RabbitSendTemplate rabbitSendTemplate;
-
-    public RabbitMessageAspect(RabbitSendTemplate rabbitSendTemplate) {
-        this.rabbitSendTemplate = rabbitSendTemplate;
-    }
+    @Autowired
+    private RabbitSendTemplate rabbitSendTemplate;
+    @Autowired(required = false)
+    private MessagePersistenceService persistenceService;
 
     @Around("@annotation(rabbitMessage)")
-    public Object aroundRabbitMessageWithRetry(ProceedingJoinPoint joinPoint,
-                                               RabbitMessage rabbitMessage) throws Throwable {
+    public Object aroundRabbitMessage(ProceedingJoinPoint joinPoint,
+                                      RabbitMessage rabbitMessage) throws Throwable {
         Object[] args = joinPoint.getArgs();
+        if (args.length == 0) {
+            log.warn("RabbitMessage annotation used on method without parameters");
+            return joinPoint.proceed();
+        }
         BaseMassageSend message = findMessageParameter(args);
         if (message == null) {
             log.warn("No BaseMassageSend parameter found, proceeding without message sending");
@@ -69,13 +76,11 @@ public class RabbitMessageAspect {
                 lastResult = doSendMessage(rabbitMessage, message);
 
                 if (lastResult.isSuccess()) {
-                    log.debug("Message sent successfully on attempt {}/{}",
-                            retryCount + 1, maxRetries + 1);
+                    log.debug("Message sent successfully on attempt {}/{}", retryCount + 1, maxRetries + 1);
                     return lastResult;
+                } else {
+                    handleSendFailure(joinPoint, lastResult, rabbitMessage);
                 }
-
-                log.warn("Message send failed on attempt {}/{}: {}",
-                        retryCount + 1, maxRetries + 1, lastResult.getErrorMessage());
 
             } catch (Exception e) {
                 log.warn("Message send exception on attempt {}/{}: {}",
@@ -109,6 +114,7 @@ public class RabbitMessageAspect {
      */
     private SendResult doSendMessage(RabbitMessage rabbitMessage, BaseMassageSend message) {
         if (rabbitMessage.delay() > 0) {
+            // 发送延迟消息
             return rabbitSendTemplate.sendDelay(
                     rabbitMessage.exchange(),
                     rabbitMessage.routingKey(),
@@ -118,6 +124,7 @@ public class RabbitMessageAspect {
                     getDescription(rabbitMessage, message)
             );
         } else {
+            // 发送普通消息
             return rabbitSendTemplate.send(
                     rabbitMessage.exchange(),
                     rabbitMessage.routingKey(),
