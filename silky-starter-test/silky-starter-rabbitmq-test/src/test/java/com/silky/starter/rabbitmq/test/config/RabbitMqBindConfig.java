@@ -33,7 +33,7 @@ public class RabbitMqBindConfig {
     }
 
     /**
-     * 测试订单交换机
+     * 测试订单交换机,根据自己业务选择不同交换机
      *
      * @return TopicExchange
      */
