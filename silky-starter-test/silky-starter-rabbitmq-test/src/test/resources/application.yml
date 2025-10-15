@@ -1,0 +1,30 @@
+
+spring:
+  #mq配置
+  rabbitmq:
+    host: localhost
+    port: 5673
+    username: admin
+    password: admin
+    #虚拟host 可以不设置,使用server默认host
+    virtual-host: /
+    silky:
+      send:
+
+    listener:
+      simple:
+        default-requeue-rejected: false
+        #设置手动确认,auto：自动，manual:手动
+        acknowledge-mode: manual
+        # 消费端的监听个数(即@RabbitListener开启几个线程去处理数据。)
+        concurrency: 1
+        # 消费端的监听最大个数
+        max-concurrency: 20
+        prefetch: 10
+        retry:
+          # 开启消费者(程序出现异常)重试机制，默认开启并一直重试
+          enabled: false
+          # 最大重试次数
+          # max-attempts: 5
+          # 重试间隔时间(毫秒)
+          initial-interval: 3000

@@ -3,6 +3,9 @@ package com.silky.starter.rabbitmq.persistence;
 import com.silky.starter.rabbitmq.core.BaseMassageSend;
 import com.silky.starter.rabbitmq.enums.MessageStatus;
 import com.silky.starter.rabbitmq.persistence.entity.RabbitmqMessageRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,7 +17,10 @@ import java.util.List;
  * @date 2025-10-15 14:18
  **/
 @Service
+@ConditionalOnMissingBean(MessagePersistenceService.class)
 public class NoOpMessagePersistenceService implements MessagePersistenceService {
+
+    private static final Logger logger = LoggerFactory.getLogger(NoOpMessagePersistenceService.class);
 
     /**
      * 保存发送前的消息记录
@@ -27,8 +33,10 @@ public class NoOpMessagePersistenceService implements MessagePersistenceService 
      * @param description  描述
      */
     @Override
-    public void saveMessageBeforeSend(BaseMassageSend message, String exchange, String routingKey, String sendMode, String businessType, String description) {
-
+    public boolean saveMessageBeforeSend(BaseMassageSend message, String exchange, String routingKey, String sendMode, String businessType, String description) {
+        logger.debug("NoOp persistence: Save message before send - messageId: {}, exchange: {}, routingKey: {}",
+                message.getMessageId(), exchange, routingKey);
+        return true;
     }
 
     /**
@@ -40,8 +48,10 @@ public class NoOpMessagePersistenceService implements MessagePersistenceService 
      * @param exception 异常信息
      */
     @Override
-    public void updateMessageAfterSend(String messageId, MessageStatus status, Long costTime, String exception) {
-
+    public boolean updateMessageAfterSend(String messageId, MessageStatus status, Long costTime, String exception) {
+        logger.debug("NoOp persistence: Update message after send - messageId: {}, status: {}",
+                messageId, status);
+        return true;
     }
 
     /**
@@ -51,8 +61,9 @@ public class NoOpMessagePersistenceService implements MessagePersistenceService 
      * @param costTime  消息消费耗时
      */
     @Override
-    public void recordMessageConsume(String messageId, Long costTime) {
-
+    public boolean recordMessageConsume(String messageId, Long costTime) {
+        logger.debug("NoOp persistence: Record message consume - messageId: {}", messageId);
+        return true;
     }
 
     /**
@@ -63,8 +74,10 @@ public class NoOpMessagePersistenceService implements MessagePersistenceService 
      * @param costTime  消息消费耗时
      */
     @Override
-    public void recordMessageConsumeFailure(String messageId, String exception, Long costTime) {
-
+    public boolean recordMessageConsumeFailure(String messageId, String exception, Long costTime) {
+        logger.debug("NoOp persistence: Record message consume failure - messageId: {}, exception: {}",
+                messageId, exception);
+        return true;
     }
 
     /**
@@ -74,6 +87,7 @@ public class NoOpMessagePersistenceService implements MessagePersistenceService 
      */
     @Override
     public RabbitmqMessageRecord findMessageById(String messageId) {
+        logger.debug("NoOp persistence: Find message by id - messageId: {}", messageId);
         return null;
     }
 
@@ -84,6 +98,7 @@ public class NoOpMessagePersistenceService implements MessagePersistenceService 
      */
     @Override
     public List<RabbitmqMessageRecord> findFailedMessages(int limit) {
+        logger.debug("NoOp persistence: Find failed messages - limit: {}", limit);
         return null;
     }
 
@@ -94,6 +109,7 @@ public class NoOpMessagePersistenceService implements MessagePersistenceService 
      */
     @Override
     public boolean retryFailedMessage(Long recordId) {
+        logger.debug("NoOp persistence: Retry failed message - recordId: {}", recordId);
         return false;
     }
 }

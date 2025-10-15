@@ -6,7 +6,7 @@ import com.silky.starter.rabbitmq.core.SendResult;
 import com.silky.starter.rabbitmq.enums.MessageStatus;
 import com.silky.starter.rabbitmq.enums.SendMode;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
-import com.silky.starter.rabbitmq.properties.RabbitMQProperties;
+import com.silky.starter.rabbitmq.properties.SilkyRabbitMQProperties;
 import com.silky.starter.rabbitmq.serialization.RabbitMqMessageSerializer;
 import com.silky.starter.rabbitmq.service.SendCallback;
 import lombok.extern.slf4j.Slf4j;
@@ -61,7 +61,7 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
 
     private final RabbitTemplate rabbitTemplate;
 
-    private final RabbitMQProperties properties;
+    private final SilkyRabbitMQProperties properties;
 
     private final RabbitMqMessageSerializer messageSerializer;
 
@@ -70,18 +70,18 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
     private final MessagePersistenceService persistenceService;
 
     public DefaultRabbitSendTemplate(RabbitTemplate rabbitTemplate, RabbitMqMessageSerializer messageSerializer,
-                                     RabbitMQProperties rabbitMQProperties, MessagePersistenceService persistenceService) {
+                                     SilkyRabbitMQProperties silkyRabbitMQProperties, MessagePersistenceService persistenceService) {
         this.rabbitTemplate = rabbitTemplate;
         this.messageSerializer = messageSerializer;
         this.persistenceService = persistenceService;
-        this.properties = rabbitMQProperties;
-        this.defaultSendMode = rabbitMQProperties.getSend().getDefaultSendMode();
-        this.syncTimeout = rabbitMQProperties.getSend().getSyncTimeout();
-        this.enableRetry = rabbitMQProperties.getSend().isEnableRetry();
-        this.maxRetryCount = rabbitMQProperties.getSend().getMaxRetryCount();
-        this.retryInterval = rabbitMQProperties.getSend().getRetryInterval();
-        this.asyncExecutor = Executors.newFixedThreadPool(rabbitMQProperties.getSend().getAsyncThreadPoolSize());
-        this.enabledPersistence = rabbitMQProperties.getPersistence().isEnabled();
+        this.properties = silkyRabbitMQProperties;
+        this.defaultSendMode = silkyRabbitMQProperties.getSend().getDefaultSendMode();
+        this.syncTimeout = silkyRabbitMQProperties.getSend().getSyncTimeout();
+        this.enableRetry = silkyRabbitMQProperties.getSend().isEnableRetry();
+        this.maxRetryCount = silkyRabbitMQProperties.getSend().getMaxRetryCount();
+        this.retryInterval = silkyRabbitMQProperties.getSend().getRetryInterval();
+        this.asyncExecutor = Executors.newFixedThreadPool(silkyRabbitMQProperties.getSend().getAsyncThreadPoolSize());
+        this.enabledPersistence = silkyRabbitMQProperties.getPersistence().isEnabled();
 
         log.info("DefaultRabbitSenderTemplate initialized with persistence: {}", persistenceService != null ? "enabled" : "disabled");
     }
@@ -139,6 +139,14 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
      */
     @Override
     public <T extends BaseMassageSend> SendResult send(String exchange, String routingKey, T message, String businessType, String description, SendMode sendMode) {
+        //检查必要的依赖
+        this.checkDependencies();
+        // 如果Silky发送功能被禁用，直接使用原生RabbitTemplate
+        if (!properties.getSend().isEnabled()) {
+            log.debug("Silky send is disabled, using native RabbitTemplate");
+            return doNativeSend(exchange, routingKey, message);
+        }
+
         if (StrUtil.isNotBlank(businessType)) {
             message.setBusinessType(businessType);
         }
@@ -194,6 +202,9 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
      */
     @Override
     public <T extends BaseMassageSend> SendResult sendDelay(String exchange, String routingKey, T message, long delayMillis, String businessType, String description) {
+        //检查必要的依赖
+        this.checkDependencies();
+
         if (StrUtil.isNotBlank(businessType)) {
             message.setBusinessType(businessType);
         }
@@ -306,27 +317,6 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
         // 使用超时控制的发送
         return doTimeoutSyncSend(exchange, routingKey, message, messageId, startTime);
     }
-    /*private SendResult doSyncSend(String exchange, String routingKey, Message message, String messageId,
-                                  long startTime) {
-        try {
-            CorrelationData correlationData = new CorrelationData(messageId);
-
-            // 带重试机制的同步发送
-            if (enableRetry) {
-                return doSyncSendWithRetry(exchange, routingKey, message, correlationData, startTime);
-            } else {
-                rabbitTemplate.convertAndSend(exchange, routingKey, message, correlationData);
-                long costTime = System.currentTimeMillis() - startTime;
-                return SendResult.success(messageId, costTime);
-            }
-        } catch (Exception e) {
-            log.error("Send message failed, exchange: {}, routingKey: {}, messageId: {}",
-                    exchange, routingKey, messageId, e);
-            long costTime = System.currentTimeMillis() - startTime;
-            return SendResult.failure(e.getMessage(), costTime);
-        }
-    }*/
-
 
     /**
      * 简单的同步发送（无超时控制）
@@ -465,6 +455,26 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
         }, asyncExecutor);
     }
 
+
+    /**
+     * 使用原生RabbitTemplate发送（当Silky功能禁用时）
+     *
+     * @param exchange   交换机
+     * @param routingKey 路由键
+     * @param message    消息体
+     */
+    private <T extends BaseMassageSend> SendResult doNativeSend(String exchange, String routingKey, T message) {
+        long startTime = System.currentTimeMillis();
+        try {
+            rabbitTemplate.convertAndSend(exchange, routingKey, message);
+            long costTime = System.currentTimeMillis() - startTime;
+            return SendResult.success(message.getMessageId(), costTime);
+        } catch (Exception e) {
+            long costTime = System.currentTimeMillis() - startTime;
+            return SendResult.failure(e.getMessage(), costTime);
+        }
+    }
+
     private boolean isUseTimeout() {
         return this.properties != null && this.properties.getSend().isUseTimeout();
     }
@@ -473,6 +483,18 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
         return this.syncTimeout;
     }
 
+
+    /**
+     * 检查必要的依赖
+     */
+    private void checkDependencies() {
+        if (rabbitTemplate == null) {
+            throw new IllegalStateException("RabbitTemplate is not available.");
+        }
+        if (messageSerializer == null) {
+            throw new IllegalStateException("MessageSerializer is not available.");
+        }
+    }
 
     /**
      * 确定发送模式

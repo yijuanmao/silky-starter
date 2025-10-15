@@ -13,10 +13,15 @@ import org.springframework.boot.context.properties.NestedConfigurationProperty;
  * @date 2025-10-09 18:06
  **/
 @Data
-@ConfigurationProperties(prefix = RabbitMQProperties.PREFIX)
-public class RabbitMQProperties {
+@ConfigurationProperties(prefix = SilkyRabbitMQProperties.PREFIX)
+public class SilkyRabbitMQProperties {
 
-    public static final String PREFIX = "silky";
+    public static final String PREFIX = "spring.rabbitmq.silky";
+
+    /**
+     * 是否启用Silky组件
+     */
+    private boolean enabled = true;
 
     @NestedConfigurationProperty
     private PersistenceProperties persistence = new PersistenceProperties();
@@ -30,7 +35,7 @@ public class RabbitMQProperties {
      */
     @Getter
     @Setter
-    public static class PersistenceProperties extends RabbitPersistenceProperties {
+    public static class PersistenceProperties {
 
         /**
          * 是否启用消息持久化功能
@@ -41,8 +46,12 @@ public class RabbitMQProperties {
          * 持久化类型
          */
         private PersistenceType type = PersistenceType.MEMORY;
-    }
 
+
+        public enum PersistenceType {
+            MEMORY, DATABASE, REDIS, MONGO, CUSTOM
+        }
+    }
 
 }
 

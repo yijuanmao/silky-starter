@@ -1,1 +1,1 @@
-com.silky.starter.rabbitmq.config.RabbitMQAutoConfiguration
+com.silky.starter.rabbitmq.config.SilkyRabbitMQAutoConfiguration
