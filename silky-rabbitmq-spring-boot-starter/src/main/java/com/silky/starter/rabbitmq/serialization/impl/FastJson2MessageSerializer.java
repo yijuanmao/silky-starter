@@ -1,11 +1,13 @@
-package com.silky.starter.rabbitmq.serialization;
+package com.silky.starter.rabbitmq.serialization.impl;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.alibaba.fastjson2.JSONWriter;
 import com.alibaba.fastjson2.TypeReference;
 import com.silky.starter.rabbitmq.exception.SerializationException;
+import com.silky.starter.rabbitmq.serialization.RabbitMqMessageSerializer;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 /**
  * 消息序列化器接口
@@ -14,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
  * @date 2025-10-12 09:42
  **/
 @Slf4j
+@Component
 public class FastJson2MessageSerializer implements RabbitMqMessageSerializer {
 
     /**

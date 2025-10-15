@@ -2,15 +2,14 @@ package com.silky.starter.rabbitmq.config;
 
 import com.silky.starter.rabbitmq.aop.RabbitMessageAspect;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
-import com.silky.starter.rabbitmq.persistence.NoOpMessagePersistenceService;
+import com.silky.starter.rabbitmq.persistence.impl.NoOpMessagePersistenceService;
 import com.silky.starter.rabbitmq.properties.SilkyRabbitMQProperties;
-import com.silky.starter.rabbitmq.serialization.FastJson2MessageSerializer;
 import com.silky.starter.rabbitmq.serialization.RabbitMqMessageSerializer;
+import com.silky.starter.rabbitmq.serialization.impl.FastJson2MessageSerializer;
 import com.silky.starter.rabbitmq.template.DefaultRabbitSendTemplate;
 import com.silky.starter.rabbitmq.template.RabbitSendTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -24,7 +23,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
 /**
- * RabbitMQ自动配置（使用Fastjson2序列化）
+ * RabbitMQ自动配置
  *
  * @author zy
  * @date 2025-10-12 10:14
@@ -32,8 +31,10 @@ import javax.annotation.PreDestroy;
 @Configuration
 @EnableConfigurationProperties(SilkyRabbitMQProperties.class)
 @ConditionalOnClass(RabbitTemplate.class)
-@ConditionalOnProperty(prefix = "spring.rabbitmq.silky", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = SilkyRabbitMQAutoConfiguration.SPRING_RABBITMQ_PREFIX, name = "enabled", havingValue = "true", matchIfMissing = true)
 public class SilkyRabbitMQAutoConfiguration {
+
+    public static final String SPRING_RABBITMQ_PREFIX = "spring.rabbitmq.silky";
 
     private static final Logger logger = LoggerFactory.getLogger(SilkyRabbitMQAutoConfiguration.class);
 
@@ -44,16 +45,25 @@ public class SilkyRabbitMQAutoConfiguration {
         this.properties = properties;
     }
 
-    @Bean
-    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, SilkyRabbitMQProperties properties) {
+   /* @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnBean(ConnectionFactory.class)
+    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
+        logger.info("Creating custom RabbitTemplate with connection factory: {}", connectionFactory.getClass().getSimpleName());
+
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+
         // 配置超时设置
         if (properties.getSend().isUseTimeout()) {
             rabbitTemplate.setReplyTimeout(properties.getSend().getSyncTimeout());
         }
         rabbitTemplate.setMandatory(true);
+
+        logger.debug("Created RabbitTemplate with timeout: {}ms",
+                properties.getSend().isUseTimeout() ? properties.getSend().getSyncTimeout() : "default");
+
         return rabbitTemplate;
-    }
+    }*/
 
     @Bean
     @ConditionalOnMissingBean
@@ -76,8 +86,12 @@ public class SilkyRabbitMQAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(RabbitSendTemplate.class)
     @ConditionalOnBean({RabbitTemplate.class, RabbitMqMessageSerializer.class})
-    public RabbitSendTemplate rabbitSenderTemplate(RabbitTemplate rabbitTemplate, RabbitMqMessageSerializer messageSerializer,
+    public RabbitSendTemplate rabbitSenderTemplate(RabbitTemplate rabbitTemplate,
+                                                   RabbitMqMessageSerializer messageSerializer,
                                                    MessagePersistenceService messagePersistenceService) {
+
+        // 配置 Spring Boot 自动创建的 RabbitTemplate
+        configureRabbitTemplate(rabbitTemplate);
 
         // 记录持久化配置
         boolean persistenceEnabled = properties.getPersistence().isEnabled();
@@ -101,6 +115,18 @@ public class SilkyRabbitMQAutoConfiguration {
         return new RabbitMessageAspect(rabbitSendTemplate, messagePersistenceService);
     }
 
+    /**
+     * 配置 Spring Boot 自动配置的 RabbitTemplate
+     */
+    private void configureRabbitTemplate(RabbitTemplate rabbitTemplate) {
+        // 配置超时设置
+        if (properties.getSend().isUseTimeout()) {
+            rabbitTemplate.setReplyTimeout(properties.getSend().getSyncTimeout());
+        }
+        rabbitTemplate.setMandatory(true);
+        logger.debug("Configured RabbitTemplate with timeout: {}ms", properties.getSend().isUseTimeout() ? properties.getSend().getSyncTimeout() : "default");
+    }
+
 
     @PostConstruct
     public void initialize() {
@@ -117,5 +143,19 @@ public class SilkyRabbitMQAutoConfiguration {
             persistenceService.destroy();
         }
     }
+
+    /**
+     * 配置 Spring Boot 自动配置的 RabbitTemplate
+     */
+   /* private void configureRabbitTemplate(RabbitTemplate rabbitTemplate) {
+        // 配置超时设置
+        if (properties.getSend().isUseTimeout()) {
+            rabbitTemplate.setReplyTimeout(properties.getSend().getSyncTimeout());
+        }
+        rabbitTemplate.setMandatory(true);
+
+        logger.debug("Configured RabbitTemplate with timeout: {}ms",
+                properties.getSend().isUseTimeout() ? properties.getSend().getSyncTimeout() : "default");
+    }*/
 
 }

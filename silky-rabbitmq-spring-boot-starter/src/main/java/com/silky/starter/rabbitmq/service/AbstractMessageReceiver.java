@@ -2,7 +2,7 @@ package com.silky.starter.rabbitmq.service;
 
 import com.silky.starter.rabbitmq.core.BaseMassageSend;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
-import com.silky.starter.rabbitmq.serialization.FastJson2MessageSerializer;
+import com.silky.starter.rabbitmq.serialization.impl.FastJson2MessageSerializer;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

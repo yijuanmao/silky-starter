@@ -1,7 +1,8 @@
-package com.silky.starter.rabbitmq.persistence;
+package com.silky.starter.rabbitmq.persistence.impl;
 
 import com.silky.starter.rabbitmq.core.BaseMassageSend;
 import com.silky.starter.rabbitmq.enums.MessageStatus;
+import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
 import com.silky.starter.rabbitmq.persistence.entity.RabbitmqMessageRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

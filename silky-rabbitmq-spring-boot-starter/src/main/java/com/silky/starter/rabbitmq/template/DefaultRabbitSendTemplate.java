@@ -16,6 +16,7 @@ import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.concurrent.*;
@@ -27,6 +28,7 @@ import java.util.concurrent.*;
  * @date 2025-10-12 08:13
  **/
 @Slf4j
+@Service
 public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
 
     /**
