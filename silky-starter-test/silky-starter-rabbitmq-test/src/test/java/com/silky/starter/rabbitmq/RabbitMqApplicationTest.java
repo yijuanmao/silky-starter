@@ -1,15 +1,15 @@
-package com.silky.starter.statemachine;
+package com.silky.starter.rabbitmq;
 
 import org.slf4j.Logger;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.ComponentScan;
 
 /**
- * 状态机应用测试类
+ * RabbitMq应用测试类
  */
-@SpringBootTest(classes = StatemachineApplicationTest.class)
+@SpringBootTest(classes = RabbitMqApplicationTest.class)
 @ComponentScan({"com.silky.**"})
-public class StatemachineApplicationTest {
+public class RabbitMqApplicationTest {
 
     protected final Logger log = org.slf4j.LoggerFactory.getLogger(this.getClass());
 

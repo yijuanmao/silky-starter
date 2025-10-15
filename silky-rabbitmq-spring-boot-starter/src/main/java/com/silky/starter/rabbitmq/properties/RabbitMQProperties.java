@@ -13,8 +13,10 @@ import org.springframework.boot.context.properties.NestedConfigurationProperty;
  * @date 2025-10-09 18:06
  **/
 @Data
-@ConfigurationProperties(prefix = "rabbitmq")
+@ConfigurationProperties(prefix = RabbitMQProperties.PREFIX)
 public class RabbitMQProperties {
+
+    public static final String PREFIX = "silky";
 
     @NestedConfigurationProperty
     private PersistenceProperties persistence = new PersistenceProperties();

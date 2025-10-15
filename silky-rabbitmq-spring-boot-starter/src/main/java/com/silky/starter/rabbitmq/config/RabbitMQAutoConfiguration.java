@@ -27,7 +27,8 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties(RabbitMQProperties.class)
 @ConditionalOnClass({RabbitTemplate.class})
 //@ConditionalOnClass(name = "org.springframework.amqp.rabbit.core.RabbitTemplate")
-@ConditionalOnProperty(prefix = "silky.rabbitmq", name = "send.enabled", havingValue = "true", matchIfMissing = true)
+//@ConditionalOnProperty(prefix = "silky.rabbitmq", name = "send.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "spring.rabbitmq", name = "silky.send.enabled", havingValue = "true", matchIfMissing = true)
 public class RabbitMQAutoConfiguration {
 
     @Bean
