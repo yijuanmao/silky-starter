@@ -1,8 +1,10 @@
 package com.silky.starter.rabbitmq.test;
 
+import cn.hutool.core.thread.ThreadUtil;
 import com.silky.starter.rabbitmq.RabbitMqApplicationTest;
 import com.silky.starter.rabbitmq.core.SendResult;
 import com.silky.starter.rabbitmq.template.RabbitSendTemplate;
+import com.silky.starter.rabbitmq.test.config.RabbitMqBindConfig;
 import com.silky.starter.rabbitmq.test.entity.TradeOrder;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,10 +21,6 @@ public class ExampleRabbitSendTemplateTest extends RabbitMqApplicationTest {
     @Autowired
     private RabbitSendTemplate rabbitSendTemplate;
 
-    private final static String exchange = "test-exchange";
-
-    private final static String routingKey = "test-routingKey";
-
     /**
      * 普通发送消息测试方法
      */
@@ -30,8 +28,11 @@ public class ExampleRabbitSendTemplateTest extends RabbitMqApplicationTest {
     public void testSend() {
         //普通发送消息
         TradeOrder order = new TradeOrder(1L, LocalDateTime.now(), "测试MQ发送");
-        SendResult send = rabbitSendTemplate.send(exchange, routingKey, order);
+        SendResult send = rabbitSendTemplate.send(RabbitMqBindConfig.EXAMPLE_EXCHANGE, RabbitMqBindConfig.EXAMPLE_ROUTING_KEY, order);
         log.info("普通发送消息测试方法发送结果：{}", send);
+        System.out.println("普通发送消息测试方法发送结果：" + send);
+
+        ThreadUtil.sleep(2000000);
 
         //普通发送消息，指定发送模式，支持SYNC、ASYNC、AUTO
 //        rabbitSendTemplate.send(exchange, routingKey, order, SendMode.ASYNC);
