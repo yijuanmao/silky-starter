@@ -40,7 +40,25 @@ public class RabbitPersistenceProperties {
 
 
     public enum PersistenceType {
-        MEMORY, DATABASE, MONGO, REDIS
+        /**
+         * 内存
+         */
+        MEMORY,
+
+        /**
+         * 数据库
+         */
+        DATABASE,
+
+        /**
+         * MongoDB
+         */
+        MONGO,
+
+        /**
+         * Redis
+         */
+        REDIS
     }
 
 

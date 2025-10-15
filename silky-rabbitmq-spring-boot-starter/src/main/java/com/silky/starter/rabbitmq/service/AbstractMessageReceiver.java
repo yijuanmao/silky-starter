@@ -2,6 +2,7 @@ package com.silky.starter.rabbitmq.service;
 
 import com.silky.starter.rabbitmq.core.BaseMassageSend;
 import com.silky.starter.rabbitmq.exception.RabbitMessageSendException;
+import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
 import com.silky.starter.rabbitmq.serialization.FastJson2MessageSerializer;
 import lombok.Getter;
 import org.slf4j.Logger;
@@ -27,10 +28,14 @@ public abstract class AbstractMessageReceiver<T extends BaseMassageSend> {
 
     @Getter
     private final Class<T> messageClass;
-
     @Autowired
     private FastJson2MessageSerializer messageSerializer;
+    @Autowired(required = false)
+    private MessagePersistenceService persistenceService;
 
+    /**
+     * 构造函数，通过反射获取泛型类型
+     */
     @SuppressWarnings("unchecked")
     public AbstractMessageReceiver() {
         // 通过反射获取泛型类型
@@ -60,20 +65,41 @@ public abstract class AbstractMessageReceiver<T extends BaseMassageSend> {
      */
     @RabbitListener
     public void onMessage(Message amqpMessage) {
+        long startTime = System.currentTimeMillis();
+        String messageId = amqpMessage.getMessageProperties().getMessageId();
+
         try {
             byte[] body = amqpMessage.getBody();
             T message = messageSerializer.deserialize(body, messageClass);
 
             if (message != null) {
-                logger.info("Received message: {}, messageId: {}", messageClass.getSimpleName(), message.getMessageId());
-                handleMessage(message);
+                logger.info("Received message: {}, messageId: {}", messageClass.getSimpleName(), messageId);
+
+                // 处理消息
+                this.handleMessage(message);
+
+                long costTime = System.currentTimeMillis() - startTime;
+
+                // 记录消费成功
+                if (persistenceService != null) {
+                    persistenceService.recordMessageConsume(messageId, costTime);
+                }
+
+                logger.debug("Message processed successfully: messageId={}, costTime={}ms",
+                        messageId, costTime);
             } else {
-                logger.warn("Deserialized message is null");
+                logger.warn("Deserialized message is null, messageId: {}", messageId);
             }
         } catch (Exception e) {
-            logger.error("Failed to process message:{}", amqpMessage, e);
+            long costTime = System.currentTimeMillis() - startTime;
+            logger.error("Failed to process message: messageId={}", messageId, e);
+
+            // 记录消费失败
+            if (persistenceService != null) {
+                persistenceService.recordMessageConsumeFailure(messageId, e.getMessage(), costTime);
+            }
             // 可以根据业务需求决定是否抛出异常进行重试
-            throw new RabbitMessageSendException("Message processing failed" + e.getMessage(), null, e);
+            throw new RuntimeException("Message processing failed", e);
         }
     }
 }

@@ -7,7 +7,6 @@ import com.silky.starter.rabbitmq.enums.MessageStatus;
 import com.silky.starter.rabbitmq.enums.SendMode;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
 import com.silky.starter.rabbitmq.properties.RabbitMQProperties;
-import com.silky.starter.rabbitmq.properties.SendProperties;
 import com.silky.starter.rabbitmq.serialization.RabbitMqMessageSerializer;
 import com.silky.starter.rabbitmq.service.SendCallback;
 import lombok.extern.slf4j.Slf4j;
@@ -19,10 +18,7 @@ import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.util.Date;
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 /**
  * RabbitMQ消息发送模板实现
@@ -44,11 +40,6 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
     private final long syncTimeout;
 
     /**
-     * 异步发送线程池大小 默认10
-     */
-    private final int asyncThreadPoolSize;
-
-    /**
      * 是否启用重试机制 默认启用
      */
     private final boolean enableRetry;
@@ -63,7 +54,14 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
      */
     private final long retryInterval;
 
+    /**
+     * 持久化开关
+     */
+    private final boolean enabledPersistence;
+
     private final RabbitTemplate rabbitTemplate;
+
+    private final RabbitMQProperties properties;
 
     private final RabbitMqMessageSerializer messageSerializer;
 
@@ -76,18 +74,14 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
         this.rabbitTemplate = rabbitTemplate;
         this.messageSerializer = messageSerializer;
         this.persistenceService = persistenceService;
-        SendProperties sendProperties = rabbitMQProperties.getSend();
-        if (Objects.isNull(sendProperties)) {
-            //使用默认的
-            sendProperties = new SendProperties();
-        }
-        this.defaultSendMode = sendProperties.getDefaultSendMode();
-        this.syncTimeout = sendProperties.getSyncTimeout();
-        this.asyncThreadPoolSize = sendProperties.getAsyncThreadPoolSize();
-        this.enableRetry = sendProperties.isEnableRetry();
-        this.maxRetryCount = sendProperties.getMaxRetryCount();
-        this.retryInterval = sendProperties.getRetryInterval();
-        this.asyncExecutor = Executors.newFixedThreadPool(sendProperties.getAsyncThreadPoolSize());
+        this.properties = rabbitMQProperties;
+        this.defaultSendMode = rabbitMQProperties.getSend().getDefaultSendMode();
+        this.syncTimeout = rabbitMQProperties.getSend().getSyncTimeout();
+        this.enableRetry = rabbitMQProperties.getSend().isEnableRetry();
+        this.maxRetryCount = rabbitMQProperties.getSend().getMaxRetryCount();
+        this.retryInterval = rabbitMQProperties.getSend().getRetryInterval();
+        this.asyncExecutor = Executors.newFixedThreadPool(rabbitMQProperties.getSend().getAsyncThreadPoolSize());
+        this.enabledPersistence = rabbitMQProperties.getPersistence().isEnabled();
 
         log.info("DefaultRabbitSenderTemplate initialized with persistence: {}", persistenceService != null ? "enabled" : "disabled");
     }
@@ -294,7 +288,7 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
     }
 
     /**
-     * 同步发送消息
+     * 带超时控制的同步发送
      *
      * @param exchange   交换机
      * @param routingKey 路由键
@@ -303,7 +297,16 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
      * @param startTime  发送开始时间
      * @return 发送结果
      */
-    private SendResult doSyncSend(String exchange, String routingKey, Message message, String messageId,
+    private SendResult doSyncSend(String exchange, String routingKey, Message message,
+                                  String messageId, long startTime) {
+        if (!isUseTimeout()) {
+            // 不使用超时控制的简单发送
+            return doSimpleSyncSend(exchange, routingKey, message, messageId, startTime);
+        }
+        // 使用超时控制的发送
+        return doTimeoutSyncSend(exchange, routingKey, message, messageId, startTime);
+    }
+    /*private SendResult doSyncSend(String exchange, String routingKey, Message message, String messageId,
                                   long startTime) {
         try {
             CorrelationData correlationData = new CorrelationData(messageId);
@@ -322,7 +325,78 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
             long costTime = System.currentTimeMillis() - startTime;
             return SendResult.failure(e.getMessage(), costTime);
         }
+    }*/
+
+
+    /**
+     * 简单的同步发送（无超时控制）
+     *
+     * @param exchange   交换机
+     * @param routingKey 路由键
+     * @param message    消息体
+     * @param messageId  消息ID
+     * @param startTime  发送开始时间
+     * @return 发送结果
+     */
+    private SendResult doSimpleSyncSend(String exchange, String routingKey, Message message, String messageId, long startTime) {
+        try {
+            CorrelationData correlationData = new CorrelationData(messageId);
+            // 带重试机制的同步发送
+            if (enableRetry) {
+                return doSyncSendWithRetry(exchange, routingKey, message, correlationData, startTime);
+            } else {
+                rabbitTemplate.convertAndSend(exchange, routingKey, message, correlationData);
+                long costTime = System.currentTimeMillis() - startTime;
+                return SendResult.success(messageId, costTime);
+            }
+        } catch (Exception e) {
+            long costTime = System.currentTimeMillis() - startTime;
+            return SendResult.failure(e.getMessage(), costTime);
+        }
     }
+
+    /**
+     * 带超时控制的同步发送
+     */
+    private SendResult doTimeoutSyncSend(String exchange, String routingKey, Message message,
+                                         String messageId, long startTime) {
+        long timeout = getSyncTimeout();
+        CompletableFuture<SendResult> future = CompletableFuture.supplyAsync(() -> {
+            try {
+                CorrelationData correlationData = new CorrelationData(messageId);
+                if (enableRetry) {
+                    return doSyncSendWithRetry(exchange, routingKey, message, correlationData, startTime);
+                } else {
+                    rabbitTemplate.convertAndSend(exchange, routingKey, message, correlationData);
+                    long costTime = System.currentTimeMillis() - startTime;
+                    return SendResult.success(messageId, costTime);
+                }
+            } catch (Exception e) {
+                long costTime = System.currentTimeMillis() - startTime;
+                return SendResult.failure(e.getMessage(), costTime);
+            }
+        }, asyncExecutor);
+        try {
+            // 等待发送完成，最多等待 timeout 毫秒
+            return future.get(timeout, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            // 取消任务
+            future.cancel(true);
+            long costTime = System.currentTimeMillis() - startTime;
+            String errorMsg = String.format("Send timeout after %dms", timeout);
+            log.warn("Message send timeout: exchange={}, routingKey={}, messageId={}", exchange, routingKey, messageId);
+            return SendResult.failure(errorMsg, costTime);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            future.cancel(true);
+            long costTime = System.currentTimeMillis() - startTime;
+            return SendResult.failure("Send interrupted: " + e.getMessage(), costTime);
+        } catch (ExecutionException e) {
+            long costTime = System.currentTimeMillis() - startTime;
+            return SendResult.failure("Send execution failed: " + e.getMessage(), costTime);
+        }
+    }
+
 
     /**
      * 带重试机制的同步发送
@@ -391,6 +465,14 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
         }, asyncExecutor);
     }
 
+    private boolean isUseTimeout() {
+        return this.properties != null && this.properties.getSend().isUseTimeout();
+    }
+
+    private long getSyncTimeout() {
+        return this.syncTimeout;
+    }
+
 
     /**
      * 确定发送模式
@@ -403,11 +485,12 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
     }
 
     /**
+     * 检查是否启用消息持久化
      *
-     * @return
+     * @return 是否启用消息持久化
      */
     private boolean isPersistenceEnabled() {
-        return persistenceService != null && properties.getPersistence().isEnabled();
+        return persistenceService != null && enabledPersistence;
     }
 
 }

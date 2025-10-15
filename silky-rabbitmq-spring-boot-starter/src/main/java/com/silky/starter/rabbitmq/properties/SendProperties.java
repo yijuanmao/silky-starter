@@ -46,4 +46,9 @@ public class SendProperties {
      * 重试间隔时间（毫秒） 默认1000毫秒
      */
     private long retryInterval = 1000L;
+
+    /**
+     * 是否启用超时控制 默认启用
+     */
+    private boolean useTimeout = true;
 }

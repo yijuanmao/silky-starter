@@ -1,6 +1,8 @@
 package com.silky.starter.rabbitmq.properties;
 
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
@@ -24,7 +26,19 @@ public class RabbitMQProperties {
     /**
      * PersistenceProperties RabbitMQ持久化配置属性
      */
+    @Getter
+    @Setter
     public static class PersistenceProperties extends RabbitPersistenceProperties {
+
+        /**
+         * 是否启用消息持久化功能
+         */
+        private boolean enabled = false;
+
+        /**
+         * 持久化类型
+         */
+        private PersistenceType type = PersistenceType.MEMORY;
     }
 
 
