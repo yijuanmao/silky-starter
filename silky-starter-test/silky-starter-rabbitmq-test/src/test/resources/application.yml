@@ -1,15 +1,30 @@
-
 spring:
   #mq配置
   rabbitmq:
-    host: localhost
+    #host: localhost
+    host: 192.168.1.58
     port: 5673
     username: admin
     password: admin
     #虚拟host 可以不设置,使用server默认host
     virtual-host: /
+
+    #silky组件配置
     silky:
+      # 启用Silky组件
+      enabled: true
       send:
+        enabled: true                  # 启用增强发送功能
+        default-send-mode: AUTO        # 默认发送模式: SYNC, ASYNC, AUTO
+        sync-timeout: 5000             # 同步发送超时时间(ms)
+        async-thread-pool-size: 10     # 异步线程池大小
+        enable-retry: true             # 启用重试机制
+        max-retry-count: 3             # 最大重试次数
+        retry-interval: 1000           # 重试间隔(ms)
+      persistence:
+        enabled: false                 # 禁用持久化（使用空实现）
+        # 持久化类型,默认 MEMORY（内存）, DATABASE（数据库）, REDIS（redis）, MONGO(MongoDB)，CUSTOM（自定义）
+        type: DATABASE
 
     listener:
       simple:

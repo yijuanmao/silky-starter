@@ -1,7 +1,6 @@
 package com.silky.starter.rabbitmq.service;
 
 import com.silky.starter.rabbitmq.core.BaseMassageSend;
-import com.silky.starter.rabbitmq.exception.RabbitMessageSendException;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
 import com.silky.starter.rabbitmq.serialization.FastJson2MessageSerializer;
 import lombok.Getter;
@@ -24,7 +23,7 @@ import java.lang.reflect.Type;
  **/
 @Component
 public abstract class AbstractMessageReceiver<T extends BaseMassageSend> {
-    private static final Logger logger = LoggerFactory.getLogger(AbstractMessageReceiver.class);
+    protected final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @Getter
     private final Class<T> messageClass;

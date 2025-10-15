@@ -49,7 +49,31 @@ public class SilkyRabbitMQProperties {
 
 
         public enum PersistenceType {
-            MEMORY, DATABASE, REDIS, MONGO, CUSTOM
+
+            /**
+             * 内存
+             */
+            MEMORY,
+
+            /**
+             * 数据库
+             */
+            DATABASE,
+
+            /**
+             * Redis
+             */
+            REDIS,
+
+            /**
+             * MongoDB
+             */
+            MONGO,
+
+            /**
+             * 自定义
+             */
+            CUSTOM
         }
     }
 
