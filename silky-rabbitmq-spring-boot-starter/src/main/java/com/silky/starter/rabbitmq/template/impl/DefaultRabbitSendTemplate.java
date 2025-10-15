@@ -1,5 +1,6 @@
-package com.silky.starter.rabbitmq.template;
+package com.silky.starter.rabbitmq.template.impl;
 
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.rabbitmq.core.BaseMassageSend;
 import com.silky.starter.rabbitmq.core.SendResult;
@@ -9,7 +10,7 @@ import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
 import com.silky.starter.rabbitmq.properties.SilkyRabbitMQProperties;
 import com.silky.starter.rabbitmq.serialization.RabbitMqMessageSerializer;
 import com.silky.starter.rabbitmq.service.SendCallback;
-import lombok.extern.slf4j.Slf4j;
+import com.silky.starter.rabbitmq.template.RabbitSendTemplate;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageDeliveryMode;
@@ -27,9 +28,10 @@ import java.util.concurrent.*;
  * @author zy
  * @date 2025-10-12 08:13
  **/
-@Slf4j
 @Service
 public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DefaultRabbitSendTemplate.class);
 
     /**
      * 默认发送模式
@@ -156,7 +158,7 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
             message.setDescription(description);
         }
         SendMode actualMode = sendMode == SendMode.AUTO ? this.determineSendMode() : sendMode;
-        String messageId = message.getMessageId();
+        String messageId = StrUtil.isBlank(message.getMessageId()) ? IdUtil.simpleUUID() : message.getMessageId();
         long startTime = System.currentTimeMillis();
 
         if (isPersistenceEnabled()) {
@@ -172,7 +174,6 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
             } else {
                 result = doAsyncSend(exchange, routingKey, rabbitMessage, messageId, startTime).get();
             }
-
             if (isPersistenceEnabled()) {
                 if (result.isSuccess()) {
                     persistenceService.updateMessageAfterSend(messageId, MessageStatus.SENT, result.getCostTime(), "");

@@ -17,8 +17,6 @@ import java.util.List;
  * @author zy
  * @date 2025-10-15 14:18
  **/
-@Service
-@ConditionalOnMissingBean(MessagePersistenceService.class)
 public class NoOpMessagePersistenceService implements MessagePersistenceService {
 
     private static final Logger logger = LoggerFactory.getLogger(NoOpMessagePersistenceService.class);

@@ -2,7 +2,7 @@ spring:
   #mq配置
   rabbitmq:
     #host: localhost
-    host: 192.168.1.58
+    host: localhost
     port: 5673
     username: admin
     password: admin
@@ -15,7 +15,7 @@ spring:
       enabled: true
       send:
         enabled: true                  # 启用增强发送功能
-        default-send-mode: AUTO        # 默认发送模式: SYNC, ASYNC, AUTO
+        default-send-mode: SYNC        # 默认发送模式: SYNC, ASYNC, AUTO
         sync-timeout: 5000             # 同步发送超时时间(ms)
         async-thread-pool-size: 10     # 异步线程池大小
         enable-retry: true             # 启用重试机制

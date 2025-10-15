@@ -6,18 +6,19 @@ import com.silky.starter.rabbitmq.persistence.impl.NoOpMessagePersistenceService
 import com.silky.starter.rabbitmq.properties.SilkyRabbitMQProperties;
 import com.silky.starter.rabbitmq.serialization.RabbitMqMessageSerializer;
 import com.silky.starter.rabbitmq.serialization.impl.FastJson2MessageSerializer;
-import com.silky.starter.rabbitmq.template.DefaultRabbitSendTemplate;
 import com.silky.starter.rabbitmq.template.RabbitSendTemplate;
+import com.silky.starter.rabbitmq.template.impl.DefaultRabbitSendTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -28,7 +29,7 @@ import javax.annotation.PreDestroy;
  * @author zy
  * @date 2025-10-12 10:14
  **/
-@Configuration
+@AutoConfiguration
 @EnableConfigurationProperties(SilkyRabbitMQProperties.class)
 @ConditionalOnClass(RabbitTemplate.class)
 @ConditionalOnProperty(prefix = SilkyRabbitMQAutoConfiguration.SPRING_RABBITMQ_PREFIX, name = "enabled", havingValue = "true", matchIfMissing = true)
@@ -45,7 +46,7 @@ public class SilkyRabbitMQAutoConfiguration {
         this.properties = properties;
     }
 
-   /* @Bean
+    @Bean
     @ConditionalOnMissingBean
     @ConditionalOnBean(ConnectionFactory.class)
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
@@ -63,7 +64,7 @@ public class SilkyRabbitMQAutoConfiguration {
                 properties.getSend().isUseTimeout() ? properties.getSend().getSyncTimeout() : "default");
 
         return rabbitTemplate;
-    }*/
+    }
 
     @Bean
     @ConditionalOnMissingBean
@@ -89,10 +90,6 @@ public class SilkyRabbitMQAutoConfiguration {
     public RabbitSendTemplate rabbitSenderTemplate(RabbitTemplate rabbitTemplate,
                                                    RabbitMqMessageSerializer messageSerializer,
                                                    MessagePersistenceService messagePersistenceService) {
-
-        // 配置 Spring Boot 自动创建的 RabbitTemplate
-        configureRabbitTemplate(rabbitTemplate);
-
         // 记录持久化配置
         boolean persistenceEnabled = properties.getPersistence().isEnabled();
         String persistenceType = properties.getPersistence().getType().name();
@@ -113,18 +110,6 @@ public class SilkyRabbitMQAutoConfiguration {
     @ConditionalOnMissingBean
     public RabbitMessageAspect rabbitMessageAspect(RabbitSendTemplate rabbitSendTemplate, MessagePersistenceService messagePersistenceService) {
         return new RabbitMessageAspect(rabbitSendTemplate, messagePersistenceService);
-    }
-
-    /**
-     * 配置 Spring Boot 自动配置的 RabbitTemplate
-     */
-    private void configureRabbitTemplate(RabbitTemplate rabbitTemplate) {
-        // 配置超时设置
-        if (properties.getSend().isUseTimeout()) {
-            rabbitTemplate.setReplyTimeout(properties.getSend().getSyncTimeout());
-        }
-        rabbitTemplate.setMandatory(true);
-        logger.debug("Configured RabbitTemplate with timeout: {}ms", properties.getSend().isUseTimeout() ? properties.getSend().getSyncTimeout() : "default");
     }
 
 
