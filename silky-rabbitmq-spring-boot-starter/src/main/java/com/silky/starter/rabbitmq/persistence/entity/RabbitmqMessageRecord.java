@@ -1,7 +1,8 @@
 package com.silky.starter.rabbitmq.persistence.entity;
 
-import lombok.Data;
-import lombok.ToString;
+import com.alibaba.fastjson2.annotation.JSONField;
+import lombok.*;
+import lombok.experimental.Accessors;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -14,6 +15,10 @@ import java.time.LocalDateTime;
  **/
 @Data
 @ToString
+@Builder
+@Accessors(chain = true)
+@AllArgsConstructor
+@NoArgsConstructor
 public class RabbitmqMessageRecord implements Serializable {
 
     private static final long serialVersionUID = 2079264408509650447L;
@@ -21,6 +26,7 @@ public class RabbitmqMessageRecord implements Serializable {
     /**
      * 消息主键id
      */
+    @JSONField(format = "STRING")
     private Long id;
 
     /**

@@ -96,4 +96,19 @@ public class ExampleRabbitSendTemplateTest extends RabbitMqApplicationTest {
 
         ThreadUtil.sleep(20300);
     }
+
+    /**
+     * 发送并保存到数据库测试方法
+     */
+    @Test
+    public void testSendSaveDb() {
+        //普通发送消息
+        TradeOrder order = new TradeOrder(3L, LocalDateTime.now(), "测试MQ发送-保存数据库", BigDecimal.ONE);
+
+        //普通发送消息
+        SendResult send1 = rabbitSendTemplate.send(exchange, routingKey, order);
+        log.info("发送并保存到数据库测试方法发送结果：{}", send1);
+
+        ThreadUtil.sleep(20300);
+    }
 }
