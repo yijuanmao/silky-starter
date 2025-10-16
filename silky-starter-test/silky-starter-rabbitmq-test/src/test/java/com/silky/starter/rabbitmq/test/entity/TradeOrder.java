@@ -6,6 +6,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -36,12 +37,18 @@ public class TradeOrder extends BaseMassageSend implements Serializable {
      */
     private String orderName;
 
+    /**
+     * 订单金额
+     */
+    private BigDecimal amount;
+
     public TradeOrder() {
     }
 
-    public TradeOrder(Long orderId, LocalDateTime createTime, String orderName) {
+    public TradeOrder(Long orderId, LocalDateTime createTime, String orderName, BigDecimal amount) {
         this.orderId = orderId;
         this.createTime = createTime;
         this.orderName = orderName;
+        this.amount = amount;
     }
 }

@@ -9,6 +9,7 @@ import com.silky.starter.rabbitmq.test.entity.TradeOrder;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -27,12 +28,11 @@ public class ExampleRabbitSendTemplateTest extends RabbitMqApplicationTest {
     @Test
     public void testSend() {
         //普通发送消息
-        TradeOrder order = new TradeOrder(1L, LocalDateTime.now(), "测试MQ发送");
+        TradeOrder order = new TradeOrder(2L, LocalDateTime.now(), "测试MQ发送", BigDecimal.ONE);
         SendResult send = rabbitSendTemplate.send(RabbitMqBindConfig.EXAMPLE_EXCHANGE, RabbitMqBindConfig.EXAMPLE_ROUTING_KEY, order);
         log.info("普通发送消息测试方法发送结果：{}", send);
-        System.out.println("普通发送消息测试方法发送结果：" + send);
 
-        ThreadUtil.sleep(2000000);
+        ThreadUtil.sleep(200000);
 
         //普通发送消息，指定发送模式，支持SYNC、ASYNC、AUTO
 //        rabbitSendTemplate.send(exchange, routingKey, order, SendMode.ASYNC);

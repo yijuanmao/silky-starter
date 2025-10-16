@@ -6,6 +6,7 @@
 
 ### 💎 功能优化
 * 优化 silky-statemachine-spring-boot-starter resources目录下没有配置文件AutoConfiguration文件
+* silky-starter-core 增加logback-classic日志实现框架
 * alibaba.fastjson2 pom版本2.0.58 => 2.0.59
 
 ## v1.0.0 (2025-10-12)

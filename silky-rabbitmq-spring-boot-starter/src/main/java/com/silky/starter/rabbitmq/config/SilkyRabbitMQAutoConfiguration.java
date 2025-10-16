@@ -1,6 +1,7 @@
 package com.silky.starter.rabbitmq.config;
 
 import com.silky.starter.rabbitmq.aop.RabbitMessageAspect;
+import com.silky.starter.rabbitmq.listener.RabbitMQListenerContainer;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
 import com.silky.starter.rabbitmq.persistence.impl.NoOpMessagePersistenceService;
 import com.silky.starter.rabbitmq.properties.SilkyRabbitMQProperties;
@@ -19,6 +20,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -29,6 +31,7 @@ import javax.annotation.PreDestroy;
  * @author zy
  * @date 2025-10-12 10:14
  **/
+@Import(SilkyRabbitMQQueueConfig.class)
 @AutoConfiguration
 @EnableConfigurationProperties(SilkyRabbitMQProperties.class)
 @ConditionalOnClass(RabbitTemplate.class)
@@ -112,6 +115,12 @@ public class SilkyRabbitMQAutoConfiguration {
         return new RabbitMessageAspect(rabbitSendTemplate, messagePersistenceService);
     }
 
+    @Bean
+    public RabbitMQListenerContainer rabbitMQListenerContainer(RabbitMqMessageSerializer messageSerializer,
+                                                               MessagePersistenceService persistenceService,
+                                                               RabbitTemplate rabbitTemplate) {
+        return new RabbitMQListenerContainer(messageSerializer, persistenceService, rabbitTemplate);
+    }
 
     @PostConstruct
     public void initialize() {
@@ -129,18 +138,5 @@ public class SilkyRabbitMQAutoConfiguration {
         }
     }
 
-    /**
-     * 配置 Spring Boot 自动配置的 RabbitTemplate
-     */
-   /* private void configureRabbitTemplate(RabbitTemplate rabbitTemplate) {
-        // 配置超时设置
-        if (properties.getSend().isUseTimeout()) {
-            rabbitTemplate.setReplyTimeout(properties.getSend().getSyncTimeout());
-        }
-        rabbitTemplate.setMandatory(true);
-
-        logger.debug("Configured RabbitTemplate with timeout: {}ms",
-                properties.getSend().isUseTimeout() ? properties.getSend().getSyncTimeout() : "default");
-    }*/
 
 }

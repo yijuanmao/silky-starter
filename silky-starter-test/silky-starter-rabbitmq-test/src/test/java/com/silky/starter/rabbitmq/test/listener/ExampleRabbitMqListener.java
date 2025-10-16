@@ -23,10 +23,7 @@
 //    @Override
 //    protected void handleMessage(TradeOrder message) {
 //        // 处理订单消息
-//        logger.info("处理订单消息: orderId={}, orderName={}",
-//                message.getOrderId(), message.getOrderName());
-//
-//        System.out.println("处理订单消息: orderId=" + message.getOrderId() + ", orderName=" + message.getOrderName());
+//        logger.info("处理订单消息: orderId={}, orderName={}", message.getOrderId(), message.getOrderName());
 //
 //        // 业务逻辑...
 //    }

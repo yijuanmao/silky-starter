@@ -1,6 +1,7 @@
 package com.silky.starter.rabbitmq.exception;
 
 import com.silky.starter.rabbitmq.core.SendResult;
+import lombok.Getter;
 
 /**
  * RabbitMq operation exception
@@ -12,6 +13,7 @@ public class RabbitMessageSendException extends RuntimeException {
 
     private static final long serialVersionUID = 2605123336167132402L;
 
+    @Getter
     private SendResult sendResult;
 
     /**
@@ -37,9 +39,8 @@ public class RabbitMessageSendException extends RuntimeException {
         this.sendResult = sendResult;
     }
 
-    public RabbitMessageSendException(String message, SendResult sendResult, Throwable cause) {
+    public RabbitMessageSendException(String message, Throwable cause) {
         super(message, cause);
-        this.sendResult = sendResult;
     }
 
 }
