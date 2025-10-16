@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.context.annotation.Bean;
 
 /**
- * RabbitMQ队列配置
+ * RabbitMQ队列配置，后期留作扩展
  *
  * @author zy
  * @date 2025-10-16 11:44

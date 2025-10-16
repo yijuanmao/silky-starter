@@ -28,7 +28,7 @@ public class ExampleRabbitSendTemplateTest extends RabbitMqApplicationTest {
     @Test
     public void testSend() {
         //普通发送消息
-        TradeOrder order = new TradeOrder(2L, LocalDateTime.now(), "测试MQ发送", BigDecimal.ONE);
+        TradeOrder order = new TradeOrder(3L, LocalDateTime.now(), "测试MQ发送3", BigDecimal.ONE);
         SendResult send = rabbitSendTemplate.send(RabbitMqBindConfig.EXAMPLE_EXCHANGE, RabbitMqBindConfig.EXAMPLE_ROUTING_KEY, order);
         log.info("普通发送消息测试方法发送结果：{}", send);
 

@@ -1,7 +1,6 @@
 package com.silky.starter.rabbitmq.config;
 
 import com.silky.starter.rabbitmq.aop.RabbitMessageAspect;
-import com.silky.starter.rabbitmq.listener.RabbitMQListenerContainer;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
 import com.silky.starter.rabbitmq.persistence.impl.NoOpMessagePersistenceService;
 import com.silky.starter.rabbitmq.properties.SilkyRabbitMQProperties;
@@ -113,13 +112,6 @@ public class SilkyRabbitMQAutoConfiguration {
     @ConditionalOnMissingBean
     public RabbitMessageAspect rabbitMessageAspect(RabbitSendTemplate rabbitSendTemplate, MessagePersistenceService messagePersistenceService) {
         return new RabbitMessageAspect(rabbitSendTemplate, messagePersistenceService);
-    }
-
-    @Bean
-    public RabbitMQListenerContainer rabbitMQListenerContainer(RabbitMqMessageSerializer messageSerializer,
-                                                               MessagePersistenceService persistenceService,
-                                                               RabbitTemplate rabbitTemplate) {
-        return new RabbitMQListenerContainer(messageSerializer, persistenceService, rabbitTemplate);
     }
 
     @PostConstruct
