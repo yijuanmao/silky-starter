@@ -12,11 +12,15 @@ public interface SendCallback {
 
     /**
      * 发送成功回调
+     *
+     * @param result 发送结果
      */
     void onSuccess(SendResult result);
 
     /**
      * 发送失败回调
+     *
+     * @param result 发送结果
      */
     void onFailure(SendResult result);
 }

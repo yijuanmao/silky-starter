@@ -7,6 +7,7 @@ import com.silky.starter.rabbitmq.enums.SendMode;
 import com.silky.starter.rabbitmq.template.RabbitSendTemplate;
 import com.silky.starter.rabbitmq.test.config.RabbitMqBindConfig;
 import com.silky.starter.rabbitmq.test.entity.TradeOrder;
+import com.silky.starter.rabbitmq.test.service.TestSendCallback;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -30,7 +31,6 @@ public class ExampleRabbitSendTemplateTest extends RabbitMqApplicationTest {
 
     @Autowired
     private RabbitSendTemplate rabbitSendTemplate;
-
 
 
     /**
@@ -77,6 +77,20 @@ public class ExampleRabbitSendTemplateTest extends RabbitMqApplicationTest {
         //普通发送消息
         SendResult send1 = rabbitSendTemplate.sendDelay(delayExchange, delayRoutingKey, order, 7000L, businessType, description);
         log.info("普通发送延迟消息测试方法发送结果：{}", send1);
+
+        ThreadUtil.sleep(20300);
+    }
+
+    /**
+     * 异步发送消息测试方法
+     */
+    @Test
+    public void testSendAsyncAndCallback() {
+        //普通发送消息
+        TradeOrder order = new TradeOrder(5L, LocalDateTime.now(), "测试MQ发送-异步回调测试", BigDecimal.ONE);
+        //普通发送消息
+        rabbitSendTemplate.sendAsync(exchange, routingKey, order, new TestSendCallback());
+        log.info("异步发送消息测试方法完成");
 
         ThreadUtil.sleep(20300);
     }
