@@ -31,6 +31,8 @@ public class ExampleRabbitSendTemplateTest extends RabbitMqApplicationTest {
 
     @Autowired
     private RabbitSendTemplate rabbitSendTemplate;
+    @Autowired
+    private TestSendCallback testSendCallback;
 
 
     /**
@@ -89,7 +91,7 @@ public class ExampleRabbitSendTemplateTest extends RabbitMqApplicationTest {
         //普通发送消息
         TradeOrder order = new TradeOrder(5L, LocalDateTime.now(), "测试MQ发送-异步回调测试", BigDecimal.ONE);
         //普通发送消息
-        rabbitSendTemplate.sendAsync(exchange, routingKey, order, new TestSendCallback());
+        rabbitSendTemplate.sendAsync(exchange, routingKey, order, testSendCallback);
         log.info("异步发送消息测试方法完成");
 
         ThreadUtil.sleep(20300);
