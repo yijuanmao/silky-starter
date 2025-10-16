@@ -1,6 +1,6 @@
 package com.silky.starter.rabbitmq.test.entity;
 
-import com.silky.starter.rabbitmq.core.BaseMassageSend;
+import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;

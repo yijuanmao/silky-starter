@@ -1,5 +1,6 @@
 package com.silky.starter.rabbitmq.config;
 
+import com.silky.starter.rabbitmq.core.constant.SilkyRabbitMQConstants;
 import org.springframework.amqp.core.*;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -13,12 +14,6 @@ import org.springframework.context.annotation.Bean;
 @AutoConfiguration
 public class SilkyRabbitMQQueueConfig {
 
-    private static final String SILKY_DEFAULT_DLX_QUEUE = "silky.default.dlx.queue";
-
-    private static final String SILKY_DEFAULT_DLX_EXCHANGE = "silky.default.dlx.exchange";
-
-    public final static String SILKY_DEFAULT_DLX_ROUTING_KEY = "silky.default.dlx.routingKey";
-
     /**
      * 创建死信队列
      *
@@ -26,7 +21,7 @@ public class SilkyRabbitMQQueueConfig {
      */
     @Bean
     public Queue orderDlxQueue() {
-        return QueueBuilder.durable(SILKY_DEFAULT_DLX_QUEUE).build();
+        return QueueBuilder.durable(SilkyRabbitMQConstants.SILKY_DEFAULT_DLX_QUEUE).build();
     }
 
     /**
@@ -36,7 +31,7 @@ public class SilkyRabbitMQQueueConfig {
      */
     @Bean
     public DirectExchange orderDlxExchange() {
-        return new DirectExchange(SILKY_DEFAULT_DLX_EXCHANGE);
+        return new DirectExchange(SilkyRabbitMQConstants.SILKY_DEFAULT_DLX_EXCHANGE);
     }
 
     /**
@@ -48,7 +43,7 @@ public class SilkyRabbitMQQueueConfig {
     public Binding orderDlxBinding() {
         return BindingBuilder.bind(orderDlxQueue())
                 .to(orderDlxExchange())
-                .with(SILKY_DEFAULT_DLX_ROUTING_KEY);
+                .with(SilkyRabbitMQConstants.SILKY_DEFAULT_DLX_ROUTING_KEY);
     }
 
 }

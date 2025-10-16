@@ -1,6 +1,6 @@
 package com.silky.starter.rabbitmq.persistence;
 
-import com.silky.starter.rabbitmq.core.BaseMassageSend;
+import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
 import com.silky.starter.rabbitmq.enums.MessageStatus;
 import com.silky.starter.rabbitmq.persistence.entity.RabbitmqMessageRecord;
 

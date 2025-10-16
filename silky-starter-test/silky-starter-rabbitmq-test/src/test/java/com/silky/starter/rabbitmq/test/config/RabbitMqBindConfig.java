@@ -5,6 +5,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * RabbitMq 绑定配置
  *
@@ -19,6 +22,13 @@ public class RabbitMqBindConfig {
     public final static String EXAMPLE_EXCHANGE = "example-exchange";
 
     public final static String EXAMPLE_ROUTING_KEY = "example-routingKey";
+
+    public static final String EXAMPLE_ORDER_DELAY_QUEUE = "example.order.delay.queue";
+
+    public final static String EXAMPLE_DELAY_EXCHANGE = "example-delay-exchange";
+
+    public final static String EXAMPLE_DELAY_ROUTING_KEY = "example-delay-routingKey";
+
 
     /**
      * 测试订单队列
@@ -52,5 +62,38 @@ public class RabbitMqBindConfig {
     @Bean
     public Binding bindingExchangeMessageFileExport(@Qualifier("exampleOrderQueue") Queue queue, @Qualifier("exampleOrderExchange") TopicExchange exchange) {
         return BindingBuilder.bind(queue).to(exchange).with(EXAMPLE_ROUTING_KEY);
+    }
+
+    /**
+     * 订单延迟插件消息队列所绑定的交换机
+     */
+    @Bean
+    CustomExchange orderPluginDirect() {
+        //创建一个自定义交换机，可以发送延迟消息
+        Map<String, Object> args = new HashMap<>(3);
+        args.put("x-delayed-type", "direct");
+        return new CustomExchange(EXAMPLE_DELAY_EXCHANGE, "x-delayed-message", true, false, args);
+    }
+
+    /**
+     * 订单延迟插件队列
+     */
+    @Bean
+    public Queue orderPluginQueue() {
+        return QueueBuilder
+                .durable(EXAMPLE_ORDER_DELAY_QUEUE)
+                .build();
+    }
+
+    /**
+     * 将订单延迟插件队列绑定到交换机
+     */
+    @Bean
+    public Binding orderPluginBinding(CustomExchange orderPluginDirect, Queue orderPluginQueue) {
+        return BindingBuilder
+                .bind(orderPluginQueue)
+                .to(orderPluginDirect)
+                .with(EXAMPLE_DELAY_ROUTING_KEY)
+                .noargs();
     }
 }

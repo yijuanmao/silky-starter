@@ -1,7 +1,7 @@
 //package com.silky.starter.rabbitmq.listener;
 //
 //import cn.hutool.core.thread.ThreadUtil;
-//import com.silky.starter.rabbitmq.core.BaseMassageSend;
+//import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 //import org.springframework.beans.factory.annotation.Autowired;

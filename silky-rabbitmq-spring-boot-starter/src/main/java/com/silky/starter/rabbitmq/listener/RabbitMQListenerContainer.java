@@ -1,7 +1,7 @@
 //package com.silky.starter.rabbitmq.listener;
 //
 //import com.rabbitmq.client.Channel;
-//import com.silky.starter.rabbitmq.core.BaseMassageSend;
+//import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
 //import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
 //import com.silky.starter.rabbitmq.serialization.RabbitMqMessageSerializer;
 //import org.slf4j.Logger;

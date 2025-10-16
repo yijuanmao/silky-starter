@@ -1,9 +1,10 @@
 package com.silky.starter.rabbitmq.template.impl;
 
+import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
-import com.silky.starter.rabbitmq.core.BaseMassageSend;
-import com.silky.starter.rabbitmq.core.SendResult;
+import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
+import com.silky.starter.rabbitmq.core.model.SendResult;
 import com.silky.starter.rabbitmq.enums.MessageStatus;
 import com.silky.starter.rabbitmq.enums.SendMode;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
@@ -214,7 +215,7 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
         if (StrUtil.isNotBlank(description)) {
             message.setDescription(description);
         }
-        String messageId = message.getMessageId();
+        String messageId = StrUtil.isBlank(message.getMessageId()) ? IdUtil.simpleUUID() : message.getMessageId();
         long startTime = System.currentTimeMillis();
 
         if (isPersistenceEnabled()) {
@@ -222,13 +223,19 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
         }
 
         try {
-            Message rabbitMessage = buildMessage(message, messageId);
+            Message rabbitMessage = this.buildMessage(message, messageId);
+
             // 设置延迟属性
             rabbitMessage.getMessageProperties().setHeader("x-delay", delayMillis);
 
             // 延迟消息使用同步发送
             CorrelationData correlationData = new CorrelationData(messageId);
             rabbitTemplate.convertAndSend(exchange, routingKey, rabbitMessage, correlationData);
+//            rabbitTemplate.convertAndSend(exchange, routingKey, rabbitMessage, msg -> {
+//                // 设置延迟时间（毫秒）
+//                msg.getMessageProperties().setHeader("x-delay", delayMillis);
+//                return msg;
+//            }, correlationData);
             long costTime = System.currentTimeMillis() - startTime;
 
             if (isPersistenceEnabled()) {

@@ -1,7 +1,7 @@
 //package com.silky.starter.rabbitmq.listener;
 //
 //import com.rabbitmq.client.Channel;
-//import com.silky.starter.rabbitmq.core.BaseMassageSend;
+//import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
 //import org.springframework.amqp.core.Message;
 //
 ///**

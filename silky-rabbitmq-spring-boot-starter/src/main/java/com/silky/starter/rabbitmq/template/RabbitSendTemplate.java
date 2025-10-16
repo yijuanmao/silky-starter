@@ -1,7 +1,7 @@
 package com.silky.starter.rabbitmq.template;
 
-import com.silky.starter.rabbitmq.core.BaseMassageSend;
-import com.silky.starter.rabbitmq.core.SendResult;
+import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
+import com.silky.starter.rabbitmq.core.model.SendResult;
 import com.silky.starter.rabbitmq.enums.SendMode;
 import com.silky.starter.rabbitmq.service.SendCallback;
 

@@ -1,6 +1,6 @@
 package com.silky.starter.rabbitmq.exception;
 
-import com.silky.starter.rabbitmq.core.SendResult;
+import com.silky.starter.rabbitmq.core.model.SendResult;
 import lombok.Getter;
 
 /**

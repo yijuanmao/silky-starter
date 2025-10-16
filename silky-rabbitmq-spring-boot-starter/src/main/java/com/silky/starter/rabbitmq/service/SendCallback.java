@@ -1,6 +1,6 @@
 package com.silky.starter.rabbitmq.service;
 
-import com.silky.starter.rabbitmq.core.SendResult;
+import com.silky.starter.rabbitmq.core.model.SendResult;
 
 /**
  * 发送回调接口

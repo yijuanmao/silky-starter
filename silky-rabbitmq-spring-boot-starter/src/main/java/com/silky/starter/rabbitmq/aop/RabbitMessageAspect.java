@@ -2,8 +2,8 @@ package com.silky.starter.rabbitmq.aop;
 
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.rabbitmq.annotation.RabbitMessage;
-import com.silky.starter.rabbitmq.core.BaseMassageSend;
-import com.silky.starter.rabbitmq.core.SendResult;
+import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
+import com.silky.starter.rabbitmq.core.model.SendResult;
 import com.silky.starter.rabbitmq.enums.MessageStatus;
 import com.silky.starter.rabbitmq.exception.RabbitMessageSendException;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;

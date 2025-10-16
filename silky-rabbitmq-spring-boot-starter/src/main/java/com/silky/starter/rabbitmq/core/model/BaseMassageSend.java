@@ -1,4 +1,4 @@
-package com.silky.starter.rabbitmq.core;
+package com.silky.starter.rabbitmq.core.model;
 
 import lombok.Data;
 import lombok.ToString;
