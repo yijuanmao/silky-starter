@@ -1,7 +1,7 @@
 package com.silky.starter.rabbitmq.test.service;
 
 import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
-import com.silky.starter.rabbitmq.enums.MessageStatus;
+import com.silky.starter.rabbitmq.enums.SendStatus;
 import com.silky.starter.rabbitmq.enums.SendMode;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
 import org.springframework.stereotype.Service;
@@ -64,7 +64,7 @@ public class DatabaseMessagePersistenceService implements MessagePersistenceServ
      * @return 是否保存成功
      */
     @Override
-    public boolean updateMessageAfterSend(String messageId, MessageStatus status, Long costTime, String exception) {
+    public boolean updateMessageAfterSend(String messageId, SendStatus status, Long costTime, String exception) {
 
         //调用自己的持久化方法保存到数据库
         return false;

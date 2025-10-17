@@ -4,7 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import com.silky.starter.rabbitmq.annotation.RabbitMessage;
 import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
 import com.silky.starter.rabbitmq.core.model.SendResult;
-import com.silky.starter.rabbitmq.enums.MessageStatus;
+import com.silky.starter.rabbitmq.enums.SendStatus;
 import com.silky.starter.rabbitmq.exception.RabbitMessageSendException;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
 import com.silky.starter.rabbitmq.template.RabbitSendTemplate;
@@ -52,9 +52,9 @@ public class RabbitMessageAspect {
         String messageId = message.getMessageId();
         if (Objects.nonNull(persistenceService)) {
             if (result.isSuccess()) {
-                persistenceService.updateMessageAfterSend(messageId, MessageStatus.SENT, result.getCostTime(), "");
+                persistenceService.updateMessageAfterSend(messageId, SendStatus.SENT, result.getCostTime(), "");
             } else {
-                persistenceService.updateMessageAfterSend(messageId, MessageStatus.FAILED, result.getCostTime(), result.getErrorMessage());
+                persistenceService.updateMessageAfterSend(messageId, SendStatus.FAILED, result.getCostTime(), result.getErrorMessage());
             }
         }
         // 处理发送结果

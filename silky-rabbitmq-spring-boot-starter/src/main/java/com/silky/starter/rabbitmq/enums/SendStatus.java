@@ -1,12 +1,12 @@
 package com.silky.starter.rabbitmq.enums;
 
 /**
- * 消息状态
+ * 消息发送状态
  *
  * @author zy
  * @date 2025-10-13 18:04
  **/
-public enum MessageStatus {
+public enum SendStatus {
 
     /**
      * 待发送
@@ -28,13 +28,4 @@ public enum MessageStatus {
      */
     FAILED,
 
-    /**
-     * 已消费
-     */
-    CONSUMED,
-
-    /**
-     * 消费失败
-     */
-    CONSUME_FAILED
 }

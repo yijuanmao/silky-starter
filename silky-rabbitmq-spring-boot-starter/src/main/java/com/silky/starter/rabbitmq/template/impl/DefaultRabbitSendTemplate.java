@@ -4,7 +4,7 @@ import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
 import com.silky.starter.rabbitmq.core.model.SendResult;
-import com.silky.starter.rabbitmq.enums.MessageStatus;
+import com.silky.starter.rabbitmq.enums.SendStatus;
 import com.silky.starter.rabbitmq.enums.SendMode;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
 import com.silky.starter.rabbitmq.properties.SilkyRabbitMQProperties;
@@ -180,9 +180,9 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
             }
             if (isPersistenceEnabled()) {
                 if (result.isSuccess()) {
-                    persistenceService.updateMessageAfterSend(messageId, MessageStatus.SENT, result.getCostTime(), "");
+                    persistenceService.updateMessageAfterSend(messageId, SendStatus.SENT, result.getCostTime(), "");
                 } else {
-                    persistenceService.updateMessageAfterSend(messageId, MessageStatus.FAILED, result.getCostTime(), result.getErrorMessage());
+                    persistenceService.updateMessageAfterSend(messageId, SendStatus.FAILED, result.getCostTime(), result.getErrorMessage());
                 }
             }
             return result;
@@ -191,7 +191,7 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
             log.error("Send message failed, exchange: {}, routingKey: {}, messageId: {}", exchange, routingKey, messageId, e);
             // 3. 持久化发送失败记录
             if (isPersistenceEnabled()) {
-                persistenceService.updateMessageAfterSend(messageId, MessageStatus.FAILED, costTime, e.getMessage());
+                persistenceService.updateMessageAfterSend(messageId, SendStatus.FAILED, costTime, e.getMessage());
             }
             return SendResult.failure(e.getMessage(), costTime);
         }
@@ -238,7 +238,7 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
             long costTime = System.currentTimeMillis() - startTime;
 
             if (isPersistenceEnabled()) {
-                persistenceService.updateMessageAfterSend(messageId, MessageStatus.SENT, costTime, null);
+                persistenceService.updateMessageAfterSend(messageId, SendStatus.SENT, costTime, null);
             }
             return SendResult.success(messageId, costTime);
         } catch (Exception e) {
@@ -248,7 +248,7 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
 
             // 3. 持久化发送失败记录
             if (isPersistenceEnabled()) {
-                persistenceService.updateMessageAfterSend(messageId, MessageStatus.FAILED, costTime, e.getMessage());
+                persistenceService.updateMessageAfterSend(messageId, SendStatus.FAILED, costTime, e.getMessage());
             }
 
             return SendResult.failure(e.getMessage(), costTime);

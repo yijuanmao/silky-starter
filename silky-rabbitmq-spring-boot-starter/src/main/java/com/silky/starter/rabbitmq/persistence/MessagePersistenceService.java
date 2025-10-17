@@ -1,8 +1,8 @@
 package com.silky.starter.rabbitmq.persistence;
 
 import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
-import com.silky.starter.rabbitmq.enums.MessageStatus;
 import com.silky.starter.rabbitmq.enums.SendMode;
+import com.silky.starter.rabbitmq.enums.SendStatus;
 
 /**
  * 消息持久化接口
@@ -35,7 +35,7 @@ public interface MessagePersistenceService {
      * @param exception 异常信息
      * @return 是否保存成功
      */
-    boolean updateMessageAfterSend(String messageId, MessageStatus status, Long costTime, String exception);
+    boolean updateMessageAfterSend(String messageId, SendStatus status, Long costTime, String exception);
 
     /**
      * 记录消息消费
@@ -55,6 +55,40 @@ public interface MessagePersistenceService {
      * @return 是否保存成功
      */
     boolean recordMessageConsumeFailure(String messageId, String exception, Long costTime);
+
+    /**
+     * 记录死信队列发送成功
+     *
+     * @param messageId     消息ID
+     * @param queueName     原始队列名称
+     * @param dlxExchange   死信交换机
+     * @param dlxRoutingKey 死信路由键
+     */
+    default void recordDLQSendSuccess(String messageId, String queueName, String dlxExchange, String dlxRoutingKey) {
+        // 默认实现，可以根据需要重写
+    }
+
+    /**
+     * 记录死信队列发送失败
+     *
+     * @param messageId    消息ID
+     * @param queueName    原始队列名称
+     * @param errorMessage 错误信息
+     */
+    default void recordDLQSendFailure(String messageId, String queueName, String errorMessage) {
+        // 默认实现，可以根据需要重写
+    }
+
+    /**
+     * 记录消息进入死信队列（带时间戳）
+     *
+     * @param messageId    消息ID
+     * @param queueName    原始队列名称
+     * @param errorMessage 错误信息
+     */
+    default void recordMessageSendToDLQ(String messageId, String queueName, String errorMessage) {
+        // 默认实现，可以根据需要重写
+    }
 
     /**
      * 重试发送失败的消息

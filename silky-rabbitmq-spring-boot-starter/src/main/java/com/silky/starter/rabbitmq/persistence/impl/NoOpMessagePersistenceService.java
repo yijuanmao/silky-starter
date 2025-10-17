@@ -1,7 +1,7 @@
 package com.silky.starter.rabbitmq.persistence.impl;
 
 import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
-import com.silky.starter.rabbitmq.enums.MessageStatus;
+import com.silky.starter.rabbitmq.enums.SendStatus;
 import com.silky.starter.rabbitmq.enums.SendMode;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
 import org.slf4j.Logger;
@@ -43,7 +43,7 @@ public class NoOpMessagePersistenceService implements MessagePersistenceService 
      * @param exception 异常信息
      */
     @Override
-    public boolean updateMessageAfterSend(String messageId, MessageStatus status, Long costTime, String exception) {
+    public boolean updateMessageAfterSend(String messageId, SendStatus status, Long costTime, String exception) {
         logger.debug("NoOp persistence: Update message after send - messageId: {}, status: {}",
                 messageId, status);
         return true;

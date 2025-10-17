@@ -1,6 +1,7 @@
 package com.silky.starter.rabbitmq.config;
 
 import com.silky.starter.rabbitmq.aop.RabbitMessageAspect;
+import com.silky.starter.rabbitmq.listener.RabbitMQListenerContainer;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
 import com.silky.starter.rabbitmq.persistence.impl.NoOpMessagePersistenceService;
 import com.silky.starter.rabbitmq.properties.SilkyRabbitMQProperties;
@@ -20,6 +21,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Lazy;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -113,6 +115,16 @@ public class SilkyRabbitMQAutoConfiguration {
     public RabbitMessageAspect rabbitMessageAspect(RabbitSendTemplate rabbitSendTemplate, MessagePersistenceService messagePersistenceService) {
         return new RabbitMessageAspect(rabbitSendTemplate, messagePersistenceService);
     }
+
+    @Bean
+    @ConditionalOnMissingBean
+    @Lazy  // 添加这个注解, 避免循环依赖
+    public RabbitMQListenerContainer rabbitMQListenerContainer(RabbitMqMessageSerializer messageSerializer,
+                                                               MessagePersistenceService persistenceService,
+                                                               RabbitTemplate rabbitTemplate) {
+        return new RabbitMQListenerContainer(messageSerializer, persistenceService, rabbitTemplate);
+    }
+
 
     @PostConstruct
     public void initialize() {
