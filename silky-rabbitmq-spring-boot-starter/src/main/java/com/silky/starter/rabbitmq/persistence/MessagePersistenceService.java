@@ -59,9 +59,9 @@ public interface MessagePersistenceService {
     /**
      * 重试发送失败的消息
      *
-     * @param recordId 消息记录ID
+     * @param messageId 消息ID
      */
-    boolean retryFailedMessage(Long recordId);
+    boolean retryFailedMessage(String messageId);
 
     /**
      * 是否启用持久化

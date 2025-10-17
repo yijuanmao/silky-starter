@@ -78,11 +78,11 @@ public class NoOpMessagePersistenceService implements MessagePersistenceService 
     /**
      * 重试发送失败的消息
      *
-     * @param recordId 消息记录ID
+     * @param messageId 消息ID
      */
     @Override
-    public boolean retryFailedMessage(Long recordId) {
-        logger.debug("NoOp persistence: Retry failed message - recordId: {}", recordId);
+    public boolean retryFailedMessage(String messageId) {
+        logger.debug("NoOp persistence: Retry failed message - messageId: {}", messageId);
         return false;
     }
 }

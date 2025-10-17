@@ -13,7 +13,6 @@ import org.springframework.boot.context.properties.NestedConfigurationProperty;
  * @date 2025-10-09 18:06
  **/
 @Data
-//@ConfigurationProperties(prefix = "spring.rabbitmq.silky")
 @ConfigurationProperties(prefix = SilkyRabbitMQProperties.PREFIX)
 public class SilkyRabbitMQProperties {
 

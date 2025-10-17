@@ -102,10 +102,10 @@ public class DatabaseMessagePersistenceService implements MessagePersistenceServ
     /**
      * 重试发送失败的消息
      *
-     * @param recordId 消息记录ID
+     * @param messageId 消息ID
      */
     @Override
-    public boolean retryFailedMessage(Long recordId) {
+    public boolean retryFailedMessage(String messageId) {
 
         //操作数据库
         return false;

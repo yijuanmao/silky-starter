@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -32,7 +31,7 @@ import javax.annotation.PreDestroy;
  * @date 2025-10-12 10:14
  **/
 @Import(SilkyRabbitMQQueueConfig.class)
-@AutoConfiguration
+@Configuration
 @EnableConfigurationProperties(SilkyRabbitMQProperties.class)
 @ConditionalOnClass(RabbitTemplate.class)
 @ConditionalOnProperty(prefix = SilkyRabbitMQAutoConfiguration.SPRING_RABBITMQ_PREFIX, name = "enabled", havingValue = "true", matchIfMissing = true)

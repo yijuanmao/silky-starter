@@ -41,9 +41,7 @@ public class SilkyRabbitConfigValidator {
                 properties.getSend().isEnableRetry(),
                 properties.getSend().getMaxRetryCount(),
                 properties.getSend().getRetryInterval());
-        logger.info("Persistence Enabled: {} (type: {})",
-                properties.getPersistence().isEnabled(),
-                properties.getPersistence().getType());
+        logger.info("Persistence Enabled: {} ", properties.getPersistence().isEnabled());
         logger.info("====================================");
     }
 }
