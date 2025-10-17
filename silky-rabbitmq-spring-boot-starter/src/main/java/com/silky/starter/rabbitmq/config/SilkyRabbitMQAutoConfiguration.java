@@ -19,6 +19,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
 import javax.annotation.PostConstruct;
@@ -94,10 +95,10 @@ public class SilkyRabbitMQAutoConfiguration {
                                                    MessagePersistenceService messagePersistenceService) {
         // 记录持久化配置
         boolean persistenceEnabled = properties.getPersistence().isEnabled();
-        String persistenceType = properties.getPersistence().getType().name();
+//        String persistenceType = properties.getPersistence().getType().name();
 
-        logger.info("Initializing Silky RabbitSenderTemplate - Persistence: {} (type: {})",
-                persistenceEnabled ? "enabled" : "disabled", persistenceType);
+        logger.info("Initializing Silky RabbitSenderTemplate - Persistence: {} ",
+                persistenceEnabled ? "enabled" : "disabled");
 
         logger.info("Send Configuration - Mode: {}, Timeout: {}ms, Retry: {} (max: {}), Async Pool: {}",
                 properties.getSend().getDefaultSendMode(),

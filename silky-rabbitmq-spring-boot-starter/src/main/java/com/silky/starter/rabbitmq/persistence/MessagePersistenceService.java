@@ -2,9 +2,7 @@ package com.silky.starter.rabbitmq.persistence;
 
 import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
 import com.silky.starter.rabbitmq.enums.MessageStatus;
-import com.silky.starter.rabbitmq.persistence.entity.RabbitmqMessageRecord;
-
-import java.util.List;
+import com.silky.starter.rabbitmq.enums.SendMode;
 
 /**
  * 消息持久化接口
@@ -26,7 +24,7 @@ public interface MessagePersistenceService {
      * @return 是否保存成功
      */
     boolean saveMessageBeforeSend(BaseMassageSend message, String exchange, String routingKey,
-                                  String sendMode, String businessType, String description);
+                                  SendMode sendMode, String businessType, String description);
 
     /**
      * 更新消息发送结果
@@ -59,20 +57,6 @@ public interface MessagePersistenceService {
     boolean recordMessageConsumeFailure(String messageId, String exception, Long costTime);
 
     /**
-     * 根据消息ID查询消息记录
-     *
-     * @param messageId 消息ID
-     */
-    RabbitmqMessageRecord findMessageById(String messageId);
-
-    /**
-     * 查询失败的消息记录
-     *
-     * @param limit 查询条数
-     */
-    List<RabbitmqMessageRecord> findFailedMessages(int limit);
-
-    /**
      * 重试发送失败的消息
      *
      * @param recordId 消息记录ID
@@ -89,9 +73,9 @@ public interface MessagePersistenceService {
     /**
      * 获取持久化类型
      */
-    default String getPersistenceType() {
-        return "CUSTOM";
-    }
+//    default String getPersistenceType() {
+//        return "CUSTOM";
+//    }
 
     /**
      * 初始化持久化服务

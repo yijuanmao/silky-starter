@@ -2,12 +2,10 @@ package com.silky.starter.rabbitmq.persistence.impl;
 
 import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
 import com.silky.starter.rabbitmq.enums.MessageStatus;
+import com.silky.starter.rabbitmq.enums.SendMode;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
-import com.silky.starter.rabbitmq.persistence.entity.RabbitmqMessageRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
 
 /**
  * 基于JPA的消息持久化服务实现
@@ -30,7 +28,7 @@ public class NoOpMessagePersistenceService implements MessagePersistenceService 
      * @param description  描述
      */
     @Override
-    public boolean saveMessageBeforeSend(BaseMassageSend message, String exchange, String routingKey, String sendMode, String businessType, String description) {
+    public boolean saveMessageBeforeSend(BaseMassageSend message, String exchange, String routingKey, SendMode sendMode, String businessType, String description) {
         logger.debug("NoOp persistence: Save message before send - messageId: {}, exchange: {}, routingKey: {}",
                 message.getMessageId(), exchange, routingKey);
         return true;
@@ -75,28 +73,6 @@ public class NoOpMessagePersistenceService implements MessagePersistenceService 
         logger.debug("NoOp persistence: Record message consume failure - messageId: {}, exception: {}",
                 messageId, exception);
         return true;
-    }
-
-    /**
-     * 根据消息ID查询消息记录
-     *
-     * @param messageId 消息ID
-     */
-    @Override
-    public RabbitmqMessageRecord findMessageById(String messageId) {
-        logger.debug("NoOp persistence: Find message by id - messageId: {}", messageId);
-        return null;
-    }
-
-    /**
-     * 查询失败的消息记录
-     *
-     * @param limit 查询条数
-     */
-    @Override
-    public List<RabbitmqMessageRecord> findFailedMessages(int limit) {
-        logger.debug("NoOp persistence: Find failed messages - limit: {}", limit);
-        return null;
     }
 
     /**

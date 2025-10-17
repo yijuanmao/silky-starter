@@ -13,6 +13,7 @@ import org.springframework.boot.context.properties.NestedConfigurationProperty;
  * @date 2025-10-09 18:06
  **/
 @Data
+//@ConfigurationProperties(prefix = "spring.rabbitmq.silky")
 @ConfigurationProperties(prefix = SilkyRabbitMQProperties.PREFIX)
 public class SilkyRabbitMQProperties {
 
@@ -45,7 +46,7 @@ public class SilkyRabbitMQProperties {
         /**
          * 持久化类型
          */
-        private PersistenceType type = PersistenceType.MEMORY;
+//        private PersistenceType type = PersistenceType.MEMORY;
 
 
         public enum PersistenceType {

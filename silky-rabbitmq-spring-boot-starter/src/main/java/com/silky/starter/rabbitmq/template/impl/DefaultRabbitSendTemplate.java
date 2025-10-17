@@ -1,6 +1,5 @@
 package com.silky.starter.rabbitmq.template.impl;
 
-import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
@@ -20,6 +19,7 @@ import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.concurrent.*;
 
@@ -146,25 +146,28 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
     public <T extends BaseMassageSend> SendResult send(String exchange, String routingKey, T message, String businessType, String description, SendMode sendMode) {
         //检查必要的依赖
         this.checkDependencies();
+
         // 如果Silky发送功能被禁用，直接使用原生RabbitTemplate
         if (!properties.getSend().isEnabled()) {
             log.debug("Silky send is disabled, using native RabbitTemplate");
             return doNativeSend(exchange, routingKey, message);
         }
 
+        SendMode actualMode = sendMode == SendMode.AUTO ? this.determineSendMode() : sendMode;
+        String messageId = this.generateMessageId(message.getMessageId());
+        long startTime = System.currentTimeMillis();
+
+        message.setMessageId(messageId);
+        message.setSendTime(LocalDateTime.now());
         if (StrUtil.isNotBlank(businessType)) {
             message.setBusinessType(businessType);
         }
         if (StrUtil.isNotBlank(description)) {
             message.setDescription(description);
         }
-        SendMode actualMode = sendMode == SendMode.AUTO ? this.determineSendMode() : sendMode;
-        String messageId = StrUtil.isBlank(message.getMessageId()) ? IdUtil.simpleUUID() : message.getMessageId();
-        long startTime = System.currentTimeMillis();
 
         if (isPersistenceEnabled()) {
-            persistenceService.saveMessageBeforeSend(message, exchange, routingKey,
-                    actualMode.name(), businessType, description);
+            persistenceService.saveMessageBeforeSend(message, exchange, routingKey, actualMode, businessType, description);
         }
 
         try {
@@ -209,19 +212,20 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
         //检查必要的依赖
         this.checkDependencies();
 
+        String messageId = this.generateMessageId(message.getMessageId());
+        long startTime = System.currentTimeMillis();
+
+        message.setMessageId(messageId);
+        message.setSendTime(LocalDateTime.now());
         if (StrUtil.isNotBlank(businessType)) {
             message.setBusinessType(businessType);
         }
         if (StrUtil.isNotBlank(description)) {
             message.setDescription(description);
         }
-        String messageId = StrUtil.isBlank(message.getMessageId()) ? IdUtil.simpleUUID() : message.getMessageId();
-        long startTime = System.currentTimeMillis();
-
         if (isPersistenceEnabled()) {
-            persistenceService.saveMessageBeforeSend(message, exchange, routingKey, SendMode.SYNC.name(), businessType, description);
+            persistenceService.saveMessageBeforeSend(message, exchange, routingKey, SendMode.SYNC, businessType, description);
         }
-
         try {
             Message rabbitMessage = this.buildMessage(message, messageId);
 
@@ -231,11 +235,6 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
             // 延迟消息使用同步发送
             CorrelationData correlationData = new CorrelationData(messageId);
             rabbitTemplate.convertAndSend(exchange, routingKey, rabbitMessage, correlationData);
-//            rabbitTemplate.convertAndSend(exchange, routingKey, rabbitMessage, msg -> {
-//                // 设置延迟时间（毫秒）
-//                msg.getMessageProperties().setHeader("x-delay", delayMillis);
-//                return msg;
-//            }, correlationData);
             long costTime = System.currentTimeMillis() - startTime;
 
             if (isPersistenceEnabled()) {
@@ -525,4 +524,12 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
         return persistenceService != null && enabledPersistence;
     }
 
+    /**
+     * 生成消息ID
+     *
+     * @param messageId 消息ID
+     */
+    private String generateMessageId(String messageId) {
+        return StrUtil.isBlank(messageId) ? IdUtil.simpleUUID() : messageId;
+    }
 }

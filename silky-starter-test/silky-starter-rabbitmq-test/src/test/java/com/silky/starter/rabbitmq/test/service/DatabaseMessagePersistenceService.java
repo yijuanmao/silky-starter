@@ -1,15 +1,12 @@
 package com.silky.starter.rabbitmq.test.service;
 
-import cn.hutool.core.util.IdUtil;
-import com.alibaba.fastjson2.JSONObject;
 import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
 import com.silky.starter.rabbitmq.enums.MessageStatus;
+import com.silky.starter.rabbitmq.enums.SendMode;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
-import com.silky.starter.rabbitmq.persistence.entity.RabbitmqMessageRecord;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * 基于数据库的消息持久化服务实现
@@ -32,27 +29,29 @@ public class DatabaseMessagePersistenceService implements MessagePersistenceServ
      * @return 是否保存成功
      */
     @Override
-    public boolean saveMessageBeforeSend(BaseMassageSend message, String exchange, String routingKey, String sendMode, String businessType, String description) {
+    public boolean saveMessageBeforeSend(BaseMassageSend message, String exchange, String routingKey, SendMode sendMode, String businessType, String description) {
         LocalDateTime now = LocalDateTime.now();
-        RabbitmqMessageRecord record = RabbitmqMessageRecord.builder()
-                //主键id，根据自己业务生成
-                .id(IdUtil.getWorkerId(0L, 30L))
-                .createTime(now)
-                .updateTime(now)
-                .messageId(message.getMessageId())
-                .exchange(exchange)
-                .routingKey(routingKey)
-                .messageBody(JSONObject.toJSONString(message))
-                .msgStatus(MessageStatus.PENDING.name())
-                .businessType(businessType)
-                .description(description)
-                .retryCount(0)
-                .sendMode(sendMode)
-                .costTime(0L)
-                .build();
+
+        //这里比如是数据库持久化操作
+//        RabbitmqMessageRecord record = RabbitmqMessageRecord.builder()
+//                //主键id，根据自己业务生成
+//                .id(IdUtil.getWorkerId(0L, 30L))
+//                .createTime(now)
+//                .updateTime(now)
+//                .messageId(message.getMessageId())
+//                .exchange(exchange)
+//                .routingKey(routingKey)
+//                .messageBody(JSONObject.toJSONString(message))
+//                .msgStatus(MessageStatus.PENDING)
+//                .businessType(businessType)
+//                .description(description)
+//                .retryCount(0)
+//                .sendMode(sendMode)
+//                .costTime(0L)
+//                .build();
 
         //调用自己的持久化方法保存到数据库
-        return false;
+        return true;
     }
 
     /**
@@ -98,30 +97,6 @@ public class DatabaseMessagePersistenceService implements MessagePersistenceServ
 
         //操作数据库
         return false;
-    }
-
-    /**
-     * 根据消息ID查询消息记录
-     *
-     * @param messageId 消息ID
-     */
-    @Override
-    public RabbitmqMessageRecord findMessageById(String messageId) {
-
-        //操作数据库
-        return null;
-    }
-
-    /**
-     * 查询失败的消息记录
-     *
-     * @param limit 查询条数
-     */
-    @Override
-    public List<RabbitmqMessageRecord> findFailedMessages(int limit) {
-
-        //操作数据库
-        return null;
     }
 
     /**
