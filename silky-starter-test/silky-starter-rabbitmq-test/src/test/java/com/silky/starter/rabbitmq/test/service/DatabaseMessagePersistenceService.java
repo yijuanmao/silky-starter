@@ -1,11 +1,14 @@
 package com.silky.starter.rabbitmq.test.service;
 
+import cn.hutool.core.util.IdUtil;
+import com.alibaba.fastjson2.JSONObject;
 import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
 import com.silky.starter.rabbitmq.enums.MessageStatus;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
 import com.silky.starter.rabbitmq.persistence.entity.RabbitmqMessageRecord;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -30,9 +33,25 @@ public class DatabaseMessagePersistenceService implements MessagePersistenceServ
      */
     @Override
     public boolean saveMessageBeforeSend(BaseMassageSend message, String exchange, String routingKey, String sendMode, String businessType, String description) {
-        RabbitmqMessageRecord record = new RabbitmqMessageRecord();
+        LocalDateTime now = LocalDateTime.now();
+        RabbitmqMessageRecord record = RabbitmqMessageRecord.builder()
+                //主键id，根据自己业务生成
+                .id(IdUtil.getWorkerId(0L, 30L))
+                .createTime(now)
+                .updateTime(now)
+                .messageId(message.getMessageId())
+                .exchange(exchange)
+                .routingKey(routingKey)
+                .messageBody(JSONObject.toJSONString(message))
+                .msgStatus(MessageStatus.PENDING.name())
+                .businessType(businessType)
+                .description(description)
+                .retryCount(0)
+                .sendMode(sendMode)
+                .costTime(0L)
+                .build();
 
-
+        //调用自己的持久化方法保存到数据库
         return false;
     }
 
@@ -47,6 +66,8 @@ public class DatabaseMessagePersistenceService implements MessagePersistenceServ
      */
     @Override
     public boolean updateMessageAfterSend(String messageId, MessageStatus status, Long costTime, String exception) {
+
+        //调用自己的持久化方法保存到数据库
         return false;
     }
 
@@ -59,6 +80,8 @@ public class DatabaseMessagePersistenceService implements MessagePersistenceServ
      */
     @Override
     public boolean recordMessageConsume(String messageId, Long costTime) {
+
+        //操作数据库
         return false;
     }
 
@@ -72,6 +95,8 @@ public class DatabaseMessagePersistenceService implements MessagePersistenceServ
      */
     @Override
     public boolean recordMessageConsumeFailure(String messageId, String exception, Long costTime) {
+
+        //操作数据库
         return false;
     }
 
@@ -82,6 +107,8 @@ public class DatabaseMessagePersistenceService implements MessagePersistenceServ
      */
     @Override
     public RabbitmqMessageRecord findMessageById(String messageId) {
+
+        //操作数据库
         return null;
     }
 
@@ -92,6 +119,8 @@ public class DatabaseMessagePersistenceService implements MessagePersistenceServ
      */
     @Override
     public List<RabbitmqMessageRecord> findFailedMessages(int limit) {
+
+        //操作数据库
         return null;
     }
 
@@ -102,6 +131,8 @@ public class DatabaseMessagePersistenceService implements MessagePersistenceServ
      */
     @Override
     public boolean retryFailedMessage(Long recordId) {
+
+        //操作数据库
         return false;
     }
 }

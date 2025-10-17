@@ -103,7 +103,7 @@ public class ExampleRabbitSendTemplateTest extends RabbitMqApplicationTest {
     @Test
     public void testSendSaveDb() {
         //普通发送消息
-        TradeOrder order = new TradeOrder(3L, LocalDateTime.now(), "测试MQ发送-保存数据库", BigDecimal.ONE);
+        TradeOrder order = new TradeOrder(6L, LocalDateTime.now(), "测试MQ发送-保存数据库", BigDecimal.ONE);
 
         //普通发送消息
         SendResult send1 = rabbitSendTemplate.send(exchange, routingKey, order);
