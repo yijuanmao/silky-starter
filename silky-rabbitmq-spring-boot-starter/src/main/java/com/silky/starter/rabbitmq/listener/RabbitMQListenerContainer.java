@@ -117,7 +117,7 @@ public class RabbitMQListenerContainer {
             long costTime = System.currentTimeMillis() - startTime;
 
             // 处理消息确认
-            handleMessageAcknowledgment(listener, channel, deliveryTag, queueName, messageId, costTime);
+            this.handleMessageAcknowledgment(listener, channel, deliveryTag, queueName, messageId, costTime);
 
             logger.info("Message processed successfully: queue={}, messageId={}, costTime={}ms",
                     queueName, messageId, costTime);
@@ -146,8 +146,14 @@ public class RabbitMQListenerContainer {
      */
     private void handleMessageAcknowledgment(RabbitMQListener<?> listener, Channel channel,
                                              long deliveryTag, String queueName, String messageId, long costTime) {
-        // 手动确认消息（如果配置了手动确认）
-        if (!listener.getConfig().isAutoAck()) {
+        if (listener.getConfig().isAutoAck()) {
+            // 自动确认模式，Spring会自动处理确认
+            logger.debug("Auto ack mode, Spring will handle acknowledgment: queue={}, messageId={}", queueName, messageId);
+            // 更新数据库状态：自动确认
+            this.updateMessageStatus(messageId, ConsumeStatus.CONSUMED,
+                    "Message auto acknowledged after " + costTime + "ms", costTime);
+        } else {
+            // 手动确认消息（如果配置了手动确认）
             try {
                 basicAck(channel, deliveryTag);
                 logger.debug("Message manually acknowledged: queue={}, messageId={}, deliveryTag={}, costTime={}ms",
@@ -160,16 +166,10 @@ public class RabbitMQListenerContainer {
                 logger.error("Failed to manually acknowledge message: queue={}, messageId={}", queueName, messageId, e);
                 // 更新数据库状态：确认失败
                 this.updateMessageStatus(messageId, ConsumeStatus.CONSUME_FAILED,
-                        "Manual acknowledgment failed: " + e.getMessage(), System.currentTimeMillis());
+                        "Manual acknowledgment failed: " + e.getMessage(), costTime);
                 throw new RabbitMessageSendException("Message manual acknowledgment failed", e);
             }
-        } else {
-            // 自动确认模式，Spring会自动处理确认
-            logger.debug("Auto ack mode, Spring will handle acknowledgment: queue={}, messageId={}",
-                    queueName, messageId);
-            // 更新数据库状态：自动确认
-            this.updateMessageStatus(messageId, ConsumeStatus.CONSUME_FAILED,
-                    "Message auto acknowledged after " + costTime + "ms", System.currentTimeMillis());
+
         }
     }
 
