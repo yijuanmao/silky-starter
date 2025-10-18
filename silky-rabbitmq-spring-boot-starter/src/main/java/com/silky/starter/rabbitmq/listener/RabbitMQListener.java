@@ -2,7 +2,6 @@ package com.silky.starter.rabbitmq.listener;
 
 import com.rabbitmq.client.Channel;
 import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
-import com.silky.starter.rabbitmq.listener.config.ListenerConfig;
 import org.springframework.amqp.core.Message;
 
 /**
@@ -36,13 +35,6 @@ public interface RabbitMQListener<T extends BaseMassageSend> {
      * @return 消息类类型
      */
     Class<T> getMessageType();
-
-    /**
-     * 监听器配置
-     */
-    default ListenerConfig getConfig() {
-        return ListenerConfig.defaultConfig();
-    }
 
     /**
      * 是否启用此监听器

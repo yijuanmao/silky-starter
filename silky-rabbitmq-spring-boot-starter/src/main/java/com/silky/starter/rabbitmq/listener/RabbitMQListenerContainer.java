@@ -1,11 +1,13 @@
 package com.silky.starter.rabbitmq.listener;
 
 import cn.hutool.core.map.MapUtil;
+import cn.hutool.core.util.StrUtil;
 import com.rabbitmq.client.Channel;
 import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
-import com.silky.starter.rabbitmq.enums.ConsumeStatus;
 import com.silky.starter.rabbitmq.exception.RabbitMessageSendException;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
+import com.silky.starter.rabbitmq.properties.SilkyRabbitListenerProperties;
+import com.silky.starter.rabbitmq.properties.SilkyRabbitMQProperties;
 import com.silky.starter.rabbitmq.serialization.RabbitMqMessageSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,11 +16,13 @@ import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.AmqpHeaders;
+import org.springframework.boot.autoconfigure.amqp.RabbitProperties;
 import org.springframework.messaging.handler.annotation.Header;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * RabbitMQ 消息监听器容器（统一管理所有监听器）
@@ -31,6 +35,28 @@ public class RabbitMQListenerContainer {
     private static final Logger logger = LoggerFactory.getLogger(RabbitMQListenerContainer.class);
 
     /**
+     * 是否自动确认
+     */
+    private final boolean autoAck;
+
+    /**
+     * 最大重试次数
+     */
+    private final int maxRetryCount;
+
+    /**
+     * 是否启用重试机制
+     */
+    private final boolean retryEnabled;
+
+    /**
+     * 是否启用死信队列
+     */
+    private final boolean enableDlx;
+
+    private final Map<String, AtomicInteger> retryCountMap = new ConcurrentHashMap<>();
+
+    /**
      * 监听器缓存：queueName -> listener
      */
     private final Map<String, RabbitMQListener<?>> listenerMap = new ConcurrentHashMap<>();
@@ -41,10 +67,27 @@ public class RabbitMQListenerContainer {
 
     private final RabbitTemplate rabbitTemplate;
 
-    public RabbitMQListenerContainer(RabbitMqMessageSerializer messageSerializer, MessagePersistenceService persistenceService, RabbitTemplate rabbitTemplate) {
+    private final RabbitProperties rabbitProperties;
+
+    private final SilkyRabbitListenerProperties skListenerProperties;
+    private final SilkyRabbitMQProperties.PersistenceProperties persistenceProperties;
+
+    public RabbitMQListenerContainer(RabbitMqMessageSerializer messageSerializer, MessagePersistenceService persistenceService,
+                                     RabbitTemplate rabbitTemplate, RabbitProperties rabbitProperties,
+                                     SilkyRabbitListenerProperties skListenerProperties,
+                                     SilkyRabbitMQProperties.PersistenceProperties persistenceProperties) {
         this.messageSerializer = messageSerializer;
         this.persistenceService = persistenceService;
         this.rabbitTemplate = rabbitTemplate;
+        this.rabbitProperties = rabbitProperties;
+        this.skListenerProperties = skListenerProperties;
+        this.persistenceProperties = persistenceProperties;
+
+        this.autoAck = rabbitProperties.getListener().getSimple().getAcknowledgeMode().isAutoAck();
+        this.retryEnabled = rabbitProperties.getListener().getSimple().getRetry().isEnabled();
+        this.maxRetryCount = rabbitProperties.getListener().getSimple().getRetry().getMaxAttempts();
+
+        this.enableDlx = skListenerProperties.isEnableDlx();
     }
 
     /**
@@ -87,10 +130,10 @@ public class RabbitMQListenerContainer {
 
         RabbitMQListener<?> listener = listenerMap.get(queueName);
         if (listener == null) {
-            logger.warn("No listener found for queue: {}, messageId: {}", queueName, messageId);
-
+            String errorMessage = StrUtil.format("No listener found for queue: {}, messageId: {}", queueName, messageId);
+            logger.warn(errorMessage);
             // 更新数据库状态：无监听器
-            this.updateMessageStatus(messageId, ConsumeStatus.CONSUME_FAILED, "No listener registered for queue: " + queueName, null);
+            this.handlePersistenceFailure(messageId, errorMessage, startTime);
             // 没有监听器，拒绝消息并重新入队
             basicReject(channel, deliveryTag, true, "No listener found");
             return;
@@ -102,37 +145,107 @@ public class RabbitMQListenerContainer {
             if (message == null) {
                 logger.warn("Deserialized message is null, queue: {}, messageId: {}", queueName, messageId);
                 // 更新数据库状态：反序列化失败
-                this.updateMessageStatus(messageId, ConsumeStatus.CONSUME_FAILED, "Message deserialization failed", startTime);
+                this.handlePersistenceFailure(messageId, "Message deserialization failed", startTime);
                 // 消息反序列化失败，拒绝消息并不重新入队
                 basicReject(channel, deliveryTag, false, "Message deserialization failed");
                 return;
             }
 
             logger.debug("Received message from queue: {}, messageId: {}, type: {}, autoAck: {}",
-                    queueName, messageId, listener.getMessageType().getSimpleName(), listener.getConfig().isAutoAck());
+                    queueName, messageId, listener.getMessageType().getSimpleName(), autoAck);
 
             // 调用监听器的处理方法
             invokeListener(listener, message, channel, amqpMessage);
 
-            long costTime = System.currentTimeMillis() - startTime;
-
             // 处理消息确认
-            this.handleMessageAcknowledgment(listener, channel, deliveryTag, queueName, messageId, costTime);
-
-            logger.info("Message processed successfully: queue={}, messageId={}, costTime={}ms",
-                    queueName, messageId, costTime);
+            this.handleMessageAcknowledgment(listener, channel, deliveryTag, queueName, messageId, startTime);
 
         } catch (Exception e) {
-            long costTime = System.currentTimeMillis() - startTime;
             logger.error("Failed to process message: queue={}, messageId={}", queueName, messageId, e);
-
-            // 更新数据库状态：处理失败
-            this.updateMessageStatus(messageId, ConsumeStatus.CONSUME_FAILED, "Message consumption failed: " + e.getMessage(), costTime);
-
             // 根据监听器配置决定是否重试
-            this.handleConsumeFailure(listener, channel, deliveryTag, amqpMessage, queueName, messageId, e, costTime);
+            this.handleConsumeFailure(listener, channel, deliveryTag, amqpMessage, queueName, messageId, e, startTime);
         }
     }
+
+    /**
+     * 处理消费失败
+     *
+     * @param listener    监听器
+     * @param channel     消息通道
+     * @param deliveryTag 消息投递标签
+     * @param amqpMessage AMQP消息
+     * @param queueName   队列名称
+     * @param messageId   消息ID
+     * @param e           消费异常
+     * @param startTime   开始时间
+     */
+    private void handleConsumeFailure(RabbitMQListener<?> listener, Channel channel, long deliveryTag,
+                                      Message amqpMessage, String queueName, String messageId,
+                                      Exception e, long startTime) {
+
+        // 如果配置了自动确认，由 Spring 自动处理
+        if (autoAck) {
+            logger.debug("Auto ack mode, letting Spring handle the failure: queue={}, messageId={}", queueName, messageId);
+            // 更新数据库状态：自动确认模式下的失败
+            handlePersistenceFailure(messageId, "Failure in auto ack mode: " + e.getMessage(), startTime);
+            return;
+        }
+        // 手动确认模式下的失败处理
+        try {
+
+            int retryCount = this.getRetryCount(amqpMessage, messageId);
+
+            if (this.retryEnabled && retryCount < maxRetryCount) {
+                int nextRetry = retryCount + 1;
+                // 更新重试计数
+                incrementRetryCount(messageId);
+                logger.info("Message consume failed, requeue for retry {}/{}, queue: {}, messageId: {}",
+                        retryCount, maxRetryCount, queueName, messageId);
+
+                // 更新数据库状态：重试中
+                this.handlePersistenceFailure(messageId, "Retry " + nextRetry + "/" + maxRetryCount + ": " + e.getMessage(),
+                        System.currentTimeMillis());
+
+                basicReject(channel, deliveryTag, true, "Retry " + nextRetry);
+
+            } else {
+                // 重试次数用完，进入死信队列或直接拒绝
+                if (this.enableDlx) {
+                    logger.warn("Message consume failed after {} retries, sending to DLX, queue: {}, messageId: {}",
+                            maxRetryCount, queueName, messageId);
+
+                    // 更新数据库状态：进入死信队列
+                    this.handlePersistenceFailure(messageId, "Max retries exceeded, sent to dead letter exchange", startTime);
+
+                    // 记录死信队列 - 这是核心调用
+                    if (persistenceService != null) {
+                        String errorMsg = String.format("Consume failed after %d retries: %s", maxRetryCount, e.getMessage());
+                        persistenceService.recordMessageSendToDLQ(messageId, queueName, errorMsg);
+                    }
+
+                    // 处理死信队列逻辑
+                    this.handleDeadLetterQueue(listener, amqpMessage, queueName, messageId, e);
+
+                    basicReject(channel, deliveryTag, false, "Max retries exceeded - Sent to DLX");
+
+                } else {
+                    logger.error("Message consume failed after {} retries, discarding, queue: {}, messageId: {}",
+                            maxRetryCount, queueName, messageId);
+
+                    // 更新数据库状态：消费失败（最终）
+                    handlePersistenceFailure(messageId, "Max retries exceeded, message discarded: " + e.getMessage(), startTime);
+
+                    basicReject(channel, deliveryTag, false, "Max retries exceeded - Discarded");
+                }
+            }
+        } catch (Exception ex) {
+            logger.error("Failed to handle consume failure, queue: {}, messageId: {}", queueName, messageId, ex);
+            // 最后的手段：拒绝消息并不重新入队
+            handlePersistenceFailure(messageId, "Error handling failure: " + ex.getMessage(), startTime);
+            basicReject(channel, deliveryTag, false, "Error handling failure: " + ex.getMessage());
+        }
+    }
+
 
     /**
      * 处理消息确认（支持手动确认和自动确认）
@@ -141,32 +254,31 @@ public class RabbitMQListenerContainer {
      * @param channel     消息通道
      * @param deliveryTag 消息投递标签
      * @param queueName   队列名称
-     * @param costTime    消费耗时
+     * @param startTime   开始时间
      * @param messageId   消息ID
      */
     private void handleMessageAcknowledgment(RabbitMQListener<?> listener, Channel channel,
-                                             long deliveryTag, String queueName, String messageId, long costTime) {
-        if (listener.getConfig().isAutoAck()) {
+                                             long deliveryTag, String queueName, String messageId, long startTime) {
+        // 清除重试计数
+        retryCountMap.remove(messageId);
+        if (autoAck) {
             // 自动确认模式，Spring会自动处理确认
             logger.debug("Auto ack mode, Spring will handle acknowledgment: queue={}, messageId={}", queueName, messageId);
             // 更新数据库状态：自动确认
-            this.updateMessageStatus(messageId, ConsumeStatus.CONSUMED,
-                    "Message auto acknowledged after " + costTime + "ms", costTime);
+            this.handlePersistenceSuccess(messageId, startTime);
         } else {
             // 手动确认消息（如果配置了手动确认）
             try {
                 basicAck(channel, deliveryTag);
                 logger.debug("Message manually acknowledged: queue={}, messageId={}, deliveryTag={}, costTime={}ms",
-                        queueName, messageId, deliveryTag, costTime);
+                        queueName, messageId, deliveryTag, startTime);
 
                 // 更新数据库状态：手动确认完成
-                this.updateMessageStatus(messageId, ConsumeStatus.CONSUMED,
-                        "Message manually acknowledged after " + costTime + "ms", System.currentTimeMillis());
+                this.handlePersistenceSuccess(messageId, startTime);
             } catch (Exception e) {
                 logger.error("Failed to manually acknowledge message: queue={}, messageId={}", queueName, messageId, e);
                 // 更新数据库状态：确认失败
-                this.updateMessageStatus(messageId, ConsumeStatus.CONSUME_FAILED,
-                        "Manual acknowledgment failed: " + e.getMessage(), costTime);
+                this.handlePersistenceFailure(messageId, "Manual acknowledgment failed: " + e.getMessage(), startTime);
                 throw new RabbitMessageSendException("Message manual acknowledgment failed", e);
             }
 
@@ -195,125 +307,28 @@ public class RabbitMQListenerContainer {
     }
 
     /**
-     * 处理消费失败
-     *
-     * @param listener    监听器
-     * @param channel     消息通道
-     * @param deliveryTag 消息投递标签
-     * @param amqpMessage AMQP消息
-     * @param queueName   队列名称
-     * @param messageId   消息ID
-     * @param e           消费异常
-     * @param costTime    消费耗时
-     */
-    private void handleConsumeFailure(RabbitMQListener<?> listener, Channel channel, long deliveryTag,
-                                      Message amqpMessage, String queueName, String messageId,
-                                      Exception e, long costTime) {
-
-        // 如果配置了自动确认，由 Spring 自动处理
-        if (listener.getConfig().isAutoAck()) {
-            logger.debug("Auto ack mode, letting Spring handle the failure: queue={}, messageId={}", queueName, messageId);
-            // 更新数据库状态：自动确认模式下的失败
-            updateMessageStatus(messageId, ConsumeStatus.CONSUME_FAILED, "Failure in auto ack mode: " + e.getMessage(), costTime);
-            return;
-        }
-
-        // 手动确认模式下的失败处理
-        try {
-            int retryCount = getRetryCount(amqpMessage);
-            int maxRetries = listener.getConfig().getMaxRetryCount();
-
-            if (retryCount < maxRetries) {
-                // 重新投递消息进行重试
-                int nextRetry = retryCount + 1;
-                logger.info("Message consume failed, requeue for retry {}/{}, queue: {}, messageId: {}",
-                        nextRetry, maxRetries, queueName, messageId);
-
-                // 更新数据库状态：重试中
-                updateMessageStatus(messageId, ConsumeStatus.CONSUME_FAILED, "Retry " + nextRetry + "/" + maxRetries + ": " + e.getMessage(),
-                        System.currentTimeMillis());
-
-                basicReject(channel, deliveryTag, true, "Retry " + nextRetry);
-
-            } else {
-                // 重试次数用完，进入死信队列或直接拒绝
-                if (listener.getConfig().isEnableDlx()) {
-                    logger.warn("Message consume failed after {} retries, sending to DLX, queue: {}, messageId: {}",
-                            maxRetries, queueName, messageId);
-
-                    // 更新数据库状态：进入死信队列
-                    this.updateMessageStatus(messageId, ConsumeStatus.CONSUME_FAILED, "Max retries exceeded, sent to dead letter exchange", costTime);
-
-                    // 记录死信队列 - 这是核心调用
-                    if (persistenceService != null) {
-                        String errorMsg = String.format("Consume failed after %d retries: %s",
-                                maxRetries, e.getMessage());
-                        persistenceService.recordMessageSendToDLQ(messageId, queueName, errorMsg);
-                    }
-
-                    // 处理死信队列逻辑
-                    this.handleDeadLetterQueue(listener, amqpMessage, queueName, messageId, e);
-
-                    basicReject(channel, deliveryTag, false, "Max retries exceeded - Sent to DLX");
-
-                } else {
-                    logger.error("Message consume failed after {} retries, discarding, queue: {}, messageId: {}",
-                            maxRetries, queueName, messageId);
-
-                    // 更新数据库状态：消费失败（最终）
-                    updateMessageStatus(messageId, ConsumeStatus.CONSUME_FAILED,
-                            "Max retries exceeded, message discarded: " + e.getMessage(),
-                            System.currentTimeMillis());
-
-                    basicReject(channel, deliveryTag, false, "Max retries exceeded - Discarded");
-                }
-            }
-        } catch (Exception ex) {
-            logger.error("Failed to handle consume failure, queue: {}, messageId: {}", queueName, messageId, ex);
-            // 最后的手段：拒绝消息并不重新入队
-            updateMessageStatus(messageId, ConsumeStatus.CONSUME_FAILED,
-                    "Error handling failure: " + ex.getMessage(), System.currentTimeMillis());
-            basicReject(channel, deliveryTag, false, "Error handling failure: " + ex.getMessage());
-        }
-    }
-
-    /**
-     * 更新消息状态到数据库
-     *
-     * @param messageId 消息ID
-     * @param status    状态
-     * @param remark    备注
-     * @param costTime  消费耗时
-     */
-    private void updateMessageStatus(String messageId, ConsumeStatus status, String remark, Long costTime) {
-        try {
-            if (persistenceService != null) {
-                if (ConsumeStatus.CONSUMED.equals(status)) {
-                    persistenceService.recordMessageConsume(messageId, costTime);
-                } else if (ConsumeStatus.CONSUME_FAILED.equals(status)) {
-                    persistenceService.recordMessageConsumeFailure(messageId, remark, costTime);
-                } else {
-                    logger.warn("Unknown consume status for messageId={}, status={}", messageId, status.name());
-                }
-            }
-        } catch (Exception e) {
-            //暂时不抛出异常，避免影响主要业务流程
-            logger.error("Failed to update message status in database: messageId={}, status={}", messageId, status.name(), e);
-        }
-    }
-
-    /**
      * 获取重试次数
+     *
+     * @param amqpMessage AMQP消息
+     * @param messageId   消息ID
      */
-    private int getRetryCount(Message amqpMessage) {
+    private int getRetryCount(Message amqpMessage, String messageId) {
         Map<String, Object> headers = amqpMessage.getMessageProperties().getHeaders();
-        if (headers != null && headers.containsKey("x-retry-count")) {
+        int retryCountInt = 0;
+        if (MapUtil.isNotEmpty(headers) && headers.containsKey("x-retry-count")) {
             Object retryCount = headers.get("x-retry-count");
             if (retryCount instanceof Integer) {
-                return (Integer) retryCount;
+                retryCountInt = (Integer) retryCount;
             }
         }
-        return 0;
+        return retryCountMap.getOrDefault(messageId, new AtomicInteger(retryCountInt)).get();
+    }
+
+    /**
+     * 增加重试次数
+     */
+    private void incrementRetryCount(String messageId) {
+        retryCountMap.computeIfAbsent(messageId, k -> new AtomicInteger(0)).incrementAndGet();
     }
 
     /**
@@ -362,10 +377,10 @@ public class RabbitMQListenerContainer {
                                        String queueName, String messageId, Exception originalException) {
         try {
             // 获取死信队列配置
-            String dlxExchange = listener.getConfig().getDlxExchange();
-            String dlxRoutingKey = listener.getConfig().getDlxRoutingKey();
+            String dlxExchange = skListenerProperties.getDlxExchange();
+            String dlxRoutingKey = skListenerProperties.getDlxRoutingKey();
 
-            if (dlxExchange == null || dlxRoutingKey == null) {
+            if (StrUtil.isBlank(dlxExchange) || StrUtil.isBlank(dlxRoutingKey)) {
                 logger.warn("DLX enabled but no DLX exchange or routing key configured for queue: {}", queueName);
                 return;
             }
@@ -399,8 +414,11 @@ public class RabbitMQListenerContainer {
                 headers.put("x-original-routing-key", amqpMessage.getMessageProperties().getReceivedRoutingKey());
                 headers.put("x-failure-reason", originalException.getMessage());
                 headers.put("x-failure-timestamp", new Date());
-                headers.put("x-retry-count", listener.getConfig().getMaxRetryCount());
+                headers.put("x-retry-count", maxRetryCount);
                 headers.put("x-dead-letter-reason", "max_retries_exceeded");
+                if (skListenerProperties.getDlxMessageTtl() > 0) {
+                    headers.put("expiration", String.valueOf(skListenerProperties.getDlxMessageTtl()));
+                }
 
                 properties.setHeaders(headers);
                 properties.setMessageId(messageId + "_DLQ");
@@ -457,6 +475,49 @@ public class RabbitMQListenerContainer {
         death.put("exchange", dlxExchange);
         death.put("routing-keys", Collections.singletonList(queueName));
         return Collections.singletonList(death);
+    }
+
+    /**
+     * 处理成功结果
+     *
+     * @param messageId 消息ID
+     * @param startTime 开始时间
+     */
+    private void handlePersistenceSuccess(String messageId, long startTime) {
+
+        long costTime = System.currentTimeMillis() - startTime;
+        try {
+            //更新消息状态
+            if (this.isPersistence()) {
+                persistenceService.consumeSuccess(messageId, costTime);
+            }
+        } catch (Exception e) {
+            logger.error("Failed to record consumer success for messageId={}, costTime={}", messageId, costTime, e);
+        }
+    }
+
+    /**
+     * 处理失败结果
+     */
+    private void handlePersistenceFailure(String messageId, String exception, long startTime) {
+        long costTime = System.currentTimeMillis() - startTime;
+        try {
+            //更新消息状态
+            if (this.isPersistence()) {
+                persistenceService.consumeFailure(messageId, exception, costTime);
+            }
+        } catch (Exception e) {
+            logger.error("Failed to record consumer failure for messageId={}, costTime={}", messageId, costTime, e);
+        }
+    }
+
+    /**
+     * 是否启用持久化
+     *
+     * @return boolean
+     */
+    private boolean isPersistence() {
+        return persistenceService != null && persistenceProperties.isEnabled();
     }
 
 }

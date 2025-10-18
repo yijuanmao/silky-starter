@@ -28,10 +28,10 @@ public class NoOpMessagePersistenceService implements MessagePersistenceService 
      * @param description  描述
      */
     @Override
-    public boolean saveMessageBeforeSend(BaseMassageSend message, String exchange, String routingKey, SendMode sendMode, String businessType, String description) {
-        logger.debug("NoOp persistence: Save message before send - messageId: {}, exchange: {}, routingKey: {}",
-                message.getMessageId(), exchange, routingKey);
-        return true;
+    public void saveMessageBeforeSend(BaseMassageSend message, String exchange, String routingKey, SendMode sendMode, String businessType, String description) {
+
+        logger.debug("NoOpMessagePersistenceService: saveMessageBeforeSend called with messageId={}, exchange={}, routingKey={}, sendMode={}, businessType={}, description={}",
+                message.getMessageId(), exchange, routingKey, sendMode, businessType, description);
     }
 
     /**
@@ -43,46 +43,36 @@ public class NoOpMessagePersistenceService implements MessagePersistenceService 
      * @param exception 异常信息
      */
     @Override
-    public boolean updateMessageAfterSend(String messageId, SendStatus status, Long costTime, String exception) {
-        logger.debug("NoOp persistence: Update message after send - messageId: {}, status: {}",
-                messageId, status);
-        return true;
+    public void updateMessageAfterSend(String messageId, SendStatus status, Long costTime, String exception) {
+
+        logger.debug("NoOpMessagePersistenceService: updateMessageAfterSend called with messageId={}, status={}, costTime={}, exception={}",
+                messageId, status, costTime, exception);
     }
 
     /**
-     * 记录消息消费
+     * 消息消费成功
      *
      * @param messageId 消息ID
      * @param costTime  消息消费耗时
      */
     @Override
-    public boolean recordMessageConsume(String messageId, Long costTime) {
-        logger.debug("NoOp persistence: Record message consume - messageId: {}", messageId);
-        return true;
+    public void consumeSuccess(String messageId, Long costTime) {
+
+        logger.debug("NoOpMessagePersistenceService: consumeSuccess called with messageId={}, costTime={}",
+                messageId, costTime);
     }
 
     /**
-     * 记录消息消费失败
+     * 消息消费失败
      *
      * @param messageId 消息ID
      * @param exception 异常信息
      * @param costTime  消息消费耗时
      */
     @Override
-    public boolean recordMessageConsumeFailure(String messageId, String exception, Long costTime) {
-        logger.debug("NoOp persistence: Record message consume failure - messageId: {}, exception: {}",
-                messageId, exception);
-        return true;
-    }
+    public void consumeFailure(String messageId, String exception, Long costTime) {
 
-    /**
-     * 重试发送失败的消息
-     *
-     * @param messageId 消息ID
-     */
-    @Override
-    public boolean retryFailedMessage(String messageId) {
-        logger.debug("NoOp persistence: Retry failed message - messageId: {}", messageId);
-        return false;
+        logger.debug("NoOpMessagePersistenceService: consumeFailure called with messageId={}, exception={}, costTime={}",
+                messageId, exception, costTime);
     }
 }
