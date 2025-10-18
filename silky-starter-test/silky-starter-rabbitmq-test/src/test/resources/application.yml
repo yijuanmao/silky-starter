@@ -30,9 +30,9 @@ spring:
       silky:
         enable_dlx: true               # 启用死信队列功能，默认不启用
         # 死信交换机名称,不给默认："silky.default.dlx.exchange"
-        dlx_exchange: "dlx.exchange"
+#        dlx_exchange: "dlx.exchange"
         # 死信路由键,不给默认："silky.default.dlx.routingKey"
-        dlx_routing_key: "dlx.routing.key"
+#        dlx_routing_key: "dlx.routing.key"
         #列延时时间，单位毫秒,默认，0，单位毫秒
         dlx-message-ttl: 1000
       simple:
