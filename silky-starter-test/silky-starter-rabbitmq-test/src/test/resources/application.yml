@@ -1,9 +1,8 @@
 spring:
   #mq配置
   rabbitmq:
-    #host: localhost
-    host: 192.168.1.58
-    port: 5673
+    host: localhost
+    port: 5672
     username: admin
     password: admin
     #虚拟host 可以不设置,使用server默认host
@@ -24,6 +23,35 @@ spring:
       persistence:
         enabled: true                 # 禁用持久化（使用空实现）
         # 持久化类型,默认 MEMORY（内存）, DATABASE（数据库）, REDIS（redis）, MONGO(MongoDB)，CUSTOM（自定义）
-        type: DATABASE
+#        type: DATABASE
+
+    listener:
+      # silky组件监听配置
+      silky:
+        enable_dlx: true               # 启用死信队列功能，默认不启用
+        # 死信交换机名称,不给默认："silky.default.dlx.exchange"
+        dlx_exchange: "dlx.exchange"
+        # 死信路由键,不给默认："silky.default.dlx.routingKey"
+        dlx_routing_key: "dlx.routing.key"
+        #列延时时间，单位毫秒,默认，0，单位毫秒
+        dlx-message-ttl: 1000
+      simple:
+        default-requeue-rejected: false
+        #设置手动确认,auto：自动，manual:手动
+        acknowledge-mode: manual
+        # 消费端的监听个数(即@RabbitListener开启几个线程去处理数据。)
+        concurrency: 1
+        # 消费端的监听最大个数
+        max-concurrency: 20
+        prefetch: 10
+
+        retry:
+          # 开启消费者(程序出现异常)重试机制，默认开启并一直重试
+          enabled: false
+          # 最大重试次数
+          max-attempts: 5
+          # 重试间隔时间(毫秒)
+          initial-interval: 3000
+
 
 
