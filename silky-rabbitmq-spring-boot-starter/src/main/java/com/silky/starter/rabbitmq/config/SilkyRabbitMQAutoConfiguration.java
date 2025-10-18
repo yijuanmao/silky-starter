@@ -2,6 +2,7 @@ package com.silky.starter.rabbitmq.config;
 
 import com.silky.starter.rabbitmq.aop.RabbitMessageAspect;
 import com.silky.starter.rabbitmq.listener.RabbitMQListenerContainer;
+import com.silky.starter.rabbitmq.listener.registry.ListenerRegistry;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
 import com.silky.starter.rabbitmq.persistence.impl.NoOpMessagePersistenceService;
 import com.silky.starter.rabbitmq.properties.SilkyRabbitListenerProperties;
@@ -22,7 +23,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -117,24 +117,30 @@ public class SilkyRabbitMQAutoConfiguration {
         return new RabbitMessageAspect(rabbitSendTemplate, messagePersistenceService);
     }
 
-    @Bean("rabbitMQListenerContainer")
-    @Lazy  // 添加这个注解, 避免循环依赖
+    @Bean
+    @ConditionalOnMissingBean
+    public ListenerRegistry listenerRegistry() {
+        return new ListenerRegistry();
+    }
+
+    @Bean
     @ConditionalOnMissingBean
     public RabbitMQListenerContainer rabbitMQListenerContainer(RabbitMqMessageSerializer messageSerializer,
                                                                MessagePersistenceService persistenceService,
                                                                RabbitTemplate rabbitTemplate,
                                                                RabbitProperties rabbitProperties,
                                                                SilkyRabbitListenerProperties skListenerProperties,
-                                                               SilkyRabbitMQProperties silkyRabbitMQProperties) {
+                                                               SilkyRabbitMQProperties silkyRabbitMQProperties,
+                                                               ListenerRegistry listenerRegistry) {
         return new RabbitMQListenerContainer(
                 messageSerializer,
                 persistenceService,
                 rabbitTemplate,
                 rabbitProperties,
                 skListenerProperties,
-                silkyRabbitMQProperties.getPersistence());
+                silkyRabbitMQProperties.getPersistence(),
+                listenerRegistry);
     }
-
 
     @PostConstruct
     public void initialize() {

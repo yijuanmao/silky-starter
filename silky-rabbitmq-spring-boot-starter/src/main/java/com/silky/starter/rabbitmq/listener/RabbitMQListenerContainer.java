@@ -5,6 +5,7 @@ import cn.hutool.core.util.StrUtil;
 import com.rabbitmq.client.Channel;
 import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
 import com.silky.starter.rabbitmq.exception.RabbitMessageSendException;
+import com.silky.starter.rabbitmq.listener.registry.ListenerRegistry;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
 import com.silky.starter.rabbitmq.properties.SilkyRabbitListenerProperties;
 import com.silky.starter.rabbitmq.properties.SilkyRabbitMQProperties;
@@ -64,25 +65,25 @@ public class RabbitMQListenerContainer {
 
     private final SilkyRabbitMQProperties.PersistenceProperties persistenceProperties;
 
+    private final ListenerRegistry listenerRegistry;
+
     /**
      * 重试计数缓存：messageId -> retryCount
      */
     private final Map<String, AtomicInteger> retryCountMap = new ConcurrentHashMap<>();
 
-    /**
-     * 监听器缓存：queueName -> listener
-     */
-    private final Map<String, RabbitMQListener<?>> listenerMap = new ConcurrentHashMap<>();
 
     public RabbitMQListenerContainer(RabbitMqMessageSerializer messageSerializer, MessagePersistenceService persistenceService,
                                      RabbitTemplate rabbitTemplate, RabbitProperties rabbitProperties,
                                      SilkyRabbitListenerProperties listenerProperties,
-                                     SilkyRabbitMQProperties.PersistenceProperties persistenceProperties) {
+                                     SilkyRabbitMQProperties.PersistenceProperties persistenceProperties,
+                                     ListenerRegistry listenerRegistry) {
         this.messageSerializer = messageSerializer;
         this.persistenceService = persistenceService;
         this.rabbitTemplate = rabbitTemplate;
         this.listenerProperties = listenerProperties;
         this.persistenceProperties = persistenceProperties;
+        this.listenerRegistry = listenerRegistry;
 
         this.autoAck = rabbitProperties.getListener().getSimple().getAcknowledgeMode().isAutoAck();
         this.retryEnabled = rabbitProperties.getListener().getSimple().getRetry().isEnabled();
@@ -91,29 +92,17 @@ public class RabbitMQListenerContainer {
         this.enableDlx = listenerProperties.isEnableDlx();
     }
 
-
-    /**
-     * 注册监听器
-     */
-    public void registerListener(RabbitMQListener<?> listener) {
-        String queueName = listener.getQueueName();
-        listenerMap.put(queueName, listener);
-        logger.info("Registered RabbitMQ listener for queue: {}, message type: {}",
-                queueName, listener.getMessageType().getSimpleName());
-    }
-
     /**
      * 获取所有监听器的队列名称
      */
-    public String[] getListenerQueueNames() {
-        return listenerMap.keySet().toArray(new String[0]);
-    }
+ /*   public String[] getListenerQueueNames() {
+        return listenerRegistry.getListenerQueueNames();
+    }*/
 
     /**
      * 统一的消息处理方法 - 重构版（结构更清晰）
      */
-//    @RabbitListener(queues = "#{@rabbitMQListenerContainer.getListenerQueueNames()}")
-    @RabbitListener(queues = "#{rabbitMQListenerContainer.getListenerQueueNames()}")
+    @RabbitListener(queues = "#{listenerRegistry.getListenerQueueNames()}")
     public void handleMessage(Message amqpMessage,
                               Channel channel,
                               @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag,
@@ -153,7 +142,7 @@ public class RabbitMQListenerContainer {
      * 验证监听器是否存在
      */
     private RabbitMQListener<?> validateListener(ProcessingContext context) {
-        RabbitMQListener<?> listener = listenerMap.get(context.queueName);
+        RabbitMQListener<?> listener = listenerRegistry.getListener(context.queueName);
         if (listener == null) {
             String errorMsg = StrUtil.format("No listener found for queue: {}, messageId: {}",
                     context.queueName, context.messageId);
@@ -412,6 +401,7 @@ public class RabbitMQListenerContainer {
 
         return headers;
     }
+
 
     // ========== 工具方法 ==========
 

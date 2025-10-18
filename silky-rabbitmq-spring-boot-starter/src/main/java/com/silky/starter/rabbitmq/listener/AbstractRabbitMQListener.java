@@ -1,10 +1,11 @@
 package com.silky.starter.rabbitmq.listener;
 
-import cn.hutool.core.thread.ThreadUtil;
 import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
+import com.silky.starter.rabbitmq.listener.registry.ListenerRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.SmartLifecycle;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -15,15 +16,17 @@ import java.lang.reflect.Type;
  * @author zy
  * @date 2025-10-16 10:43
  **/
-public abstract class AbstractRabbitMQListener<T extends BaseMassageSend> implements RabbitMQListener<T> {
+public abstract class AbstractRabbitMQListener<T extends BaseMassageSend> implements RabbitMQListener<T>, SmartLifecycle {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
     @Autowired
-    private RabbitMQListenerContainer listenerContainer;
+    private ListenerRegistry listenerRegistry;
 
     private final Class<T> messageType;
     private final String queueName;
+
+    private boolean running = false;
 
 
     @SuppressWarnings("unchecked")
@@ -43,28 +46,29 @@ public abstract class AbstractRabbitMQListener<T extends BaseMassageSend> implem
         } else {
             throw new IllegalArgumentException("Subclass must specify generic type parameter");
         }
-        // 自动注册到容器
-        registerToContainer();
     }
 
     /**
-     * 注册到监听器容器
+     * 启动时注册到注册表
      */
-    private void registerToContainer() {
-        // 使用后置初始化来确保 listenerContainer 已注入
-        ThreadUtil.execute(() -> {
-            try {
-                // 等待 Spring 容器完全初始化
-                Thread.sleep(100);
-                if (listenerContainer != null) {
-                    listenerContainer.registerListener(this);
-                    logger.info("Auto-registered listener for queue: {}", queueName);
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                logger.error("Failed to auto-register listener for queue: {}", queueName, e);
-            }
-        });
+    @Override
+    public void start() {
+        if (!running) {
+            listenerRegistry.registerListener(this);
+            running = true;
+            logger.info("Started and registered listener for queue: {}", queueName);
+        }
+    }
+
+    @Override
+    public void stop() {
+        running = false;
+        logger.info("Stopped listener for queue: {}", queueName);
+    }
+
+    @Override
+    public boolean isRunning() {
+        return running;
     }
 
     /**
