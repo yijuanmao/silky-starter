@@ -60,8 +60,6 @@ public class RabbitMQListenerContainer {
 
     private final RabbitTemplate rabbitTemplate;
 
-    private final RabbitProperties rabbitProperties;
-
     private final SilkyRabbitListenerProperties listenerProperties;
 
     private final SilkyRabbitMQProperties.PersistenceProperties persistenceProperties;
@@ -83,7 +81,6 @@ public class RabbitMQListenerContainer {
         this.messageSerializer = messageSerializer;
         this.persistenceService = persistenceService;
         this.rabbitTemplate = rabbitTemplate;
-        this.rabbitProperties = rabbitProperties;
         this.listenerProperties = listenerProperties;
         this.persistenceProperties = persistenceProperties;
 
@@ -126,17 +123,25 @@ public class RabbitMQListenerContainer {
         try {
             // 1. 验证监听器
             RabbitMQListener<?> listener = validateListener(context);
-            if (listener == null) return;
+            if (listener == null) {
+                logger.warn("Listener validation failed, messageId: {}, queue: {}",
+                        context.messageId, context.queueName);
+                return;
+            }
 
             // 2. 反序列化消息
             Object message = deserializeMessage(context, listener);
-            if (message == null) return;
+            if (message == null) {
+                logger.warn("Message deserialization failed, messageId: {}, queue: {}",
+                        context.messageId, context.queueName);
+                return;
+            }
 
             // 3. 处理消息
-            processMessage(context, listener, message);
+            this.processMessage(context, listener, message);
 
             // 4. 确认消息
-            acknowledgeMessage(context);
+            this.acknowledgeMessage(context);
 
         } catch (Exception e) {
             handleProcessingException(context, e);
