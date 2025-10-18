@@ -1,12 +1,11 @@
 package com.silky.starter.rabbitmq.test.service;
 
 import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
-import com.silky.starter.rabbitmq.enums.SendStatus;
 import com.silky.starter.rabbitmq.enums.SendMode;
+import com.silky.starter.rabbitmq.enums.SendStatus;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
 
 /**
  * 基于数据库的消息持久化服务实现
@@ -14,6 +13,7 @@ import java.time.LocalDateTime;
  * @author zy
  * @date 2025-10-16 18:03
  **/
+@Slf4j
 @Service
 public class DatabaseMessagePersistenceService implements MessagePersistenceService {
 
@@ -26,32 +26,12 @@ public class DatabaseMessagePersistenceService implements MessagePersistenceServ
      * @param sendMode     发送模式
      * @param businessType 业务类型
      * @param description  描述
-     * @return 是否保存成功
      */
     @Override
-    public boolean saveMessageBeforeSend(BaseMassageSend message, String exchange, String routingKey, SendMode sendMode, String businessType, String description) {
-        LocalDateTime now = LocalDateTime.now();
+    public void saveMessageBeforeSend(BaseMassageSend message, String exchange, String routingKey, SendMode sendMode, String businessType, String description) {
 
-        //这里比如是数据库持久化操作
-//        RabbitmqMessageRecord record = RabbitmqMessageRecord.builder()
-//                //主键id，根据自己业务生成
-//                .id(IdUtil.getWorkerId(0L, 30L))
-//                .createTime(now)
-//                .updateTime(now)
-//                .messageId(message.getMessageId())
-//                .exchange(exchange)
-//                .routingKey(routingKey)
-//                .messageBody(JSONObject.toJSONString(message))
-//                .msgStatus(MessageStatus.PENDING)
-//                .businessType(businessType)
-//                .description(description)
-//                .retryCount(0)
-//                .sendMode(sendMode)
-//                .costTime(0L)
-//                .build();
-
-        //调用自己的持久化方法保存到数据库
-        return true;
+        log.info("保存消息记录: messageId={}, exchange={}, routingKey={}, sendMode={}, businessType={}, description={}",
+                message.getMessageId(), exchange, routingKey, sendMode, businessType, description);
     }
 
     /**
@@ -61,53 +41,33 @@ public class DatabaseMessagePersistenceService implements MessagePersistenceServ
      * @param status    消息状态
      * @param costTime  消息发送耗时
      * @param exception 异常信息
-     * @return 是否保存成功
      */
     @Override
-    public boolean updateMessageAfterSend(String messageId, SendStatus status, Long costTime, String exception) {
-
-        //调用自己的持久化方法保存到数据库
-        return false;
+    public void updateMessageAfterSend(String messageId, SendStatus status, Long costTime, String exception) {
+        log.info("更新消息发送结果: messageId={}, status={}, costTime={}, exception={}",
+                messageId, status, costTime, exception);
     }
 
     /**
-     * 记录消息消费
+     * 消息消费成功
      *
      * @param messageId 消息ID
      * @param costTime  消息消费耗时
-     * @return 是否保存成功
      */
     @Override
-    public boolean recordMessageConsume(String messageId, Long costTime) {
-
-        //操作数据库
-        return false;
+    public void consumeSuccess(String messageId, Long costTime) {
+        log.info("消息消费成功: messageId={}, costTime={}", messageId, costTime);
     }
 
     /**
-     * 记录消息消费失败
+     * 消息消费失败
      *
      * @param messageId 消息ID
      * @param exception 异常信息
      * @param costTime  消息消费耗时
-     * @return 是否保存成功
      */
     @Override
-    public boolean recordMessageConsumeFailure(String messageId, String exception, Long costTime) {
-
-        //操作数据库
-        return false;
-    }
-
-    /**
-     * 重试发送失败的消息
-     *
-     * @param messageId 消息ID
-     */
-    @Override
-    public boolean retryFailedMessage(String messageId) {
-
-        //操作数据库
-        return false;
+    public void consumeFailure(String messageId, String exception, Long costTime) {
+        log.info("消息消费失败: messageId={}, exception={}, costTime={}", messageId, exception, costTime);
     }
 }
