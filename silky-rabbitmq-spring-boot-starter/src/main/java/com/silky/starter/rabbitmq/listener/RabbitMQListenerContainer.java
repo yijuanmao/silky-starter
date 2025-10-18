@@ -15,9 +15,18 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerEndpoint;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.listener.RabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistry;
+import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
 import org.springframework.amqp.support.AmqpHeaders;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.boot.autoconfigure.amqp.RabbitProperties;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.messaging.handler.annotation.Header;
 
 import java.io.IOException;
@@ -31,7 +40,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author zy
  * @date 2025-10-18 14:06
  **/
-public class RabbitMQListenerContainer {
+public class RabbitMQListenerContainer implements ApplicationContextAware, SmartInitializingSingleton, InitializingBean {
 
     private static final Logger logger = LoggerFactory.getLogger(RabbitMQListenerContainer.class);
 
@@ -67,6 +76,12 @@ public class RabbitMQListenerContainer {
 
     private final ListenerRegistry listenerRegistry;
 
+    private final RabbitListenerEndpointRegistry endpointRegistry;
+
+    private final RabbitListenerContainerFactory<?> containerFactory;
+
+    private ApplicationContext applicationContext;
+
     /**
      * 重试计数缓存：messageId -> retryCount
      */
@@ -77,13 +92,18 @@ public class RabbitMQListenerContainer {
                                      RabbitTemplate rabbitTemplate, RabbitProperties rabbitProperties,
                                      SilkyRabbitListenerProperties listenerProperties,
                                      SilkyRabbitMQProperties.PersistenceProperties persistenceProperties,
-                                     ListenerRegistry listenerRegistry) {
+                                     ListenerRegistry listenerRegistry,
+                                     RabbitListenerEndpointRegistry endpointRegistry,
+                                     RabbitListenerContainerFactory<?> containerFactory) {
         this.messageSerializer = messageSerializer;
         this.persistenceService = persistenceService;
         this.rabbitTemplate = rabbitTemplate;
         this.listenerProperties = listenerProperties;
         this.persistenceProperties = persistenceProperties;
         this.listenerRegistry = listenerRegistry;
+
+        this.endpointRegistry = endpointRegistry;
+        this.containerFactory = containerFactory;
 
         this.autoAck = rabbitProperties.getListener().getSimple().getAcknowledgeMode().isAutoAck();
         this.retryEnabled = rabbitProperties.getListener().getSimple().getRetry().isEnabled();
@@ -95,14 +115,29 @@ public class RabbitMQListenerContainer {
     /**
      * 获取所有监听器的队列名称
      */
- /*   public String[] getListenerQueueNames() {
+    public String[] getListenerQueueNames() {
         return listenerRegistry.getListenerQueueNames();
-    }*/
+    }
+
+
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        this.applicationContext = applicationContext;
+    }
 
     /**
-     * 统一的消息处理方法 - 重构版（结构更清晰）
+     * 动态获取队列名称（解决初始化顺序问题）
      */
-    @RabbitListener(queues = "#{listenerRegistry.getListenerQueueNames()}")
+    public String[] getDynamicListenerQueueNames() {
+        ListenerRegistry registry = applicationContext.getBean(ListenerRegistry.class);
+        return registry.getListenerQueueNames();
+    }
+
+    /**
+     * 统一的消息处理方法
+     */
+//    @RabbitListener(queues = "#{rabbitMQListenerContainer.getDynamicListenerQueueNames()}")
+//    @RabbitListener(queues = "#{listenerRegistry.getListenerQueueNames()}")
     public void handleMessage(Message amqpMessage,
                               Channel channel,
                               @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag,
@@ -400,6 +435,57 @@ public class RabbitMQListenerContainer {
         }
 
         return headers;
+    }
+
+    @Override
+    public void afterSingletonsInstantiated() {
+        // 在所有Bean初始化完成后注册监听器
+//        registerListeners();
+    }
+
+    private void registerListeners() {
+//        String[] queueNames = listenerRegistry.getListenerQueueNames();
+        String[] queueNames = new String[]{"example.retry.order.queue"};
+        logger.info("开始注册 RabbitMQ 监听器，队列数量: {}", queueNames.length);
+        if (queueNames.length == 0) {
+            logger.warn("未找到任何注册的监听器，请检查监听器配置");
+            return;
+        }
+
+        for (String queueName : queueNames) {
+            registerListenerForQueue(queueName);
+        }
+
+        logger.info("RabbitMQ 监听器注册完成，共注册 {} 个队列", queueNames.length);
+    }
+
+    private void registerListenerForQueue(String queueName) {
+        try {
+            SimpleRabbitListenerEndpoint endpoint = new SimpleRabbitListenerEndpoint();
+            endpoint.setId("silky-listener-" + queueName);
+            endpoint.setQueueNames(queueName);
+            endpoint.setMessageListener((ChannelAwareMessageListener) (message, channel) -> {
+                // 手动构建参数
+                long deliveryTag = message.getMessageProperties().getDeliveryTag();
+                String consumerQueue = message.getMessageProperties().getConsumerQueue();
+
+                if (consumerQueue == null) {
+                    consumerQueue = queueName; // 备用方案
+                }
+                // 调用处理方法
+                handleMessage(message, channel, deliveryTag, consumerQueue);
+            });
+            endpointRegistry.registerListenerContainer(endpoint, containerFactory, true);
+            logger.info("成功注册监听器 - 队列: {}, 监听器ID: {}", queueName, endpoint.getId());
+
+        } catch (Exception e) {
+            logger.error("注册监听器失败 - 队列: {}", queueName, e);
+        }
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        registerListeners();
     }
 
 

@@ -27,7 +27,7 @@ public class RabbitMQDelayListener {
      * @param message 消息对象
      * @param channel RabbitMQ通道
      */
-    @RabbitListener(queues = RabbitMqBindConfig.EXAMPLE_ORDER_DELAY_QUEUE)
+    /*@RabbitListener(queues = RabbitMqBindConfig.EXAMPLE_ORDER_DELAY_QUEUE)
     public void onMessage(Message message, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) {
         String msg = new String(message.getBody());
         log.info("Received delayed message: {}, tag: {}", msg, tag);
@@ -41,6 +41,6 @@ public class RabbitMQDelayListener {
             log.error("Error processing order: {}", msg, e);
             throw new RuntimeException("order processing failed", e);
         }
-    }
+    }*/
 
 }
