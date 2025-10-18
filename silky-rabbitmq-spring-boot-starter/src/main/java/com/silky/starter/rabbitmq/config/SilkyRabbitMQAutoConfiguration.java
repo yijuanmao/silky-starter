@@ -22,7 +22,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Lazy;
 
 import javax.annotation.PostConstruct;
@@ -34,7 +33,7 @@ import javax.annotation.PreDestroy;
  * @author zy
  * @date 2025-10-12 10:14
  **/
-@Import(SilkyRabbitMQQueueConfig.class)
+//@Import(SilkyRabbitMQQueueConfig.class)
 @Configuration
 @EnableConfigurationProperties({SilkyRabbitMQProperties.class, SilkyRabbitListenerProperties.class})
 @ConditionalOnClass(RabbitTemplate.class)
@@ -118,7 +117,7 @@ public class SilkyRabbitMQAutoConfiguration {
         return new RabbitMessageAspect(rabbitSendTemplate, messagePersistenceService);
     }
 
-    @Bean
+    @Bean("rabbitMQListenerContainer")
     @Lazy  // 添加这个注解, 避免循环依赖
     @ConditionalOnMissingBean
     public RabbitMQListenerContainer rabbitMQListenerContainer(RabbitMqMessageSerializer messageSerializer,

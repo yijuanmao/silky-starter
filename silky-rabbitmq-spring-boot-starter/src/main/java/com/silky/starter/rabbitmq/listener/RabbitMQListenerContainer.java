@@ -112,7 +112,8 @@ public class RabbitMQListenerContainer {
     /**
      * 统一的消息处理方法 - 重构版（结构更清晰）
      */
-    @RabbitListener(queues = "#{@rabbitMQListenerContainer.getListenerQueueNames()}")
+//    @RabbitListener(queues = "#{@rabbitMQListenerContainer.getListenerQueueNames()}")
+    @RabbitListener(queues = "#{rabbitMQListenerContainer.getListenerQueueNames()}")
     public void handleMessage(Message amqpMessage,
                               Channel channel,
                               @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag,

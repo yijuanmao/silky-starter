@@ -12,14 +12,14 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 /**
- * 单条消息监听器
+ * RabbitMQ延时队列监听器
  *
  * @author zy
  * @date 2025-10-16 11:41
  **/
 @Slf4j
 @Component
-public class RabbitMQListenerTest {
+public class RabbitMQDelayListener {
 
     /**
      * 处理消息
@@ -27,18 +27,18 @@ public class RabbitMQListenerTest {
      * @param message 消息对象
      * @param channel RabbitMQ通道
      */
-    @RabbitListener(queues = RabbitMqBindConfig.EXAMPLE_ORDER_QUEUE)
+    @RabbitListener(queues = RabbitMqBindConfig.EXAMPLE_ORDER_DELAY_QUEUE)
     public void onMessage(Message message, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) {
         String msg = new String(message.getBody());
-        log.info("Processing order message: {}", msg);
+        log.info("Received delayed message: {}, tag: {}", msg, tag);
         // 支付处理逻辑
         try {
             TradeOrder tradeOrder = JSONObject.parseObject(msg, TradeOrder.class);
-            log.info("order processed successfully: {}", tradeOrder.getOrderId());
+            log.info("Processing payment for order: {}", tradeOrder);
             // 手动确认消费
             channel.basicAck(tag, false);
         } catch (Exception e) {
-            log.error("Failed to process payment: {}", msg, e);
+            log.error("Error processing order: {}", msg, e);
             throw new RuntimeException("order processing failed", e);
         }
     }

@@ -29,6 +29,9 @@ public class ExampleRabbitSendTemplateTest extends RabbitMqApplicationTest {
     private static final String delayRoutingKey = RabbitMqBindConfig.EXAMPLE_DELAY_ROUTING_KEY;
 
 
+    private static final String RETRY_EXCHANGE = RabbitMqBindConfig.EXAMPLE_RETRY_EXCHANGE;
+    private static final String RETRY_ROUTING_KEY = RabbitMqBindConfig.EXAMPLE_RETRY_ROUTING_KEY;
+
     @Autowired
     private RabbitSendTemplate rabbitSendTemplate;
     @Autowired
@@ -108,6 +111,21 @@ public class ExampleRabbitSendTemplateTest extends RabbitMqApplicationTest {
         //普通发送消息
         SendResult send1 = rabbitSendTemplate.send(exchange, routingKey, order);
         log.info("发送并保存到数据库测试方法发送结果：{}", send1);
+
+        ThreadUtil.sleep(20300);
+    }
+
+    /**
+     * 发送重试消息测试方法
+     */
+    @Test
+    public void testRetry() {
+        //普通发送消息
+        TradeOrder order = new TradeOrder(6L, LocalDateTime.now(), "测试MQ发送-重试消息", BigDecimal.ONE);
+
+        //普通发送消息
+        SendResult send1 = rabbitSendTemplate.send(RETRY_EXCHANGE, RETRY_ROUTING_KEY, order);
+        log.info("发送重试消息测试方法发送结果：{}", send1);
 
         ThreadUtil.sleep(20300);
     }
