@@ -4,8 +4,8 @@ import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
 import com.silky.starter.rabbitmq.listener.registry.ListenerRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.SmartLifecycle;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -16,7 +16,7 @@ import java.lang.reflect.Type;
  * @author zy
  * @date 2025-10-16 10:43
  **/
-public abstract class AbstractRabbitMQListener<T extends BaseMassageSend> implements RabbitMQListener<T>, SmartLifecycle {
+public abstract class AbstractRabbitMQListener<T extends BaseMassageSend> implements RabbitMQListener<T>, InitializingBean {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -25,8 +25,6 @@ public abstract class AbstractRabbitMQListener<T extends BaseMassageSend> implem
 
     private final Class<T> messageType;
     private final String queueName;
-
-    private boolean running = false;
 
 
     @SuppressWarnings("unchecked")
@@ -48,28 +46,6 @@ public abstract class AbstractRabbitMQListener<T extends BaseMassageSend> implem
         }
     }
 
-    /**
-     * 启动时注册到注册表
-     */
-    @Override
-    public void start() {
-        if (!running) {
-            listenerRegistry.registerListener(this);
-            running = true;
-            logger.info("Started and registered listener for queue: {}", queueName);
-        }
-    }
-
-    @Override
-    public void stop() {
-        running = false;
-        logger.info("Stopped listener for queue: {}", queueName);
-    }
-
-    @Override
-    public boolean isRunning() {
-        return running;
-    }
 
     /**
      * 获取消息类型
@@ -85,5 +61,11 @@ public abstract class AbstractRabbitMQListener<T extends BaseMassageSend> implem
     @Override
     public String getQueueName() {
         return queueName;
+    }
+
+    @Override
+    public void afterPropertiesSet() {
+        logger.info("Registering listener for queue: {}", queueName);
+        listenerRegistry.registerListener(this);
     }
 }

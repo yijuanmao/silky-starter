@@ -126,33 +126,33 @@ public class RabbitMqBindConfig {
     /**
      * 订单延迟插件消息队列所绑定的交换机
      */
-//    @Bean
-//    CustomExchange orderPluginDirect() {
-//        //创建一个自定义交换机，可以发送延迟消息
-//        Map<String, Object> args = new HashMap<>(3);
-//        args.put("x-delayed-type", "direct");
-//        return new CustomExchange(EXAMPLE_DELAY_EXCHANGE, "x-delayed-message", true, false, args);
-//    }
+    @Bean
+    CustomExchange orderPluginDirect() {
+        //创建一个自定义交换机，可以发送延迟消息
+        Map<String, Object> args = new HashMap<>(3);
+        args.put("x-delayed-type", "direct");
+        return new CustomExchange(EXAMPLE_DELAY_EXCHANGE, "x-delayed-message", true, false, args);
+    }
 
     /**
      * 订单延迟插件队列
      */
-//    @Bean
-//    public Queue orderPluginQueue() {
-//        return QueueBuilder
-//                .durable(EXAMPLE_ORDER_DELAY_QUEUE)
-//                .build();
-//    }
+    @Bean
+    public Queue orderPluginQueue() {
+        return QueueBuilder
+                .durable(EXAMPLE_ORDER_DELAY_QUEUE)
+                .build();
+    }
 
     /**
      * 将订单延迟插件队列绑定到交换机
      */
-//    @Bean
-//    public Binding orderPluginBinding(CustomExchange orderPluginDirect, Queue orderPluginQueue) {
-//        return BindingBuilder
-//                .bind(orderPluginQueue)
-//                .to(orderPluginDirect)
-//                .with(EXAMPLE_DELAY_ROUTING_KEY)
-//                .noargs();
-//    }
+    @Bean
+    public Binding orderPluginBinding(CustomExchange orderPluginDirect, Queue orderPluginQueue) {
+        return BindingBuilder
+                .bind(orderPluginQueue)
+                .to(orderPluginDirect)
+                .with(EXAMPLE_DELAY_ROUTING_KEY)
+                .noargs();
+    }
 }

@@ -15,8 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.amqp.rabbit.listener.RabbitListenerContainerFactory;
-import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistry;
 import org.springframework.boot.autoconfigure.amqp.RabbitProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -127,26 +125,17 @@ public class SilkyRabbitMQAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-//    @ConditionalOnBean({RabbitListenerEndpointRegistry.class})
     public RabbitMQListenerContainer rabbitMQListenerContainer(RabbitMqMessageSerializer messageSerializer,
                                                                MessagePersistenceService persistenceService,
                                                                RabbitTemplate rabbitTemplate,
                                                                RabbitProperties rabbitProperties,
                                                                SilkyRabbitListenerProperties skListenerProperties,
                                                                SilkyRabbitMQProperties silkyRabbitMQProperties,
-                                                               ListenerRegistry listenerRegistry,
-                                                               RabbitListenerEndpointRegistry endpointRegistry,
-                                                               RabbitListenerContainerFactory<?> containerFactory) {
-        return new RabbitMQListenerContainer(
-                messageSerializer,
-                persistenceService,
-                rabbitTemplate,
-                rabbitProperties,
-                skListenerProperties,
-                silkyRabbitMQProperties.getPersistence(),
-                listenerRegistry,
-                endpointRegistry,
-                containerFactory);
+                                                               ListenerRegistry listenerRegistry) {
+        return new RabbitMQListenerContainer(messageSerializer, persistenceService,
+                rabbitTemplate, rabbitProperties, skListenerProperties,
+                silkyRabbitMQProperties.getPersistence(), listenerRegistry
+        );
     }
 
     @PostConstruct

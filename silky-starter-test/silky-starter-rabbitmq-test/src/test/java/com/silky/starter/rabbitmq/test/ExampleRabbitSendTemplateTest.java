@@ -121,7 +121,7 @@ public class ExampleRabbitSendTemplateTest extends RabbitMqApplicationTest {
     @Test
     public void testRetry() {
         //普通发送消息
-        TradeOrder order = new TradeOrder(6L, LocalDateTime.now(), "测试MQ发送-重试消息", BigDecimal.ONE);
+        TradeOrder order = new TradeOrder(System.currentTimeMillis(), LocalDateTime.now(), "测试MQ发送-重试消息", BigDecimal.ONE);
 
         //普通发送消息
         SendResult send1 = rabbitSendTemplate.send(RETRY_EXCHANGE, RETRY_ROUTING_KEY, order);

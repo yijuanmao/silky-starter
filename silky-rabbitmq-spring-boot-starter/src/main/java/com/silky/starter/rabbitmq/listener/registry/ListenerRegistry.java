@@ -3,6 +3,7 @@ package com.silky.starter.rabbitmq.listener.registry;
 import com.silky.starter.rabbitmq.listener.RabbitMQListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.Ordered;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -13,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author zy
  * @date 2025-10-18 15:42
  **/
-public class ListenerRegistry {
+public class ListenerRegistry implements Ordered {
 
     private static final Logger logger = LoggerFactory.getLogger(ListenerRegistry.class);
 
@@ -58,5 +59,10 @@ public class ListenerRegistry {
      */
     public int getListenerCount() {
         return listenerMap.size();
+    }
+
+    @Override
+    public int getOrder() {
+        return 1;
     }
 }
