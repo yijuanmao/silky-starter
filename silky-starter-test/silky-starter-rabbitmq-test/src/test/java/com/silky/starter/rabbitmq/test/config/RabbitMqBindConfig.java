@@ -130,7 +130,8 @@ public class RabbitMqBindConfig {
     CustomExchange orderPluginDirect() {
         //创建一个自定义交换机，可以发送延迟消息
         Map<String, Object> args = new HashMap<>(3);
-        args.put("x-delayed-type", "direct");
+        //本地测试，没有安装延迟插件，可以注释掉下面一行代码
+//        args.put("x-delayed-type", "direct");
         return new CustomExchange(EXAMPLE_DELAY_EXCHANGE, "x-delayed-message", true, false, args);
     }
 

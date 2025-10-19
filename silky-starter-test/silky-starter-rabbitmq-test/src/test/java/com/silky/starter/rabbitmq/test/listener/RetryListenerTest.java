@@ -41,7 +41,13 @@ public class RetryListenerTest extends AbstractRabbitMQListener<TradeOrder> {
     }
 
 
+    /**
+     * 处理业务
+     *
+     * @param message 消息对象
+     */
     private void handleBusiness(TradeOrder message) {
         log.info("重试消息监听器接收到消息: {}", message);
+        throw new RuntimeException("处理业务异常" + message);
     }
 }

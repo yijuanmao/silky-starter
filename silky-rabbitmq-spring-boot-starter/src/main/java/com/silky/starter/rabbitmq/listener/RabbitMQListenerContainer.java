@@ -123,7 +123,7 @@ public class RabbitMQListenerContainer implements Ordered {
             }
 
             // 2. 反序列化消息
-            Object message = deserializeMessage(context, listener);
+            Object message = this.deserializeMessage(context, listener);
             if (message == null) {
                 logger.warn("Message deserialization failed, messageId: {}, queue: {}",
                         context.messageId, context.queueName);
@@ -136,7 +136,7 @@ public class RabbitMQListenerContainer implements Ordered {
             this.acknowledgeMessage(context);
 
         } catch (Exception e) {
-            handleProcessingException(context, e);
+            this.handleProcessingException(context, e);
         }
     }
 
