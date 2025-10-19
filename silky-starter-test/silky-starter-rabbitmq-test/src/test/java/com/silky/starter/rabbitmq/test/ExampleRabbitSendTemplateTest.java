@@ -127,6 +127,6 @@ public class ExampleRabbitSendTemplateTest extends RabbitMqApplicationTest {
         SendResult send1 = rabbitSendTemplate.send(RETRY_EXCHANGE, RETRY_ROUTING_KEY, order);
         log.info("发送重试消息测试方法发送结果：{}", send1);
 
-        ThreadUtil.sleep(20300);
+//        ThreadUtil.sleep(20300);
     }
 }

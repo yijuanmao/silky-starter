@@ -1,6 +1,7 @@
 package com.silky.starter.rabbitmq;
 
 import org.slf4j.Logger;
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,5 +18,10 @@ public class RabbitMqApplicationTest {
 
     protected final Logger log = org.slf4j.LoggerFactory.getLogger(this.getClass());
 
-
+    public static void main(String[] args) {
+        SpringApplication.run(RabbitMqApplicationTest.class, args);
+        System.out.println("===================================" +
+                "======== Silky Rabbit MQ 启动成功=========" +
+                "===================================");
+    }
 }
