@@ -11,11 +11,11 @@ import org.springframework.context.annotation.Import;
  * @date 2025-10-21 15:01
  **/
 @Configuration
-@EnableConfigurationProperties(RedisComponentProperties.class)
-@Import({
-        RedisComponentAutoConfiguration.RedisConfig.class,
-        RedisComponentAutoConfiguration.LockConfig.class,
-        RedisComponentAutoConfiguration.SequenceConfig.class
-})
+//@EnableConfigurationProperties(RedisComponentProperties.class)
+//@Import({
+//        RedisComponentAutoConfiguration.RedisConfig.class,
+//        RedisComponentAutoConfiguration.LockConfig.class,
+//        RedisComponentAutoConfiguration.SequenceConfig.class
+//})
 public class RedisComponentAutoConfiguration {
 }
