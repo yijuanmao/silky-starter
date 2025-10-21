@@ -13,47 +13,6 @@
     <description>silky组件</description>
     <url>https://github.com/yijuanmao/silky-starter/tree/master</url>
 
-    <!-- 许可证 -->
-    <licenses>
-        <license>
-            <name>The Apache Software License, Version 2.0</name>
-            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-        </license>
-    </licenses>
-
-    <!-- 开发者信息 -->
-    <developers>
-        <developer>
-            <id>zengyi</id>
-            <name>zengyi</name>
-            <email>824414828@qq.com</email>
-            <roles>
-                <role>Owner</role>
-            </roles>
-        </developer>
-    </developers>
-
-    <!-- SCM（版本控制）信息 -->
-    <scm>
-        <connection>scm:git:git@github.com:yijuanmao/silky-starter.git</connection>
-        <developerConnection>scm:git:git@github.com/yijuanmao/silky-starter.git</developerConnection>
-        <url>https://github.com/yijuanmao/silky-starter</url>
-    </scm>
-
-    <distributionManagement>
-        <!-- 此 id 需与 settings.xml 中配置的 server id 一致 -->
-        <repository>
-            <id>silky</id>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
-        <!--  如果发布快照版本，同样需要确保 id 与 settings.xml 中的 server id 一致 -->
-        <snapshotRepository>
-            <id>silky</id>
-            <!-- 统一使用 oss.sonatype.org -->
-            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
-        </snapshotRepository>
-
-    </distributionManagement>
 
     <modules>
         <module>silky-oss-spring-boot-starter</module>
@@ -62,10 +21,11 @@
         <module>silky-mongodb-spring-boot-starter</module>
         <module>silky-statemachine-spring-boot-starter</module>
         <module>silky-rabbitmq-spring-boot-starter</module>
+        <module>silky-redis-spring-boot-starter</module>
     </modules>
 
     <properties>
-        <revision>1.0.1</revision>
+        <revision>1.0.2</revision>
         <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -83,6 +43,7 @@
         <fastjson2.version>2.0.59</fastjson2.version>
         <slf4j-api.version>1.7.36</slf4j-api.version>
         <logback-core.version>1.2.13</logback-core.version>
+        <redisson.vsrson>3.18.0</redisson.vsrson>
     </properties>
 
     <dependencyManagement>
@@ -174,9 +135,58 @@
                 <version>${revision}</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.redisson</groupId>
+                <artifactId>redisson-spring-boot-starter</artifactId>
+                <version>${redisson.vsrson}</version>
+            </dependency>
+
         </dependencies>
 
     </dependencyManagement>
+
+
+    <!-- 许可证 -->
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <!-- 开发者信息 -->
+    <developers>
+        <developer>
+            <id>zengyi</id>
+            <name>zengyi</name>
+            <email>824414828@qq.com</email>
+            <roles>
+                <role>Owner</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <!-- SCM（版本控制）信息 -->
+    <scm>
+        <connection>scm:git:git@github.com:yijuanmao/silky-starter.git</connection>
+        <developerConnection>scm:git:git@github.com/yijuanmao/silky-starter.git</developerConnection>
+        <url>https://github.com/yijuanmao/silky-starter</url>
+    </scm>
+
+    <distributionManagement>
+        <!-- 此 id 需与 settings.xml 中配置的 server id 一致 -->
+        <repository>
+            <id>silky</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+        <!--  如果发布快照版本，同样需要确保 id 与 settings.xml 中的 server id 一致 -->
+        <snapshotRepository>
+            <id>silky</id>
+            <!-- 统一使用 oss.sonatype.org -->
+            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+        </snapshotRepository>
+
+    </distributionManagement>
 
 
     <build>
