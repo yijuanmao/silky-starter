@@ -1,5 +1,6 @@
 package com.silky.starter.redis.lock.config;
 
+import com.silky.starter.redis.lock.aspect.RedisLockAspect;
 import com.silky.starter.redis.lock.template.RedisLockTemplate;
 import org.redisson.api.RedissonClient;
 import org.springframework.context.annotation.Bean;
@@ -17,5 +18,10 @@ public class RedisLockConfig {
     @Bean
     public RedisLockTemplate redisLockTemplate(RedissonClient redissonClient) {
         return new RedisLockTemplate(redissonClient);
+    }
+
+    @Bean
+    public RedisLockAspect redisLockAspect(RedissonClient redissonClient) {
+        return new RedisLockAspect(redissonClient);
     }
 }

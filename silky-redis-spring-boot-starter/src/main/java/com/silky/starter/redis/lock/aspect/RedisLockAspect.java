@@ -2,6 +2,7 @@ package com.silky.starter.redis.lock.aspect;
 
 import com.silky.starter.redis.lock.annotation.RedisLock;
 import com.silky.starter.redis.lock.enums.LockType;
+import com.silky.starter.redis.lock.exception.RedissonException;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -9,10 +10,18 @@ import org.aspectj.lang.reflect.MethodSignature;
 import org.redisson.api.RLock;
 import org.redisson.api.RReadWriteLock;
 import org.redisson.api.RedissonClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.expression.Expression;
+import org.springframework.expression.ExpressionParser;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import java.util.Objects;
 
 /**
  * redis分布式锁切面
@@ -23,6 +32,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Aspect
 @Order(Ordered.LOWEST_PRECEDENCE - 1) // 在事务注解之前执行
 public class RedisLockAspect {
+
+    private static final Logger log = LoggerFactory.getLogger(RedisLockAspect.class);
 
     private final RedissonClient redissonClient;
 
@@ -48,9 +59,8 @@ public class RedisLockAspect {
             isLocked = lock.tryLock(redisLock.waitTime(), redisLock.leaseTime(), redisLock.timeUnit());
 
             if (!isLocked) {
-                throw new RuntimeException("获取分布式锁失败, key: " + lockKey);
+                throw new RedissonException("获取分布式锁失败, key: " + lockKey);
             }
-
             final RLock finalLock = lock;
             final boolean requiresTransactionRelease = redisLock.releaseAfterTransaction() &&
                     TransactionSynchronizationManager.isActualTransactionActive();
@@ -96,8 +106,12 @@ public class RedisLockAspect {
      */
     private String resolveKey(ProceedingJoinPoint joinPoint, RedisLock redisLock) {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-        // 这里可以添加SpEL表达式解析，简化示例直接返回key
-        return redisLock.key();
+        String keyExpression = redisLock.key();
+        // 如果key不包含SpEL表达式标记，直接返回
+        if (!keyExpression.contains("#")) {
+            return keyExpression;
+        }
+        return parseSpelExpression(keyExpression, signature, joinPoint.getArgs());
     }
 
     /**
@@ -120,6 +134,39 @@ public class RedisLockAspect {
             case REENTRANT:
             default:
                 return redissonClient.getLock(key);
+        }
+    }
+
+    /**
+     * 解析SpEL表达式
+     */
+    private String parseSpelExpression(String expression, MethodSignature signature, Object[] args) {
+        try {
+            // 创建表达式解析器
+            ExpressionParser parser = new SpelExpressionParser();
+            StandardEvaluationContext context = new StandardEvaluationContext();
+
+            // 设置方法参数到上下文
+            String[] parameterNames = signature.getParameterNames();
+            if (parameterNames != null) {
+                for (int i = 0; i < parameterNames.length; i++) {
+                    context.setVariable(parameterNames[i], args[i]);
+                }
+            }
+            // 设置其他常用变量
+            context.setVariable("methodName", signature.getMethod().getName());
+            context.setVariable("className", signature.getDeclaringType().getSimpleName());
+
+            // 解析表达式
+            Expression expr = parser.parseExpression(expression);
+            Object value = expr.getValue(context);
+
+            return Objects.isNull(value) ? expression : value.toString();
+
+        } catch (Exception e) {
+            // 解析失败时返回原始表达式并记录警告
+            log.warn("SpEL表达式解析失败: {}, 使用原始表达式: {}", expression, e.getMessage());
+            return expression;
         }
     }
 }
