@@ -2,9 +2,9 @@ package com.silky.starter.redis.cache.template;
 
 import cn.hutool.core.map.MapUtil;
 import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.TypeReference;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.util.CollectionUtils;
 
 import java.util.*;
@@ -17,9 +17,10 @@ import java.util.stream.Collectors;
  * @author zy
  * @date 2025-10-22 11:35
  **/
+@SuppressWarnings(value = {"unchecked", "rawtypes"})
 public class RedisCacheTemplate {
 
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final RedisTemplate redisTemplate;
 
     public RedisCacheTemplate(RedisTemplate<String, Object> redisTemplate) {
         this.redisTemplate = redisTemplate;
@@ -31,7 +32,7 @@ public class RedisCacheTemplate {
      * @param key   缓存的键值
      * @param value 缓存的值
      */
-    public <T> void setValue(String key, T value) {
+    public <T> void setObject(String key, T value) {
         redisTemplate.opsForValue().set(key, value);
     }
 
@@ -43,7 +44,7 @@ public class RedisCacheTemplate {
      * @param timeout  过期时间
      * @param timeUnit 时间单位
      */
-    public <T> void setValue(String key, T value, long timeout, TimeUnit timeUnit) {
+    public <T> void setObject(String key, T value, long timeout, TimeUnit timeUnit) {
         redisTemplate.opsForValue().set(key, value, timeout, timeUnit);
     }
 
@@ -138,51 +139,27 @@ public class RedisCacheTemplate {
     /**
      * 获取缓存对象
      *
-     * @param key   键
-     * @param clazz 类型
+     * @param key 键
      */
-    public <T> T getObject(String key, Class<T> clazz) {
-        Object value = redisTemplate.opsForValue().get(key);
-        if (value == null) {
-            return null;
-        }
-        // 直接类型转换（如果RedisTemplate配置了正确的序列化器）
-        if (clazz.isInstance(value)) {
-            return clazz.cast(value);
-        }
-        // 使用Fastjson2进行类型转换
-        return JSON.parseObject(JSON.toJSONString(value), clazz);
-    }
-
-    /**
-     * 获取缓存对象（支持复杂泛型）
-     *
-     * @param key           键
-     * @param typeReference 类型引用
-     */
-    public <T> T getObject(String key, TypeReference<T> typeReference) {
-        Object value = redisTemplate.opsForValue().get(key);
-        if (value == null) {
-            return null;
-        }
-        return JSON.parseObject(JSON.toJSONString(value), typeReference);
+    public <T> T getObject(String key) {
+        ValueOperations<String, T> operation = redisTemplate.opsForValue();
+        return operation.get(key);
     }
 
     /**
      * 获取缓存对象，如果不存在则设置
      *
      * @param key      键
-     * @param clazz    类型
      * @param supplier 供应者
      * @param timeout  过期时间
      * @param timeUnit 时间单位
      */
-    public <T> T getOrSet(String key, Class<T> clazz, Supplier<T> supplier, long timeout, TimeUnit timeUnit) {
-        T value = this.getObject(key, clazz);
+    public <T> T getOrSet(String key, Supplier<T> supplier, long timeout, TimeUnit timeUnit) {
+        T value = this.getObject(key);
         if (value == null && supplier != null) {
             value = supplier.get();
             if (value != null) {
-                setValue(key, value, timeout, timeUnit);
+                setObject(key, value, timeout, timeUnit);
             }
         }
         return value;
@@ -201,6 +178,22 @@ public class RedisCacheTemplate {
             return 0L;
         }
         Long count = redisTemplate.opsForList().rightPushAll(key, dataList);
+        return count != null ? count : 0L;
+    }
+
+    /**
+     * 缓存List数据
+     *
+     * @param key      键
+     * @param dataList 数据列表
+     * @param timeout  过期时间
+     * @param timeUnit 时间单位
+     */
+    public <T> long setList(String key, List<T> dataList, long timeout, TimeUnit timeUnit) {
+        if (CollectionUtils.isEmpty(dataList)) {
+            return 0L;
+        }
+        Long count = redisTemplate.opsForList().rightPushAll(key, dataList, timeout, timeUnit);
         return count != null ? count : 0L;
     }
 

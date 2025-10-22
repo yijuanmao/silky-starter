@@ -33,7 +33,7 @@
         <lombok.version>1.18.38</lombok.version>
         <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
         <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
-        <spring.boot.version>2.7.7</spring.boot.version>
+        <spring.boot.version>2.7.8</spring.boot.version>
         <cn.hutool.version>5.8.39</cn.hutool.version>
         <aliyun.oss.version>3.18.3</aliyun.oss.version>
         <com.huaweicloud.version>3.25.7</com.huaweicloud.version>

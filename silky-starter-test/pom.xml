@@ -16,6 +16,7 @@
         <module>silky-starter-oss-test</module>
         <module>silky-starter-statemachine-test</module>
         <module>silky-starter-rabbitmq-test</module>
+        <module>silky-starter-redis-test</module>
     </modules>
 
 
