@@ -1,6 +1,7 @@
 package com.silky.starter.redis.lock.template;
 
 import com.silky.starter.redis.lock.enums.LockType;
+import lombok.Getter;
 import org.redisson.api.RLock;
 import org.redisson.api.RReadWriteLock;
 import org.redisson.api.RedissonClient;
@@ -16,6 +17,7 @@ import java.util.function.Supplier;
  * @author zy
  * @date 2025-10-21 15:39
  **/
+@Getter
 public class RedisLockTemplate {
 
     private final RedissonClient redissonClient;
@@ -35,9 +37,9 @@ public class RedisLockTemplate {
      * @param timeUnit  时间单位
      * @return 锁操作的结果
      */
-    public <T> T executeWithLock(String key, LockType lockType, long waitTime, long leaseTime,
-                                 TimeUnit timeUnit, Supplier<T> supplier) {
-        return executeWithLock(key, lockType, waitTime, leaseTime, timeUnit, false, supplier);
+    public <T> T lock(String key, LockType lockType, long waitTime, long leaseTime,
+                      TimeUnit timeUnit, Supplier<T> supplier) {
+        return lock(key, lockType, waitTime, leaseTime, timeUnit, false, supplier);
     }
 
     /**
@@ -52,9 +54,9 @@ public class RedisLockTemplate {
      * @param releaseAfterTransaction 是否在事务完成后释放锁
      * @return 锁操作的结果
      */
-    public <T> T executeWithLock(String key, LockType lockType, long waitTime, long leaseTime,
-                                 TimeUnit timeUnit, boolean releaseAfterTransaction,
-                                 Supplier<T> supplier) {
+    public <T> T lock(String key, LockType lockType, long waitTime, long leaseTime,
+                      TimeUnit timeUnit, boolean releaseAfterTransaction,
+                      Supplier<T> supplier) {
         RLock lock = getLock(lockType, key);
         boolean isLocked = false;
 
@@ -98,10 +100,10 @@ public class RedisLockTemplate {
      * @param releaseAfterTransaction 是否在事务完成后释放锁
      * @param runnable                锁操作的函数
      */
-    public void executeWithLock(String key, LockType lockType, long waitTime, long leaseTime,
-                                TimeUnit timeUnit, boolean releaseAfterTransaction,
-                                Runnable runnable) {
-        this.executeWithLock(key, lockType, waitTime, leaseTime, timeUnit, releaseAfterTransaction, () -> {
+    public void lock(String key, LockType lockType, long waitTime, long leaseTime,
+                     TimeUnit timeUnit, boolean releaseAfterTransaction,
+                     Runnable runnable) {
+        this.lock(key, lockType, waitTime, leaseTime, timeUnit, releaseAfterTransaction, () -> {
             runnable.run();
             return null;
         });
@@ -132,43 +134,6 @@ public class RedisLockTemplate {
     public RLock getRLock(String key, LockType lockType) {
         return getLock(lockType, key);
     }
-
-    /**
-     * 获取可重入锁
-     *
-     * @param key 锁的key
-     */
-    public RLock getReentrantLock(String key) {
-        return getRLock(key, LockType.REENTRANT);
-    }
-
-    /**
-     * 获取公平锁
-     *
-     * @param key 锁的key
-     */
-    public RLock getFairLock(String key) {
-        return getRLock(key, LockType.FAIR);
-    }
-
-    /**
-     * 获取读锁
-     *
-     * @param key 锁的key
-     */
-    public RLock getReadLock(String key) {
-        return getRLock(key, LockType.READ);
-    }
-
-    /**
-     * 获取写锁
-     *
-     * @param key 锁的key
-     */
-    public RLock getWriteLock(String key) {
-        return getRLock(key, LockType.WRITE);
-    }
-
 
     /**
      * 强制解锁（谨慎使用）

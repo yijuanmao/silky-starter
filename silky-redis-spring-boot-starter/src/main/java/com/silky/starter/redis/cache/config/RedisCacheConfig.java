@@ -1,6 +1,7 @@
 package com.silky.starter.redis.cache.config;
 
-import com.silky.starter.redis.cache.FastJson2RedisSerializer;
+import com.silky.starter.redis.cache.serializer.FastJson2RedisSerializer;
+import com.silky.starter.redis.cache.template.RedisCacheTemplate;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -34,5 +35,10 @@ public class RedisCacheConfig {
         template.afterPropertiesSet();
 
         return template;
+    }
+
+    @Bean
+    public RedisCacheTemplate redisCacheTemplate(RedisTemplate<String, Object> template) {
+        return new RedisCacheTemplate(template);
     }
 }
