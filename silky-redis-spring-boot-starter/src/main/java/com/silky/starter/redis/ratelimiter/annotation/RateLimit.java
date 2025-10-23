@@ -53,7 +53,7 @@ public @interface RateLimit {
     int maxRequests() default 100;
 
     /**
-     * 限流后的降级方法名
+     * 限流后的降级方法名，必须和目标方法在同一个类中
      */
     String fallbackMethod() default "";
 
