@@ -6,10 +6,13 @@ import com.silky.starter.redis.ratelimiter.config.RateLimitConfig;
 import com.silky.starter.redis.ratelimiter.exception.RateLimitExceededException;
 import com.silky.starter.redis.ratelimiter.service.RedisRateLimiter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.script.RedisScript;
+import org.springframework.util.StreamUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -23,83 +26,6 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class DefaultRedisRateLimiterImpl implements RedisRateLimiter {
 
-    // 令牌桶算法Lua脚本
-    private static final String TOKEN_BUCKET_SCRIPT =
-            "local key = KEYS[1]\n" +
-                    "local capacity = tonumber(ARGV[1])\n" +
-                    "local refill_rate = tonumber(ARGV[2])\n" +
-                    "local refill_time_unit = tonumber(ARGV[3])\n" +
-                    "local permits = tonumber(ARGV[4])\n" +
-                    "local now = tonumber(ARGV[5])\n" +
-                    "\n" +
-                    "local bucket = redis.call('HMGET', key, 'tokens', 'last_refill_time')\n" +
-                    "local tokens = capacity\n" +
-                    "local last_refill_time = now\n" +
-                    "\n" +
-                    "if bucket[1] then\n" +
-                    "    tokens = tonumber(bucket[1])\n" +
-                    "    last_refill_time = tonumber(bucket[2])\n" +
-                    "    \n" +
-                    "    -- 计算需要补充的令牌数\n" +
-                    "    local time_passed = now - last_refill_time\n" +
-                    "    local tokens_to_add = math.floor(time_passed * refill_rate / refill_time_unit)\n" +
-                    "    \n" +
-                    "    if tokens_to_add > 0 then\n" +
-                    "        tokens = math.min(capacity, tokens + tokens_to_add)\n" +
-                    "        last_refill_time = now\n" +
-                    "    end\n" +
-                    "end\n" +
-                    "\n" +
-                    "if tokens >= permits then\n" +
-                    "    tokens = tokens - permits\n" +
-                    "    redis.call('HMSET', key, 'tokens', tokens, 'last_refill_time', last_refill_time)\n" +
-                    "    redis.call('EXPIRE', key, math.ceil(capacity / refill_rate * refill_time_unit) * 2)\n" +
-                    "    return 1\n" +
-                    "else\n" +
-                    "    return 0\n" +
-                    "end";
-
-    // 固定窗口算法Lua脚本
-    private static final String FIXED_WINDOW_SCRIPT =
-            "local key = KEYS[1]\n" +
-                    "local window_size = tonumber(ARGV[1])\n" +
-                    "local max_requests = tonumber(ARGV[2])\n" +
-                    "local permits = tonumber(ARGV[3])\n" +
-                    "\n" +
-                    "local current = redis.call('GET', key)\n" +
-                    "if current and tonumber(current) >= max_requests then\n" +
-                    "    return 0\n" +
-                    "else\n" +
-                    "    if not current then\n" +
-                    "        redis.call('SETEX', key, window_size, permits)\n" +
-                    "    else\n" +
-                    "        redis.call('INCRBY', key, permits)\n" +
-                    "    end\n" +
-                    "    return 1\n" +
-                    "end";
-
-    // 滑动窗口算法Lua脚本
-    private static final String SLIDING_WINDOW_SCRIPT =
-            "local key = KEYS[1]\n" +
-                    "local window_size = tonumber(ARGV[1])\n" +
-                    "local max_requests = tonumber(ARGV[2])\n" +
-                    "local permits = tonumber(ARGV[3])\n" +
-                    "local now = tonumber(ARGV[4])\n" +
-                    "local clear_before = now - window_size\n" +
-                    "\n" +
-                    "redis.call('ZREMRANGEBYSCORE', key, 0, clear_before)\n" +
-                    "local current = redis.call('ZCOUNT', key, clear_before + 1, now)\n" +
-                    "\n" +
-                    "if current + permits > max_requests then\n" +
-                    "    return 0\n" +
-                    "else\n" +
-                    "    for i = 1, permits do\n" +
-                    "        redis.call('ZADD', key, now, now .. ':' .. math.random(1000000))\n" +
-                    "    end\n" +
-                    "    redis.call('EXPIRE', key, window_size)\n" +
-                    "    return 1\n" +
-                    "end";
-
     private final RedisTemplate<String, Object> redisTemplate;
 
     private final RedisScript<Long> tokenBucketScript;
@@ -110,52 +36,42 @@ public class DefaultRedisRateLimiterImpl implements RedisRateLimiter {
 
     public DefaultRedisRateLimiterImpl(RedisTemplate<String, Object> redisTemplate) {
         this.redisTemplate = redisTemplate;
-        this.tokenBucketScript = new DefaultRedisScript<>(TOKEN_BUCKET_SCRIPT, Long.class);
-        this.fixedWindowScript = new DefaultRedisScript<>(FIXED_WINDOW_SCRIPT, Long.class);
-        this.slidingWindowScript = new DefaultRedisScript<>(SLIDING_WINDOW_SCRIPT, Long.class);
+
+        // 从Resource目录加载Lua脚本
+        this.tokenBucketScript = loadLuaScript("lua/token_bucket.lua");
+        this.fixedWindowScript = loadLuaScript("lua/fixed_window.lua");
+        this.slidingWindowScript = loadLuaScript("lua/sliding_window.lua");
     }
 
     /**
-     * 获取令牌，获取不到则阻塞等待
+     * 获取令牌，获取不到则阻塞等待（默认30秒超时）
      *
      * @param key 限流key
      */
     @Override
     public boolean acquire(String key) throws RateLimitExceededException {
-        return tryAcquire(key, 30, TimeUnit.SECONDS);
+        return this.acquire(key, 1);
     }
 
     /**
-     * 获取指定数量的令牌，获取不到则阻塞等待
+     * 获取指定数量的令牌，获取不到则阻塞等待（默认30秒超时）
      *
      * @param key     限流key
      * @param permits 令牌数量
      */
     @Override
     public boolean acquire(String key, int permits) throws RateLimitExceededException {
-        return tryAcquire(key, permits, 30, TimeUnit.SECONDS);
+        return this.tryAcquire(key, permits, 30, TimeUnit.SECONDS);
     }
 
     /**
-     * 尝试获取令牌
+     * 尝试获取令牌（非阻塞）
      *
      * @param key 限流key
      */
     @Override
     public boolean tryAcquire(String key) {
-        return tryAcquire(key, 1);
-    }
-
-    /**
-     * 尝试获取指定数量的令牌
-     *
-     * @param key     限流key
-     * @param permits 令牌数量
-     */
-    @Override
-    public boolean tryAcquire(String key, int permits) {
-        // 默认使用令牌桶算法，容量100，每秒10个令牌
-        return tryAcquire(key, permits, RateLimitConfig.defaultConfig());
+        return this.tryAcquire(key, 1);
     }
 
     /**
@@ -163,51 +79,11 @@ public class DefaultRedisRateLimiterImpl implements RedisRateLimiter {
      *
      * @param key     限流key
      * @param permits 令牌数量
-     * @param config  限流配置
      */
-    public boolean tryAcquire(String key, int permits, RateLimitConfig config) {
-        List<String> keys = Collections.singletonList(key);
-        // 当前时间戳（秒）
-        long now = System.currentTimeMillis() / 1000;
-
-        Long result;
-        switch (config.getAlgorithm()) {
-            case TOKEN_BUCKET:
-                long refillTimeUnit = convertTimeUnitToSeconds(config.getTimeUnit());
-                Object[] tokenBucketArgs = {
-                        config.getCapacity(),
-                        config.getRefillRate(),
-                        refillTimeUnit,
-                        permits,
-                        now
-                };
-                result = redisTemplate.execute(tokenBucketScript, keys, tokenBucketArgs);
-                break;
-
-            case FIXED_WINDOW:
-                Object[] fixedWindowArgs = {
-                        config.getWindowSize(),
-                        config.getMaxRequests(),
-                        permits
-                };
-                result = redisTemplate.execute(fixedWindowScript, keys, fixedWindowArgs);
-                break;
-
-            case SLIDING_WINDOW:
-                Object[] slidingWindowArgs = {
-                        config.getWindowSize(),
-                        config.getMaxRequests(),
-                        permits,
-                        now
-                };
-                result = redisTemplate.execute(slidingWindowScript, keys, slidingWindowArgs);
-                break;
-
-            default:
-                throw new RateLimitExceededException("Unsupported rate limit algorithm: " + config.getAlgorithm());
-        }
-
-        return result != null && result == 1;
+    @Override
+    public boolean tryAcquire(String key, int permits) {
+        // 默认使用令牌桶算法，容量100，每秒10个令牌
+        return this.tryAcquire(key, permits, RateLimitConfig.defaultConfig());
     }
 
     /**
@@ -216,13 +92,13 @@ public class DefaultRedisRateLimiterImpl implements RedisRateLimiter {
      * @param key       限流key
      * @param rateLimit 限流注解配置
      */
-    public boolean tryAcquire(String key, RateLimit rateLimit) throws RateLimitExceededException{
-        RateLimitConfig config = convertToRateLimitConfig(rateLimit);
-        return tryAcquire(key, 1, config);
+    public boolean tryAcquire(String key, RateLimit rateLimit) throws RateLimitExceededException {
+        RateLimitConfig config = RateLimitConfig.buideRateLimitConfig(rateLimit);
+        return this.tryAcquire(key, 1, config);
     }
 
     /**
-     * 获取指定数量的令牌，获取不到则阻塞等待
+     * 尝试获取令牌（带超时）
      *
      * @param key     限流key
      * @param timeout 等待超时时间
@@ -234,7 +110,7 @@ public class DefaultRedisRateLimiterImpl implements RedisRateLimiter {
     }
 
     /**
-     * 获取指定数量的令牌，获取不到则阻塞等待
+     * 尝试获取指定数量的令牌（带超时）
      *
      * @param key     限流key
      * @param permits 令牌数量
@@ -243,19 +119,81 @@ public class DefaultRedisRateLimiterImpl implements RedisRateLimiter {
      */
     @Override
     public boolean tryAcquire(String key, int permits, long timeout, TimeUnit unit) throws RateLimitExceededException {
-        long endTime = System.currentTimeMillis() + unit.toMillis(timeout);
-        while (System.currentTimeMillis() < endTime) {
-            if (tryAcquire(key, permits)) {
-                return true;
-            }
-            // 等待100ms后重试
-            ThreadUtil.sleep(100);
-        }
-        return false;
+        // 使用默认配置
+        return tryAcquire(key, permits, RateLimitConfig.defaultConfig(), timeout, unit);
     }
 
     /**
-     * 获取指定数量的令牌，获取不到则阻塞等待
+     * 尝试获取指定数量的令牌（非阻塞）
+     *
+     * @param key     限流key
+     * @param permits 令牌数量
+     * @param config  限流配置
+     */
+    public boolean tryAcquire(String key, int permits, RateLimitConfig config) {
+        long startTime = System.currentTimeMillis();
+        try {
+            List<String> keys = Collections.singletonList(key);
+            // 当前时间戳（秒）
+            long now = System.currentTimeMillis() / 1000;
+
+            Long result;
+            switch (config.getAlgorithm()) {
+                case TOKEN_BUCKET:
+                    long refillTimeUnit = convertTimeUnitToSeconds(config.getTimeUnit());
+                    Object[] tokenBucketArgs = {
+                            config.getCapacity(),
+                            config.getRefillRate(),
+                            refillTimeUnit,
+                            permits,
+                            now
+                    };
+                    result = redisTemplate.execute(tokenBucketScript, keys, tokenBucketArgs);
+                    break;
+
+                case FIXED_WINDOW:
+                    Object[] fixedWindowArgs = {
+                            config.getWindowSize(),
+                            config.getMaxRequests(),
+                            permits
+                    };
+                    result = redisTemplate.execute(fixedWindowScript, keys, fixedWindowArgs);
+                    break;
+
+                case SLIDING_WINDOW:
+                    Object[] slidingWindowArgs = {
+                            config.getWindowSize(),
+                            config.getMaxRequests(),
+                            permits,
+                            now
+                    };
+                    result = redisTemplate.execute(slidingWindowScript, keys, slidingWindowArgs);
+                    break;
+
+                default:
+                    throw new RateLimitExceededException("Unsupported rate limit algorithm: " + config.getAlgorithm());
+            }
+
+            boolean acquired = result != null && result == 1;
+            long costTime = System.currentTimeMillis() - startTime;
+
+            if (log.isDebugEnabled()) {
+                log.debug("Rate limit tryAcquire - key: {}, permits: {}, algorithm: {}, acquired: {}, cost: {}ms",
+                        key, permits, config.getAlgorithm(), acquired, costTime);
+            }
+
+            return acquired;
+
+        } catch (Exception e) {
+            long costTime = System.currentTimeMillis() - startTime;
+            log.error("Rate limit tryAcquire failed - key: {}, permits: {}, cost: {}ms, error: {}",
+                    key, permits, costTime, e.getMessage(), e);
+            throw new RateLimitExceededException("Rate limit acquire failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 尝试获取指定数量的令牌（带超时和配置）
      *
      * @param key     限流key
      * @param permits 令牌数量
@@ -266,18 +204,71 @@ public class DefaultRedisRateLimiterImpl implements RedisRateLimiter {
     @Override
     public boolean tryAcquire(String key, int permits, RateLimitConfig config, long timeout, TimeUnit unit)
             throws RateLimitExceededException {
-        long endTime = System.currentTimeMillis() + unit.toMillis(timeout);
-        while (System.currentTimeMillis() < endTime) {
-            if (tryAcquire(key, permits, config)) {
-                return true;
+
+        long timeoutMillis = unit.toMillis(timeout);
+        long startTime = System.currentTimeMillis();
+        long remainingTime = timeoutMillis;
+        int attemptCount = 0;
+
+        try {
+            // 在超时时间内循环尝试获取令牌
+            while (remainingTime > 0) {
+                attemptCount++;
+
+                // 尝试获取令牌
+                if (tryAcquire(key, permits, config)) {
+                    long totalWaitTime = System.currentTimeMillis() - startTime;
+                    if (log.isDebugEnabled()) {
+                        log.debug("Rate limit acquired successfully - key: {}, attempts: {}, totalWait: {}ms",
+                                key, attemptCount, totalWaitTime);
+                    }
+                    return true;
+                }
+
+                // 计算已经过去的时间
+                long elapsedTime = System.currentTimeMillis() - startTime;
+                remainingTime = timeoutMillis - elapsedTime;
+
+                if (remainingTime <= 0) {
+                    break; // 超时了
+                }
+
+                // 使用退避策略：随着重试次数增加，等待时间逐渐变长
+                long sleepTime = calculateBackoffTime(attemptCount, remainingTime);
+                if (sleepTime > 0) {
+                    if (log.isTraceEnabled()) {
+                        log.trace("Rate limit waiting - key: {}, attempt: {}, sleep: {}ms, remaining: {}ms",
+                                key, attemptCount, sleepTime, remainingTime);
+                    }
+                    ThreadUtil.sleep(sleepTime);
+                }
+
+                // 更新已用时间
+                elapsedTime = System.currentTimeMillis() - startTime;
+                remainingTime = timeoutMillis - elapsedTime;
             }
-            ThreadUtil.sleep(100);
+
+            // 超时前的最后一次尝试
+            boolean finalAttempt = tryAcquire(key, permits, config);
+            long totalWaitTime = System.currentTimeMillis() - startTime;
+
+            if (!finalAttempt) {
+                log.warn("Rate limit timeout - key: {}, attempts: {}, totalWait: {}ms, timeout: {}ms", key, attemptCount, totalWaitTime, timeoutMillis);
+            } else {
+                log.debug("Rate limit final attempt success - key: {}, attempts: {}, totalWait: {}ms", key, attemptCount, totalWaitTime);
+            }
+            return finalAttempt;
+
+        } catch (Exception e) {
+            long waitTime = System.currentTimeMillis() - startTime;
+            log.error("Rate limit wait failed - key: {}, waitTime: {}ms, error: {}",
+                    key, waitTime, e.getMessage(), e);
+            throw new RateLimitExceededException("Rate limit wait failed: " + e.getMessage(), e);
         }
-        return false;
     }
 
     /**
-     * 获取令牌，获取不到则阻塞等待
+     * 获取限流配置
      *
      * @param key 限流key
      */
@@ -295,7 +286,31 @@ public class DefaultRedisRateLimiterImpl implements RedisRateLimiter {
      */
     @Override
     public void reset(String key) {
-        redisTemplate.delete(key);
+        try {
+            redisTemplate.delete(key);
+            log.debug("Rate limit reset - key: {}", key);
+        } catch (Exception e) {
+            log.error("Rate limit reset failed - key: {}, error: {}", key, e.getMessage(), e);
+            throw new RateLimitExceededException("Rate limit reset failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 计算退避等待时间
+     *
+     * @param attemptCount  尝试次数
+     * @param remainingTime 剩余时间
+     * @return 等待时间(毫秒)
+     */
+    private long calculateBackoffTime(int attemptCount, long remainingTime) {
+        // 基础等待时间
+        long baseWaitTime = 100L;
+
+        // 指数退避：随着尝试次数增加，等待时间变长，但不超过剩余时间
+        long backoffTime = Math.min(baseWaitTime * attemptCount, 1000L); // 最大等待1秒
+
+        // 确保不超过剩余时间
+        return Math.min(backoffTime, remainingTime);
     }
 
     /**
@@ -317,21 +332,23 @@ public class DefaultRedisRateLimiterImpl implements RedisRateLimiter {
     }
 
     /**
-     * 将注解配置转换为内部配置
-     *
-     * @param rateLimit 限流注解
-     * @return RateLimitConfig
+     * 从classpath加载Lua脚本文件
      */
-    private RateLimitConfig convertToRateLimitConfig(RateLimit rateLimit) {
-        RateLimitConfig config = new RateLimitConfig();
-        config.setAlgorithm(rateLimit.algorithm());
-        config.setCapacity(rateLimit.capacity());
-        config.setRefillRate(rateLimit.refillRate());
-        config.setTimeUnit(rateLimit.timeUnit());
-        config.setWindowSize(rateLimit.windowSize());
-        config.setMaxRequests(rateLimit.maxRequests());
-        return config;
-    }
+    private RedisScript<Long> loadLuaScript(String scriptPath) {
+        try {
+            ClassPathResource resource = new ClassPathResource(scriptPath);
+            String scriptContent = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
 
+            DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>();
+            redisScript.setScriptText(scriptContent);
+            redisScript.setResultType(Long.class);
+
+            log.debug("Successfully loaded Lua script: {}", scriptPath);
+            return redisScript;
+        } catch (Exception e) {
+            log.error("Failed to load Lua script from: {}", scriptPath, e);
+            throw new RateLimitExceededException("Failed to load Lua script: " + scriptPath, e);
+        }
+    }
 
 }

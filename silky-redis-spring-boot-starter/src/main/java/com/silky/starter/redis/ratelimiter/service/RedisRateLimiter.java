@@ -44,16 +44,6 @@ public interface RedisRateLimiter {
      */
     boolean tryAcquire(String key, int permits) throws RateLimitExceededException;
 
-
-    /**
-     * 尝试获取指定数量的令牌（非阻塞）
-     *
-     * @param key     限流key
-     * @param permits 令牌数量
-     * @param config  限流配置
-     */
-    boolean tryAcquire(String key, int permits, RateLimitConfig config) throws RateLimitExceededException;
-
     /**
      * 尝试获取令牌（非阻塞）
      *
@@ -80,6 +70,15 @@ public interface RedisRateLimiter {
      * @param unit    时间单位
      */
     boolean tryAcquire(String key, int permits, long timeout, TimeUnit unit) throws RateLimitExceededException;
+
+    /**
+     * 尝试获取指定数量的令牌（非阻塞）
+     *
+     * @param key     限流key
+     * @param permits 令牌数量
+     * @param config  限流配置
+     */
+    boolean tryAcquire(String key, int permits, RateLimitConfig config) throws RateLimitExceededException;
 
     /**
      * 获取指定数量的令牌，获取不到则阻塞等待

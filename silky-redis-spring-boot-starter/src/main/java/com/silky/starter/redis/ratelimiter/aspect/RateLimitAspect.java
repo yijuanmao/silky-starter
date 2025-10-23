@@ -1,9 +1,10 @@
 package com.silky.starter.redis.ratelimiter.aspect;
 
-import com.silky.starter.redis.spel.SpelExpressionResolver;
 import com.silky.starter.redis.ratelimiter.annotation.RateLimit;
+import com.silky.starter.redis.ratelimiter.config.RateLimitConfig;
 import com.silky.starter.redis.ratelimiter.exception.RateLimitExceededException;
 import com.silky.starter.redis.ratelimiter.service.RedisRateLimiter;
+import com.silky.starter.redis.spel.SpelExpressionResolver;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -13,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 
 import java.lang.reflect.Method;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Redis限流切面
@@ -49,19 +51,38 @@ public class RateLimitAspect {
         boolean acquired;
 
         if (rateLimit.block()) {
-            // 阻塞获取令牌
-            try {
-                acquired = redisRateLimiter.tryAcquire(key, rateLimit);
-            } catch (RateLimitExceededException e) {
-                Thread.currentThread().interrupt();
-                log.warn("Rate limit wait interrupted, key: {}", key);
-                return executeFallbackMethod(joinPoint, rateLimit.fallbackMethod());
+            if (rateLimit.timeout() > 0) {
+                try {
+                    // 带超时的阻塞获取
+                    acquired = redisRateLimiter.tryAcquire(
+                            key,
+                            1, // 默认获取1个令牌
+                            RateLimitConfig.buideRateLimitConfig(rateLimit),
+                            rateLimit.timeout(),
+                            TimeUnit.SECONDS
+                    );
+                    log.debug("Blocking acquire with timeout {}s, key: {}, result: {}", rateLimit.timeout(), key, acquired);
+                } catch (RateLimitExceededException e) {
+                    Thread.currentThread().interrupt();
+                    log.warn("Rate limit wait interrupted, key: {}", key);
+                    return executeFallbackMethod(joinPoint, rateLimit.fallbackMethod());
+                }
+            } else {
+                // 无限等待的阻塞获取（不推荐生产环境使用）
+                try {
+                    acquired = redisRateLimiter.acquire(key);
+                    log.debug("Blocking acquire without timeout, key: {}, result: {}", key, acquired);
+                } catch (RateLimitExceededException e) {
+                    Thread.currentThread().interrupt();
+                    log.warn("Rate limit wait interrupted, key: {}", key);
+                    return executeFallbackMethod(joinPoint, rateLimit.fallbackMethod());
+                }
             }
         } else {
             // 非阻塞获取令牌
             acquired = redisRateLimiter.tryAcquire(key, rateLimit);
+            log.debug("Non-blocking acquire, key: {}, result: {}", key, acquired);
         }
-
         if (!acquired) {
             log.warn("Rate limit exceeded, key: {}", key);
 
@@ -108,4 +129,5 @@ public class RateLimitAspect {
             throw new RateLimitExceededException("Fallback method not found: " + fallbackMethod);
         }
     }
+
 }

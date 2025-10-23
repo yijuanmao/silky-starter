@@ -1,7 +1,9 @@
 package com.silky.starter.redis.ratelimiter.config;
 
+import com.silky.starter.redis.ratelimiter.annotation.RateLimit;
 import com.silky.starter.redis.ratelimiter.enums.RateLimitAlgorithm;
 import lombok.Data;
+import lombok.experimental.Accessors;
 
 import java.util.concurrent.TimeUnit;
 
@@ -12,6 +14,7 @@ import java.util.concurrent.TimeUnit;
  * @date 2025-10-23 11:20
  **/
 @Data
+@Accessors(chain = true)
 public class RateLimitConfig {
 
     /**
@@ -52,7 +55,6 @@ public class RateLimitConfig {
     public static RateLimitConfig defaultConfig() {
         return new RateLimitConfig();
     }
-
 
     /**
      * 创建令牌桶限流配置
@@ -101,6 +103,21 @@ public class RateLimitConfig {
         config.setWindowSize(windowSize);
         config.setMaxRequests(maxRequests);
         return config;
+    }
+
+    /**
+     * 将注解配置转换为内部配置
+     */
+    public static RateLimitConfig buideRateLimitConfig(RateLimit rateLimit) {
+        return new RateLimitConfig()
+                .setAlgorithm(rateLimit.algorithm())
+                .setCapacity(rateLimit.capacity())
+                .setRefillRate(rateLimit.refillRate())
+                .setTimeUnit(rateLimit.timeUnit())
+                .setWindowSize(rateLimit.windowSize())
+                .setMaxRequests(rateLimit.maxRequests())
+
+                ;
     }
 
 }
