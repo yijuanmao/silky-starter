@@ -31,9 +31,6 @@ public class TraderOrderServer {
     @Transactional
     public void createOrder() {
         boolean lock = lockTemplate.lock(LOCK_KEY, 1, 10, TimeUnit.SECONDS, true, () -> {
-
-            boolean isActive = TransactionSynchronizationManager.isActualTransactionActive();
-            log.info("当前事务是否激活：{}", isActive);
             //执行业务逻辑方法
             log.info("获取到锁，执行业务逻辑方法");
             ThreadUtil.sleep(1000);

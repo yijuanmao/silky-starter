@@ -3,6 +3,7 @@ package com.silky.starter.redis.lock.aspect;
 import com.silky.starter.redis.lock.annotation.RedisLock;
 import com.silky.starter.redis.lock.enums.LockType;
 import com.silky.starter.redis.lock.exception.RedissonException;
+import com.silky.starter.redis.spel.SpelExpressionResolver;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -37,8 +38,11 @@ public class RedisLockAspect {
 
     private final RedissonClient redissonClient;
 
-    public RedisLockAspect(RedissonClient redissonClient) {
+    private final SpelExpressionResolver spelExpressionResolver;
+
+    public RedisLockAspect(RedissonClient redissonClient, SpelExpressionResolver spelExpressionResolver) {
         this.redissonClient = redissonClient;
+        this.spelExpressionResolver = spelExpressionResolver;
     }
 
     /**
@@ -61,37 +65,42 @@ public class RedisLockAspect {
             if (!isLocked) {
                 throw new RedissonException("获取分布式锁失败, key: " + lockKey);
             }
+
+            log.debug("成功获取分布式锁, key: {}", lockKey);
+
             final RLock finalLock = lock;
             final boolean requiresTransactionRelease = redisLock.releaseAfterTransaction() &&
                     TransactionSynchronizationManager.isActualTransactionActive();
 
             if (requiresTransactionRelease) {
-                // 如果有事务，在事务提交后释放锁
                 TransactionSynchronizationManager.registerSynchronization(
                         new TransactionSynchronization() {
                             @Override
                             public void afterCompletion(int status) {
-                                if (lock.isLocked() && finalLock.isHeldByCurrentThread()) {
+                                if (finalLock.isHeldByCurrentThread()) {
                                     finalLock.unlock();
+                                    log.debug("事务完成，释放分布式锁, key: {}", lockKey);
                                 }
                             }
                         }
                 );
                 return joinPoint.proceed();
             } else {
-                // 没有事务，直接执行
                 try {
                     return joinPoint.proceed();
                 } finally {
-                    if (lock.isLocked() && lock.isHeldByCurrentThread()) {
+                    if (lock.isHeldByCurrentThread()) {
                         lock.unlock();
+                        log.debug("方法执行完成，释放分布式锁, key: {}", lockKey);
                     }
                 }
             }
+
         } catch (Exception e) {
             if (isLocked && lock.isHeldByCurrentThread() &&
                     !(redisLock.releaseAfterTransaction() && TransactionSynchronizationManager.isActualTransactionActive())) {
                 lock.unlock();
+                log.debug("方法执行异常，释放分布式锁, key: {}", lockKey);
             }
             throw e;
         }
@@ -105,13 +114,7 @@ public class RedisLockAspect {
      * @return lockKey
      */
     private String resolveKey(ProceedingJoinPoint joinPoint, RedisLock redisLock) {
-        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-        String keyExpression = redisLock.key();
-        // 如果key不包含SpEL表达式标记，直接返回
-        if (!keyExpression.contains("#")) {
-            return keyExpression;
-        }
-        return parseSpelExpression(keyExpression, signature, joinPoint.getArgs());
+        return spelExpressionResolver.resolve(redisLock.key(), joinPoint);
     }
 
     /**

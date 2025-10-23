@@ -1,12 +1,15 @@
 package com.silky.starter.redis.config;
 
 import com.silky.starter.redis.cache.config.RedisCacheConfig;
-import com.silky.starter.redis.geo.config.RedisGeoConfig;
-import com.silky.starter.redis.lock.config.RedisLockConfig;
-import com.silky.starter.redis.sequence.config.RedisSequenceConfig;
+import com.silky.starter.redis.geo.config.RedisGeoAutoConfig;
+import com.silky.starter.redis.lock.config.RedisLockAutoConfig;
+import com.silky.starter.redis.ratelimiter.config.RedisRateLimitAutoConfig;
+import com.silky.starter.redis.sequence.config.RedisSequenceAutoConfig;
+import com.silky.starter.redis.spel.SpelExpressionResolver;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -20,13 +23,17 @@ import org.springframework.data.redis.core.RedisTemplate;
 @Configuration
 @Import({
         RedisCacheConfig.class,
-        RedisLockConfig.class,
-        RedisGeoConfig.class,
-        RedisSequenceConfig.class
+        RedisLockAutoConfig.class,
+        RedisGeoAutoConfig.class,
+        RedisSequenceAutoConfig.class,
+        RedisRateLimitAutoConfig.class
 })
 @ConditionalOnClass(RedisTemplate.class)
 @AutoConfigureAfter(RedisAutoConfiguration.class)
 public class RedisComponentAutoConfiguration {
 
-
+    @Bean
+    public SpelExpressionResolver ppelExpressionResolver() {
+        return new SpelExpressionResolver();
+    }
 }

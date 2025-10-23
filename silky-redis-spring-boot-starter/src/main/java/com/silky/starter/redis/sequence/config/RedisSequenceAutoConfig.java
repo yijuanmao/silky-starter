@@ -12,7 +12,7 @@ import org.springframework.data.redis.core.RedisTemplate;
  * @date 2025-10-21 15:29
  **/
 @Configuration
-public class RedisSequenceConfig {
+public class RedisSequenceAutoConfig {
 
     @Bean
     public RedisSequenceGenerator redisSequenceGenerator(RedisTemplate<String, Object> template) {

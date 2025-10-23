@@ -12,7 +12,7 @@ import org.springframework.data.redis.core.RedisTemplate;
  * @date 2025-10-22 11:33
  **/
 @Configuration
-public class RedisGeoConfig {
+public class RedisGeoAutoConfig {
 
     @Bean
     public RedisGeoTemplate redisGeoTemplate(RedisTemplate<String, Object> redisTemplate) {
