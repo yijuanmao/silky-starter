@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.concurrent.TimeUnit;
 
@@ -20,7 +19,7 @@ import java.util.concurrent.TimeUnit;
  **/
 @Slf4j
 @Service
-public class TraderOrderServer {
+public class OrderService {
     private static final String LOCK_KEY = "lock";
     @Autowired
     private RedisLockTemplate lockTemplate;
@@ -46,9 +45,6 @@ public class TraderOrderServer {
      * @param orderId 订单ID
      * @param id      标识ID
      */
-//    @RedisLock(key = "'order:' + #orderId",
-//            lockType = LockType.REENTRANT,
-//            waitTime = 10, leaseTime = 30)
     @RedisLock(key = "'order:' + #orderId + ':id:' + #id",
             lockType = LockType.REENTRANT,
             waitTime = 10, leaseTime = 30)

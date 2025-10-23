@@ -1,11 +1,13 @@
 package com.silky.starter.redis.ratelimiter.config;
 
-import com.silky.starter.redis.spel.SpelExpressionResolver;
 import com.silky.starter.redis.ratelimiter.aspect.RateLimitAspect;
+import com.silky.starter.redis.ratelimiter.properties.RedisRateLimitProperties;
 import com.silky.starter.redis.ratelimiter.service.RedisRateLimiter;
 import com.silky.starter.redis.ratelimiter.service.impl.DefaultRedisRateLimiterImpl;
 import com.silky.starter.redis.ratelimiter.template.RedisRateLimitTemplate;
+import com.silky.starter.redis.spel.SpelExpressionResolver;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -17,7 +19,7 @@ import org.springframework.data.redis.core.RedisTemplate;
  * @date 2025-10-23 10:39
  **/
 @Configuration
-//@ConditionalOnProperty(prefix = "redis.component.rate-limit", name = "enabled", havingValue = "true", matchIfMissing = true)
+@EnableConfigurationProperties({RedisRateLimitProperties.class})
 public class RedisRateLimitAutoConfig {
 
     @Bean
@@ -34,8 +36,9 @@ public class RedisRateLimitAutoConfig {
     @Bean
     @ConditionalOnMissingBean
     public RateLimitAspect rateLimitAspect(RedisRateLimiter redisRateLimiter,
-                                           SpelExpressionResolver spelExpressionResolver) {
-        return new RateLimitAspect(redisRateLimiter, spelExpressionResolver);
+                                           SpelExpressionResolver spelExpressionResolver,
+                                           RedisRateLimitProperties rateLimitProperties) {
+        return new RateLimitAspect(redisRateLimiter, spelExpressionResolver, rateLimitProperties);
     }
 
     @Bean

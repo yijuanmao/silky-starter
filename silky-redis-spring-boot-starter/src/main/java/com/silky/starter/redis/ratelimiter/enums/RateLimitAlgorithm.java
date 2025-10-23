@@ -22,4 +22,26 @@ public enum RateLimitAlgorithm {
      * 滑动窗口算法 - 精准限流，避免临界问题
      */
     SLIDING_WINDOW
+
+    ;
+
+
+    /**
+     * 转换算法枚举
+     */
+    public static RateLimitAlgorithm convertAlgorithm(RateLimitAlgorithm algorithm) {
+        switch (algorithm) {
+            case TOKEN_BUCKET:
+                return RateLimitAlgorithm.TOKEN_BUCKET;
+            case FIXED_WINDOW:
+                return RateLimitAlgorithm.FIXED_WINDOW;
+            case SLIDING_WINDOW:
+                return RateLimitAlgorithm.SLIDING_WINDOW;
+            default:
+                return RateLimitAlgorithm.TOKEN_BUCKET;
+        }
+    }
+
+
+
 }

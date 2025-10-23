@@ -3,6 +3,7 @@ package com.silky.starter.redis.ratelimiter.aspect;
 import com.silky.starter.redis.ratelimiter.annotation.RateLimit;
 import com.silky.starter.redis.ratelimiter.config.RateLimitConfig;
 import com.silky.starter.redis.ratelimiter.exception.RateLimitExceededException;
+import com.silky.starter.redis.ratelimiter.properties.RedisRateLimitProperties;
 import com.silky.starter.redis.ratelimiter.service.RedisRateLimiter;
 import com.silky.starter.redis.spel.SpelExpressionResolver;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -30,10 +31,14 @@ public class RateLimitAspect {
 
     private final RedisRateLimiter redisRateLimiter;
     private final SpelExpressionResolver spelExpressionResolver;
+    private final RedisRateLimitProperties rateLimitProperties;
 
-    public RateLimitAspect(RedisRateLimiter redisRateLimiter, SpelExpressionResolver spelExpressionResolver) {
+    public RateLimitAspect(RedisRateLimiter redisRateLimiter,
+                           SpelExpressionResolver spelExpressionResolver,
+                           RedisRateLimitProperties rateLimitProperties) {
         this.redisRateLimiter = redisRateLimiter;
         this.spelExpressionResolver = spelExpressionResolver;
+        this.rateLimitProperties = rateLimitProperties;
     }
 
 

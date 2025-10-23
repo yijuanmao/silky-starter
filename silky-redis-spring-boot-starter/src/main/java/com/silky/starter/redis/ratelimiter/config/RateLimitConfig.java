@@ -2,6 +2,7 @@ package com.silky.starter.redis.ratelimiter.config;
 
 import com.silky.starter.redis.ratelimiter.annotation.RateLimit;
 import com.silky.starter.redis.ratelimiter.enums.RateLimitAlgorithm;
+import com.silky.starter.redis.ratelimiter.properties.RedisRateLimitProperties;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
@@ -28,17 +29,17 @@ public class RateLimitConfig {
     private int capacity = 100;
 
     /**
-     * * 令牌桶算法配置
+     * 令牌桶算法配置
      */
     private int refillRate = 10;
 
     /**
-     * 窗口大小（秒） 默认60秒
+     * 令牌桶算法时间单位
      */
     private TimeUnit timeUnit = TimeUnit.SECONDS;
 
     /**
-     * 窗口大小（秒） 默认60秒
+     * 窗口大小 默认60秒
      */
     private int windowSize = 60;
 
@@ -118,6 +119,20 @@ public class RateLimitConfig {
                 .setMaxRequests(rateLimit.maxRequests())
 
                 ;
+    }
+
+    /**
+     * 从属性配置构建
+     */
+    public static RateLimitConfig buildFromProperties(RedisRateLimitProperties.StrategyConfig propertiesConfig) {
+        RateLimitConfig config = new RateLimitConfig();
+        config.setAlgorithm(RateLimitAlgorithm.convertAlgorithm(propertiesConfig.getAlgorithm()));
+        config.setCapacity(propertiesConfig.getCapacity());
+        config.setRefillRate(propertiesConfig.getRefillRate());
+        config.setTimeUnit(propertiesConfig.getTimeUnit());
+        config.setWindowSize(propertiesConfig.getWindowSize());
+        config.setMaxRequests(propertiesConfig.getMaxRequests());
+        return config;
     }
 
 }

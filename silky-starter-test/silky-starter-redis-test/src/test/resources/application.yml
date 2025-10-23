@@ -22,3 +22,15 @@ spring:
         max-active: 8
         # #连接池最大阻塞等待时间（使用负值表示没有限制）
         max-wait: -1ms
+    # 限流策略配置
+    rate-limit:
+      default:
+        algorithm: TOKEN_BUCKET
+        capacity: 100
+        refill-rate: 10
+      strict:
+        algorithm: SLIDING_WINDOW
+        window-size: 60
+        max-requests: 50
+
+

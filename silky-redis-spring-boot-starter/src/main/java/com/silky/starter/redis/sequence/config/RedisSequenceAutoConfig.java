@@ -1,6 +1,7 @@
 package com.silky.starter.redis.sequence.config;
 
-import com.silky.starter.redis.sequence.RedisSequenceGenerator;
+import com.silky.starter.redis.sequence.template.RedisSequenceTemplate;
+import com.silky.starter.redis.sequence.aspect.RedisSequenceAspect;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -15,7 +16,12 @@ import org.springframework.data.redis.core.RedisTemplate;
 public class RedisSequenceAutoConfig {
 
     @Bean
-    public RedisSequenceGenerator redisSequenceGenerator(RedisTemplate<String, Object> template) {
-        return new RedisSequenceGenerator(template);
+    public RedisSequenceTemplate redisSequenceGenerator(RedisTemplate<String, Object> template) {
+        return new RedisSequenceTemplate(template);
+    }
+
+    @Bean
+    public RedisSequenceAspect redisSequenceAspect(RedisSequenceTemplate redisSequenceTemplate) {
+        return new RedisSequenceAspect(redisSequenceTemplate);
     }
 }

@@ -3,7 +3,7 @@ package com.silky.starter.redis.test.redission;
 import cn.hutool.core.thread.ThreadUtil;
 import com.silky.starter.redis.lock.template.RedisLockTemplate;
 import com.silky.starter.redis.test.RedisApplicationTest;
-import com.silky.starter.redis.test.redission.server.TraderOrderServer;
+import com.silky.starter.redis.test.redission.server.OrderService;
 import org.junit.jupiter.api.Test;
 import org.redisson.api.RLock;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +22,7 @@ public class RedisLockTemplateTest extends RedisApplicationTest {
     @Autowired
     private RedisLockTemplate redisLockTemplate;
     @Autowired
-    private TraderOrderServer traderOrderServer;
+    private OrderService orderService;
 
     /**
      * 锁测试方法
@@ -51,7 +51,7 @@ public class RedisLockTemplateTest extends RedisApplicationTest {
      */
     @Test
     public void tryLockTest() {
-        traderOrderServer.createOrder();
+        orderService.createOrder();
         log.info("执行完成");
     }
 
@@ -60,7 +60,7 @@ public class RedisLockTemplateTest extends RedisApplicationTest {
      */
     @Test
     public void processOrderTest() {
-        traderOrderServer.processOrder(System.currentTimeMillis() + "", "1");
+        orderService.processOrder(System.currentTimeMillis() + "", "1");
         log.info("执行完成");
     }
 }

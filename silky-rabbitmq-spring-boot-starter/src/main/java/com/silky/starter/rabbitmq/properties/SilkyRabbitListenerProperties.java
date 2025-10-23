@@ -35,5 +35,4 @@ public class SilkyRabbitListenerProperties {
      * 死信队列消息过期时间，单位毫秒，默认120000毫秒（2分钟）
      */
     private long dlxMessageTtl = 0;
-    ;
 }
