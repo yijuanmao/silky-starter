@@ -1,5 +1,6 @@
 package com.silky.starter.redis.ratelimiter.service.impl;
 
+import cn.hutool.core.convert.Convert;
 import cn.hutool.core.thread.ThreadUtil;
 import com.silky.starter.redis.ratelimiter.annotation.RateLimit;
 import com.silky.starter.redis.ratelimiter.config.RateLimitConfig;
@@ -142,38 +143,37 @@ public class DefaultRedisRateLimiterImpl implements RedisRateLimiter {
                 case TOKEN_BUCKET:
                     long refillTimeUnit = convertTimeUnitToSeconds(config.getTimeUnit());
                     Object[] tokenBucketArgs = {
-                            config.getCapacity(),
-                            config.getRefillRate(),
-                            refillTimeUnit,
-                            permits,
-                            now
+                            Convert.toStr(config.getCapacity()),
+                            Convert.toStr(config.getRefillRate()),
+                            Convert.toStr(refillTimeUnit),
+                            Convert.toStr(permits),
+                            Convert.toStr(now)
                     };
                     result = redisTemplate.execute(tokenBucketScript, keys, tokenBucketArgs);
                     break;
 
                 case FIXED_WINDOW:
                     Object[] fixedWindowArgs = {
-                            config.getWindowSize(),
-                            config.getMaxRequests(),
-                            permits
+                            Convert.toStr(config.getWindowSize()),
+                            Convert.toStr(config.getMaxRequests()),
+                            Convert.toStr(permits)
                     };
-                    result = redisTemplate.execute(fixedWindowScript, keys, fixedWindowArgs);
+                    result = redisTemplate.execute(fixedWindowScript, Collections.singletonList(key), fixedWindowArgs);
                     break;
 
                 case SLIDING_WINDOW:
                     Object[] slidingWindowArgs = {
-                            config.getWindowSize(),
-                            config.getMaxRequests(),
-                            permits,
-                            now
+                            Convert.toStr(config.getWindowSize()),
+                            Convert.toStr(config.getMaxRequests()),
+                            Convert.toStr(permits),
+                            Convert.toStr(now)
                     };
-                    result = redisTemplate.execute(slidingWindowScript, keys, slidingWindowArgs);
+                    result = redisTemplate.execute(slidingWindowScript, Collections.singletonList(key), slidingWindowArgs);
                     break;
 
                 default:
                     throw new RateLimitExceededException("Unsupported rate limit algorithm: " + config.getAlgorithm());
             }
-
             boolean acquired = result != null && result == 1;
             long costTime = System.currentTimeMillis() - startTime;
 

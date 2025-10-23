@@ -16,4 +16,12 @@ public class UserRegisterRequest {
     private String username;
 
     private String ip;
+
+    public UserRegisterRequest() {
+    }
+
+    public UserRegisterRequest(String username, String ip) {
+        this.username = username;
+        this.ip = ip;
+    }
 }
