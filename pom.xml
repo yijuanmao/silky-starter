@@ -22,6 +22,7 @@
         <module>silky-statemachine-spring-boot-starter</module>
         <module>silky-rabbitmq-spring-boot-starter</module>
         <module>silky-redis-spring-boot-starter</module>
+        <module>silky-excel-spring-boot-starter</module>
     </modules>
 
     <properties>
@@ -44,6 +45,8 @@
         <slf4j-api.version>1.7.36</slf4j-api.version>
         <logback-core.version>1.2.13</logback-core.version>
         <redisson.vsrson>3.18.0</redisson.vsrson>
+        <fastexcel.version>1.3.0</fastexcel.version>
+        <javax.servlet.version>4.0.1</javax.servlet.version>
     </properties>
 
     <dependencyManagement>
@@ -139,6 +142,19 @@
                 <groupId>org.redisson</groupId>
                 <artifactId>redisson-spring-boot-starter</artifactId>
                 <version>${redisson.vsrson}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>cn.idev.excel</groupId>
+                <artifactId>fastexcel</artifactId>
+                <version>${fastexcel.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>javax.servlet</groupId>
+                <artifactId>javax.servlet-api</artifactId>
+                <version>${javax.servlet.version}</version>
+                <scope>provided</scope>
             </dependency>
 
         </dependencies>

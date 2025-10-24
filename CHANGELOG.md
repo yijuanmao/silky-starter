@@ -2,6 +2,7 @@
 ### ✨ 新特性
 
 * 新增 silky-redis-spring-boot-starter redis组件模块
+* 新增 silky-excel-spring-boot-starter excel大文件导出组件模块
 
 ### 💎 功能优化
 * spring boot pom版本2.7.7 => 2.7.8
