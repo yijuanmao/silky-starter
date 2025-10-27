@@ -7,7 +7,7 @@ import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.excel.core.async.AsyncExecutor;
 import com.silky.starter.excel.core.exception.ExcelExportException;
-import com.silky.starter.excel.core.model.*;
+import com.silky.starter.excel.core.model.export.*;
 import com.silky.starter.excel.entity.ExportRecord;
 import com.silky.starter.excel.enums.AsyncType;
 import com.silky.starter.excel.enums.ExportStatus;
@@ -75,6 +75,136 @@ public class ExportEngine {
     }
 
     /**
+     * 执行导出任务（支持多Sheet）
+     *
+     * @param request         导出请求
+     * @param maxRowsPerSheet 每个Sheet的最大行数
+     * @param <T>             数据类型
+     * @return 导出结果
+     */
+    public <T> ExportResult executeWithSheets(ExportRequest<T> request, long maxRowsPerSheet) {
+        // 参数校验
+        validateExportRequest(request);
+
+        String taskId = generateTaskId(request.getBusinessType());
+        long startTime = System.currentTimeMillis();
+
+        try {
+            log.info("开始创建多Sheet导出任务: {}, 业务类型: {}, 每Sheet最大行数: {}",
+                    taskId, request.getBusinessType(), maxRowsPerSheet);
+
+            // 创建导出记录
+            ExportRecord record = this.createExportRecord(taskId, request);
+            recordService.save(record);
+
+            // 创建导出任务
+            ExportTask<T> task = ExportTask.create(taskId, request, record);
+
+            // 缓存任务信息
+            cacheTask(task);
+
+            // 提交任务到异步执行器
+            asyncExecutor.submitExport(task);
+
+            long costTime = System.currentTimeMillis() - startTime;
+
+            log.info("多Sheet导出任务创建成功: {}, 业务类型: {}, 耗时: {}ms",
+                    taskId, request.getBusinessType(), costTime);
+
+            totalProcessedTasks++;
+
+            return ExportResult.asyncSuccess(taskId);
+
+        } catch (Exception e) {
+            log.error("多Sheet导出任务创建失败: {}, 业务类型: {}", taskId, request.getBusinessType(), e);
+            failedTasks++;
+
+            // 更新记录状态为失败
+            recordService.updateFailed(taskId, "任务创建失败: " + e.getMessage());
+
+            return ExportResult.fail(taskId, "多Sheet导出任务创建失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 处理多Sheet导出任务
+     */
+    private <T> String doExportWithSheets(ExportRequest<T> request, String taskId, long maxRowsPerSheet) throws Exception {
+        File tempFile = createTempFile(request.getFileName());
+
+        try (EnhancedExcelWriter writer = new EnhancedExcelWriter(tempFile.getAbsolutePath(), maxRowsPerSheet)) {
+
+            int pageNum = 1;
+            boolean hasNext = true;
+            long totalCount = 0;
+            long startPageTime = System.currentTimeMillis();
+
+            // 分页处理数据
+            while (hasNext) {
+                long pageStartTime = System.currentTimeMillis();
+
+                // 检查任务超时
+                if (isTaskTimeout(taskId)) {
+                    throw new RuntimeException("任务执行超时，已中断");
+                }
+
+                // 分页查询数据
+                ExportPageData<T> pageData = request.getDataSupplier().getPageData(
+                        pageNum, request.getPageSize(), request.getParams()
+                );
+
+                if (pageData == null || CollectionUtil.isEmpty(pageData.getData())) {
+                    log.debug("第{}页数据为空，导出完成", pageNum);
+                    break;
+                }
+
+                List<T> data = pageData.getData();
+
+                // 数据处理
+                data = processData(data, request.getProcessors(), pageNum);
+
+                // 写入Excel（支持多Sheet）
+                writer.write(data, request.getDataClass(), request.getHeaderMapping());
+
+                // 更新进度
+                totalCount += data.size();
+                recordService.updateProgress(taskId, totalCount);
+
+                // 记录分页处理时间
+                long pageCostTime = System.currentTimeMillis() - pageStartTime;
+                log.debug("第{}页数据处理完成: 数据量={}, 当前Sheet={}, 耗时={}ms",
+                        pageNum, data.size(), writer.getCurrentSheet(), pageCostTime);
+
+                // 判断是否还有下一页
+                hasNext = pageData.isHasNext();
+                pageNum++;
+            }
+
+            long totalCostTime = System.currentTimeMillis() - startPageTime;
+
+            // 上传到存储
+            String fileUrl = storageService.upload(tempFile, request.getFileName(),
+                    request.getStorageType(), taskId);
+
+            // 获取文件大小
+            long fileSize = storageService.getFileSize(extractFileKey(fileUrl), request.getStorageType());
+
+            // 更新总数据量和文件大小
+            recordService.update(taskId, record -> {
+                record.setTotalCount(totalCount);
+                record.setFileSize(fileSize);
+            });
+
+            log.info("多Sheet导出任务数据处理完成: {}, 总数据量: {}, 文件大小: {} bytes, Sheet数: {}, 处理耗时: {}ms",
+                    taskId, totalCount, fileSize, writer.getCurrentSheet(), totalCostTime);
+            return fileUrl;
+        } finally {
+            // 清理临时文件
+            cleanupTempFile(tempFile);
+        }
+    }
+
+    /**
      * 执行导出任务（使用配置的默认异步方式） 这是主要的导出入口方法，适用于大多数场景
      *
      * @param request 导出请求，包含所有导出参数和配置
@@ -117,7 +247,7 @@ public class ExportEngine {
             AsyncType targetAsyncType = asyncType != null ? asyncType : request.getAsyncType();
 
             // 提交任务到异步执行器
-            asyncExecutor.submit(task, targetAsyncType);
+            asyncExecutor.submitExport(task, targetAsyncType);
 
             long costTime = System.currentTimeMillis() - startTime;
 
@@ -310,10 +440,9 @@ public class ExportEngine {
             log.warn("任务不是失败状态，无法重新执行: {}", taskId);
             return false;
         }
-
         try {
             // 重新提交任务
-            asyncExecutor.submit(task, task.getRequest().getAsyncType());
+            asyncExecutor.submitExport(task, task.getRequest().getAsyncType());
 
             log.info("任务重新执行已提交: {}", taskId);
             return true;
@@ -336,7 +465,7 @@ public class ExportEngine {
     private <T> String doExport(ExportRequest<T> request, String taskId) throws Exception {
         File tempFile = createTempFile(request.getFileName());
 
-        try (SilkyExcelWriter writer = new SilkyExcelWriter(tempFile.getAbsolutePath())) {
+        try (EnhancedExcelWriter writer = new EnhancedExcelWriter(tempFile.getAbsolutePath())) {
 
             int pageNum = 1;
             boolean hasNext = true;

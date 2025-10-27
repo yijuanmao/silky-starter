@@ -3,7 +3,7 @@ package com.silky.starter.excel.core.async;
 import cn.hutool.core.date.LocalDateTimeUtil;
 import com.silky.starter.excel.core.engine.ExportEngine;
 import com.silky.starter.excel.core.exception.ExcelExportException;
-import com.silky.starter.excel.core.model.ExportTask;
+import com.silky.starter.excel.core.model.export.ExportTask;
 import com.silky.starter.excel.enums.AsyncType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;

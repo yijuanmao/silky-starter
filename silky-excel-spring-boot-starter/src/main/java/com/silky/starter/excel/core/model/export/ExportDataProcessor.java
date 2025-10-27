@@ -1,4 +1,4 @@
-package com.silky.starter.excel.core.model;
+package com.silky.starter.excel.core.model.export;
 
 import com.silky.starter.excel.core.exception.ExcelExportException;
 
@@ -8,6 +8,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
+ * Excel数据处理器接口
+ *
  * @author zy
  * @date 2025-10-24 11:25
  **/

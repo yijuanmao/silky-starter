@@ -1,8 +1,8 @@
 package com.silky.starter.excel.template.impl;
 
 import com.silky.starter.excel.core.engine.ExportEngine;
-import com.silky.starter.excel.core.model.ExportRequest;
-import com.silky.starter.excel.core.model.ExportResult;
+import com.silky.starter.excel.core.model.export.ExportRequest;
+import com.silky.starter.excel.core.model.export.ExportResult;
 import com.silky.starter.excel.enums.AsyncType;
 import com.silky.starter.excel.template.ExcelExportTemplate;
 

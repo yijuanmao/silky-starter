@@ -1,7 +1,9 @@
 package com.silky.starter.excel.core.async;
 
 import com.silky.starter.excel.core.async.factory.AsyncProcessorFactory;
-import com.silky.starter.excel.core.model.ExportTask;
+import com.silky.starter.excel.core.exception.ExcelExportException;
+import com.silky.starter.excel.core.model.export.ExportTask;
+import com.silky.starter.excel.core.model.imports.ImportTask;
 import com.silky.starter.excel.enums.AsyncType;
 import com.silky.starter.excel.properties.SilkyExcelProperties;
 import lombok.Builder;
@@ -11,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 
 import javax.annotation.PreDestroy;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -82,22 +85,71 @@ public class AsyncExecutor implements InitializingBean {
      *
      * @param task 导出任务，包含任务ID、请求参数和记录信息
      */
-    public void submit(ExportTask<?> task) {
-        submit(task, null);
+    public void submitExport(ExportTask<?> task) {
+        this.submitExport(task, null);
     }
 
     /**
-     * 提交导出任务 - 指定异步方式
-     * 允许调用方覆盖默认的异步处理方式
+     * 提交导出任务 - 指定异步方式，允许调用方覆盖默认的异步处理方式
      *
      * @param task      导出任务
      * @param asyncType 异步处理类型，如果为null则使用配置的默认类型
-     * @throws IllegalArgumentException 如果任务为null
-     * @throws RuntimeException         如果任务提交失败且无法降级处理
      */
-    public void submit(ExportTask<?> task, AsyncType asyncType) {
+    public void submitExport(ExportTask<?> task, AsyncType asyncType) {
         // 参数校验
-        validateTask(task);
+        ExportTask.validateTaExportTask(task);
+
+        // 增加总提交计数
+        totalSubmittedTasks.incrementAndGet();
+
+        // 检查异步导出是否启用
+        if (!properties.getAsync().isEnabled()) {
+            log.debug("异步导出被禁用，使用同步方式执行任务: {}", task.getTaskId());
+            processSync(task);
+            return;
+        }
+
+        // 确定目标异步类型
+        AsyncType targetType = determineAsyncType(asyncType);
+
+        try {
+            // 获取对应的异步处理器
+            AsyncProcessor processor = processorFactory.getProcessor(targetType);
+
+            // 检查处理器是否可用
+            if (!processor.isAvailable()) {
+                log.warn("处理器 {} 不可用，任务: {}, 降级为同步执行",
+                        targetType, task.getTaskId());
+                fallbackTasks.incrementAndGet();
+                processSync(task);
+                return;
+            }
+
+            // 提交任务到处理器
+            processor.submit(task);
+            successSubmittedTasks.incrementAndGet();
+
+            log.debug("任务提交成功: {}, 处理器: {}", task.getTaskId(), targetType);
+
+        } catch (Exception e) {
+            log.error("处理器 {} 提交任务失败: {}, 错误: {}, 降级为同步执行",
+                    targetType, task.getTaskId(), e.getMessage());
+
+            fallbackTasks.incrementAndGet();
+            processSync(task);
+        }
+    }
+
+
+    /**
+     * 提交导入任务 - 指定异步方式，允许调用方覆盖默认的异步处理方式
+     *
+     * @param task      导入任务
+     * @param asyncType 异步处理类型，如果为null则使用配置的默认类型
+     */
+    public void submitImport(ImportTask<?> task, AsyncType asyncType) {
+        // 参数校验
+        ImportTask.validateTaImportTask(task);
 
         // 增加总提交计数
         totalSubmittedTasks.incrementAndGet();
@@ -145,9 +197,8 @@ public class AsyncExecutor implements InitializingBean {
      * 在调用者线程中立即执行任务，用于降级处理或同步场景
      *
      * @param task 导出任务
-     * @throws RuntimeException 如果任务处理失败
      */
-    private void processSync(ExportTask<?> task) {
+    private void processExportSync(ExportTask<?> task) {
         try {
             // 获取同步处理器
             AsyncProcessor syncProcessor = processorFactory.getProcessor(AsyncType.SYNC);
@@ -159,7 +210,28 @@ public class AsyncExecutor implements InitializingBean {
 
         } catch (Exception e) {
             log.error("同步处理任务失败: {}", task.getTaskId(), e);
-            throw new RuntimeException("任务处理失败: " + e.getMessage(), e);
+            throw new ExcelExportException("任务处理失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 同步处理任务 在调用者线程中立即执行任务，用于降级处理或同步场景
+     *
+     * @param task 导入任务
+     */
+    private void processImportSync(ImportTask<?> task) {
+        try {
+            // 获取同步处理器
+            AsyncProcessor syncProcessor = processorFactory.getProcessor(AsyncType.SYNC);
+
+            // 直接处理任务（同步执行）
+            syncProcessor.process(task);
+
+            log.debug("同步任务处理完成: {}", task.getTaskId());
+
+        } catch (Exception e) {
+            log.error("同步处理任务失败: {}", task.getTaskId(), e);
+            throw new ExcelExportException("任务处理失败: " + e.getMessage(), e);
         }
     }
 
@@ -212,14 +284,12 @@ public class AsyncExecutor implements InitializingBean {
      * 允许在运行时动态注册新的异步处理器
      *
      * @param processor 自定义处理器实例
-     * @throws IllegalArgumentException 如果处理器为null或类型已存在
-     * @throws RuntimeException         如果处理器初始化失败
-     *                                  <p>
-     *                                  使用示例：
-     *                                  {@code
-     *                                  AsyncProcessor customProcessor = new CustomAsyncProcessor();
-     *                                  asyncExecutor.registerProcessor(customProcessor);
-     *                                  }
+     *                  <p>
+     *                  使用示例：
+     *                  {@code
+     *                  AsyncProcessor customProcessor = new CustomAsyncProcessor();
+     *                  asyncExecutor.registerProcessor(customProcessor);
+     *                  }
      */
     public void registerProcessor(AsyncProcessor processor) {
         if (processor == null) {
@@ -231,7 +301,7 @@ public class AsyncExecutor implements InitializingBean {
             log.info("自定义处理器注册成功: {}", processor.getType());
         } catch (Exception e) {
             log.error("自定义处理器注册失败: {}", processor.getType(), e);
-            throw new RuntimeException("处理器注册失败: " + e.getMessage(), e);
+            throw new ExcelExportException("处理器注册失败: " + e.getMessage(), e);
         }
     }
 
@@ -287,7 +357,7 @@ public class AsyncExecutor implements InitializingBean {
      *
      * @return 可用处理器类型列表
      */
-    public java.util.List<String> getAvailableTypes() {
+    public List<String> getAvailableTypes() {
         return processorFactory.getAvailableTypes();
     }
 
@@ -326,26 +396,6 @@ public class AsyncExecutor implements InitializingBean {
                 totalSubmittedTasks.get(), successSubmittedTasks.get(), fallbackTasks.get());
     }
 
-    /**
-     * 校验任务参数
-     *
-     * @param task 导出任务
-     * @throws IllegalArgumentException 如果任务参数不合法
-     */
-    private void validateTask(ExportTask<?> task) {
-        if (task == null) {
-            throw new IllegalArgumentException("导出任务不能为null");
-        }
-        if (task.getTaskId() == null || task.getTaskId().trim().isEmpty()) {
-            throw new IllegalArgumentException("任务ID不能为空");
-        }
-        if (task.getRequest() == null) {
-            throw new IllegalArgumentException("导出请求不能为null");
-        }
-        if (task.getRecord() == null) {
-            throw new IllegalArgumentException("导出记录不能为null");
-        }
-    }
 
     /**
      * 确定异步处理类型
@@ -525,7 +575,7 @@ public class AsyncExecutor implements InitializingBean {
      * 用于健康检查和监控
      */
     @Data
-    @lombok.Builder
+    @Builder
     public static class HealthStatus {
         /**
          * 健康等级

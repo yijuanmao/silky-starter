@@ -1,4 +1,4 @@
-package com.silky.starter.excel.core.model;
+package com.silky.starter.excel.core.model.export;
 
 import com.silky.starter.excel.entity.ExportRecord;
 import lombok.AllArgsConstructor;
@@ -153,5 +153,26 @@ public class ExportTask<T> {
      */
     public boolean isFinished() {
         return finishTime != null;
+    }
+
+    /**
+     * 校验任务参数
+     *
+     * @param task 导出任务
+     * @throws IllegalArgumentException 如果任务参数不合法
+     */
+    public static void validateTaExportTask(ExportTask<?> task) {
+        if (task == null) {
+            throw new IllegalArgumentException("导出任务不能为null");
+        }
+        if (task.getTaskId() == null || task.getTaskId().trim().isEmpty()) {
+            throw new IllegalArgumentException("任务ID不能为空");
+        }
+        if (task.getRequest() == null) {
+            throw new IllegalArgumentException("导出请求不能为null");
+        }
+        if (task.getRecord() == null) {
+            throw new IllegalArgumentException("导出记录不能为null");
+        }
     }
 }

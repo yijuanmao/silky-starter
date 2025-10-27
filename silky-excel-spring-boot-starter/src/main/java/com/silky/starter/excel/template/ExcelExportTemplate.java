@@ -1,7 +1,7 @@
 package com.silky.starter.excel.template;
 
-import com.silky.starter.excel.core.model.ExportRequest;
-import com.silky.starter.excel.core.model.ExportResult;
+import com.silky.starter.excel.core.model.export.ExportRequest;
+import com.silky.starter.excel.core.model.export.ExportResult;
 import com.silky.starter.excel.enums.AsyncType;
 
 /**
