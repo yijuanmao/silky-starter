@@ -19,19 +19,6 @@ public interface AsyncProcessor {
      */
     String getType();
 
-    /**
-     * 提交导出任务 将任务提交到异步处理系统，立即返回，任务会在后台执行
-     *
-     * @param task 要处理的导出任务，包含任务ID、请求参数和记录信息，注意：此方法应该是非阻塞的，提交后立即返回
-     */
-    void submit(ExportTask<?> task) throws ExcelExportException;
-
-    /**
-     * 处理导出任务，实际执行导出任务的核心方法，包含数据查询、Excel生成和文件上传
-     *
-     * @param task 要处理的导出任务
-     */
-    void process(ExportTask<?> task) throws ExcelExportException;
 
     /**
      * 初始化处理器,在处理器注册到工厂后调用，用于初始化资源

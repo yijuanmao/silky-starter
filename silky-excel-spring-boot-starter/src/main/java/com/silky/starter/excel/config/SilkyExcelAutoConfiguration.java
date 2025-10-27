@@ -1,10 +1,10 @@
 package com.silky.starter.excel.config;
 
-import com.silky.starter.excel.core.async.AsyncExecutor;
 import com.silky.starter.excel.core.async.AsyncProcessor;
-import com.silky.starter.excel.core.async.SyncAsyncProcessor;
-import com.silky.starter.excel.core.async.ThreadPoolAsyncProcessor;
+import com.silky.starter.excel.core.async.executor.AsyncExecutor;
 import com.silky.starter.excel.core.async.factory.AsyncProcessorFactory;
+import com.silky.starter.excel.core.async.impl.export.ExportSyncAsyncProcessor;
+import com.silky.starter.excel.core.async.impl.export.ExportThreadPoolAsyncProcessor;
 import com.silky.starter.excel.core.engine.ExportEngine;
 import com.silky.starter.excel.core.storage.StorageStrategy;
 import com.silky.starter.excel.core.storage.factory.StorageStrategyFactory;
@@ -59,8 +59,8 @@ public class SilkyExcelAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    public AsyncProcessorFactory asyncProcessorFactory(SilkyExcelProperties properties, @Autowired(required = false) List<AsyncProcessor> processors) {
-        return new AsyncProcessorFactory(properties, processors);
+    public AsyncProcessorFactory asyncProcessorFactory(SilkyExcelProperties properties) {
+        return new AsyncProcessorFactory(properties);
     }
 
     /**
@@ -83,7 +83,7 @@ public class SilkyExcelAutoConfiguration {
     @ConditionalOnMissingBean
     public AsyncProcessor threadPoolAsyncProcessor(ExportEngine exportEngine,
                                                    ThreadPoolTaskExecutor taskExecutor) {
-        return new ThreadPoolAsyncProcessor(exportEngine, taskExecutor);
+        return new ExportThreadPoolAsyncProcessor(exportEngine, taskExecutor);
     }
 
     /**
@@ -94,7 +94,7 @@ public class SilkyExcelAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public AsyncProcessor syncAsyncProcessor(ExportEngine exportEngine) {
-        return new SyncAsyncProcessor(exportEngine);
+        return new ExportSyncAsyncProcessor(exportEngine);
     }
 
     /**
@@ -129,7 +129,7 @@ public class SilkyExcelAutoConfiguration {
     @ConditionalOnClass(name = "org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor")
     public AsyncProcessor threadPoolTaskExecutorAsyncProcessor(ExportEngine exportEngine,
                                                                ThreadPoolTaskExecutor taskExecutor) {
-        return new ThreadPoolAsyncProcessor(exportEngine, taskExecutor);
+        return new ExportThreadPoolAsyncProcessor(exportEngine, taskExecutor);
     }
 
     /**

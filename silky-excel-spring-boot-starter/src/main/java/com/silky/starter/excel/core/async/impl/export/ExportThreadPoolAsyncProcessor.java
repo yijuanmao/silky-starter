@@ -1,6 +1,8 @@
-package com.silky.starter.excel.core.async;
+package com.silky.starter.excel.core.async.impl.export;
 
 import cn.hutool.core.date.LocalDateTimeUtil;
+import com.silky.starter.excel.core.async.ExportAsyncProcessor;
+import com.silky.starter.excel.core.async.ProcessorStatus;
 import com.silky.starter.excel.core.engine.ExportEngine;
 import com.silky.starter.excel.core.exception.ExcelExportException;
 import com.silky.starter.excel.core.model.export.ExportTask;
@@ -23,7 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @date 2025-10-24 14:33
  **/
 @Slf4j
-public class ThreadPoolAsyncProcessor implements AsyncProcessor {
+public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
 
     /**
      * 已处理任务计数器
@@ -57,8 +59,8 @@ public class ThreadPoolAsyncProcessor implements AsyncProcessor {
 
     private final ThreadPoolTaskExecutor taskExecutor;
 
-    public ThreadPoolAsyncProcessor(ExportEngine exportEngine,
-                                    ThreadPoolTaskExecutor taskExecutor) {
+    public ExportThreadPoolAsyncProcessor(ExportEngine exportEngine,
+                                          ThreadPoolTaskExecutor taskExecutor) {
         this.exportEngine = exportEngine;
         this.taskExecutor = taskExecutor;
     }

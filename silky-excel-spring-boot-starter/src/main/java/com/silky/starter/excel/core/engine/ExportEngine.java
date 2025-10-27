@@ -5,7 +5,7 @@ import cn.hutool.core.date.LocalDateTimeUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
-import com.silky.starter.excel.core.async.AsyncExecutor;
+import com.silky.starter.excel.core.async.executor.AsyncExecutor;
 import com.silky.starter.excel.core.exception.ExcelExportException;
 import com.silky.starter.excel.core.model.export.*;
 import com.silky.starter.excel.entity.ExportRecord;
@@ -190,8 +190,9 @@ public class ExportEngine {
             long fileSize = storageService.getFileSize(extractFileKey(fileUrl), request.getStorageType());
 
             // 更新总数据量和文件大小
+            long finalTotalCount = totalCount;
             recordService.update(taskId, record -> {
-                record.setTotalCount(totalCount);
+                record.setTotalCount(finalTotalCount);
                 record.setFileSize(fileSize);
             });
 

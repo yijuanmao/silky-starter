@@ -1,11 +1,9 @@
 package com.silky.starter.excel.core.model.imports;
 
 import cn.hutool.core.util.StrUtil;
+import com.silky.starter.excel.core.async.BaseAsyncTask;
 import com.silky.starter.excel.entity.ImportRecord;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 /**
  * 导入任务
@@ -17,7 +15,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ImportTask<T> {
+@EqualsAndHashCode(callSuper = true)
+public class ImportTask<T> extends BaseAsyncTask {
 
     /**
      * 任务唯一标识
