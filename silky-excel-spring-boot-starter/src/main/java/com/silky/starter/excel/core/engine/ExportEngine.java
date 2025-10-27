@@ -356,7 +356,7 @@ public class ExportEngine {
                 ExportPageData<T> pageData = request.getDataSupplier().getPageData(
                         pageNum, request.getPageSize(), request.getParams()
                 );
-                if (pageData == null  || CollectionUtil.isEmpty(pageData.getData())) {
+                if (pageData == null || CollectionUtil.isEmpty(pageData.getData())) {
                     log.debug("第{}页数据为空，导出完成", pageNum);
                     break;
                 }
@@ -489,9 +489,8 @@ public class ExportEngine {
      *
      * @param fileName 文件名
      * @return 临时文件
-     * @throws IOException 文件创建异常
      */
-    private File createTempFile(String fileName) throws IOException {
+    private File createTempFile(String fileName) {
         String tempDir = System.getProperty("java.io.tmpdir");
         String filePath = tempDir + File.separator + "silky_export_" +
                 System.currentTimeMillis() + "_" + fileName;
@@ -503,16 +502,19 @@ public class ExportEngine {
         if (parentDir != null && !parentDir.exists()) {
             boolean created = parentDir.mkdirs();
             if (!created) {
-                throw new IOException("创建临时文件目录失败: " + parentDir.getAbsolutePath());
+                throw new ExcelExportException("创建临时文件目录失败: " + parentDir.getAbsolutePath());
             }
         }
-
         // 创建文件
-        boolean created = file.createNewFile();
-        if (!created) {
-            throw new IOException("创建临时文件失败: " + filePath);
+        try {
+            boolean created = file.createNewFile();
+            if (!created) {
+                throw new ExcelExportException("创建临时文件失败: " + filePath);
+            }
+        } catch (IOException e) {
+            log.error("创建临时文件异常: {}", filePath, e);
+            throw new ExcelExportException("创建临时文件异常: " + filePath, e);
         }
-
         log.debug("临时文件创建成功: {}", filePath);
         return file;
     }

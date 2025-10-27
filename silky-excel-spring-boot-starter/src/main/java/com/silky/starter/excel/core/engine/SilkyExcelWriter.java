@@ -1,5 +1,7 @@
 package com.silky.starter.excel.core.engine;
 
+import cn.idev.excel.ExcelWriter;
+import cn.idev.excel.FastExcelFactory;
 import cn.idev.excel.annotation.ExcelProperty;
 import com.silky.starter.excel.core.exception.ExcelExportException;
 import lombok.Getter;
@@ -20,7 +22,7 @@ public class SilkyExcelWriter implements Closeable {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SilkyExcelWriter.class);
 
-    private final FastExcelWriter writer;
+    private final ExcelWriter writer;
 
     /**
      * 获取文件路径
@@ -46,7 +48,9 @@ public class SilkyExcelWriter implements Closeable {
         this.filePath = filePath;
 
         try {
-            this.writer = new FastExcelWriter(filePath);
+            this.writer = FastExcelFactory.write(filePath)
+                    .build();
+//            this.writer = new ExcelWriter(filePath);
             log.info("Excel写入器初始化成功: {}", filePath);
         } catch (Exception e) {
             log.error("Excel写入器初始化失败: {}", filePath, e);

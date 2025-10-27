@@ -217,6 +217,7 @@ public class SilkyExcelProperties {
 
     @Data
     public static class ThreadPoolConfig {
+
         /**
          * 核心线程数
          * 默认值：10

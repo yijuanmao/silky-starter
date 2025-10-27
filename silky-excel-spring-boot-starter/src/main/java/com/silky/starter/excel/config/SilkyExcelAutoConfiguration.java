@@ -26,6 +26,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.List;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * Silky Excel 自动配置类
@@ -94,6 +95,27 @@ public class SilkyExcelAutoConfiguration {
     @ConditionalOnMissingBean
     public AsyncProcessor syncAsyncProcessor(ExportEngine exportEngine) {
         return new SyncAsyncProcessor(exportEngine);
+    }
+
+    /**
+     * 配置导出线程池任务执行器
+     *
+     * @return 导出线程池任务执行器实例
+     */
+    @Bean(name = "exportThreadPoolTaskExecutor")
+    @ConditionalOnMissingBean
+    public ThreadPoolTaskExecutor exportThreadPoolTaskExecutor(SilkyExcelProperties properties) {
+        ThreadPoolTaskExecutor defaultExecutor = new ThreadPoolTaskExecutor();
+        defaultExecutor.setCorePoolSize(properties.getThreadPool().getCoreSize());
+        defaultExecutor.setMaxPoolSize(properties.getThreadPool().getMaxSize());
+        defaultExecutor.setQueueCapacity(properties.getThreadPool().getQueueCapacity());
+        defaultExecutor.setKeepAliveSeconds(properties.getThreadPool().getKeepAliveSeconds());
+        defaultExecutor.setThreadNamePrefix(properties.getThreadPool().getThreadNamePrefix());
+        defaultExecutor.setAllowCoreThreadTimeOut(properties.getThreadPool().isAllowCoreThreadTimeOut());
+        defaultExecutor.setWaitForTasksToCompleteOnShutdown(properties.getThreadPool().isWaitForTasksToCompleteOnShutdown());
+        defaultExecutor.setAwaitTerminationSeconds(properties.getThreadPool().getAwaitTerminationSeconds());
+        defaultExecutor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        return defaultExecutor;
     }
 
     /**
@@ -168,4 +190,5 @@ public class SilkyExcelAutoConfiguration {
                                          SilkyExcelProperties properties) {
         return new DefaultStorageService(strategyFactory, properties);
     }
+
 }
