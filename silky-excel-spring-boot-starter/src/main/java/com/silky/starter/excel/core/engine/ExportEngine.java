@@ -7,9 +7,9 @@ import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.excel.core.async.executor.AsyncExecutor;
 import com.silky.starter.excel.core.exception.ExcelExportException;
+import com.silky.starter.excel.core.model.ExcelProcessResult;
 import com.silky.starter.excel.core.model.export.*;
 import com.silky.starter.excel.entity.ExportRecord;
-import com.silky.starter.excel.enums.AsyncType;
 import com.silky.starter.excel.enums.ExportStatus;
 import com.silky.starter.excel.service.export.ExportRecordService;
 import com.silky.starter.excel.service.storage.StorageService;
@@ -129,7 +129,7 @@ public class ExportEngine {
     /**
      * 处理多Sheet导出任务
      */
-    private <T> String doExportWithSheets(ExportRequest<T> request, String taskId, long maxRowsPerSheet) throws Exception {
+    private <T> String doExportWithSheets(ExportRequest<T> request, String taskId, long maxRowsPerSheet) {
         File tempFile = createTempFile(request.getFileName());
 
         try (EnhancedExcelWriter writer = new EnhancedExcelWriter(tempFile.getAbsolutePath(), maxRowsPerSheet)) {
@@ -212,9 +212,9 @@ public class ExportEngine {
      * @param <T>     要导出的数据类型
      * @return 导出结果，包含任务ID和状态信息
      */
-    public <T> ExportResult execute(ExportRequest<T> request) {
-        return execute(request, null);
-    }
+/*    public <T> ExportResult execute(ExportRequest<T> request) {
+        return execute(request, AsyncType.THREAD_POOL);
+    }*/
 
     /**
      * 执行导出任务（指定异步方式）,允许调用方覆盖默认的异步处理方式
@@ -224,7 +224,7 @@ public class ExportEngine {
      * @param <T>       要导出的数据类型
      * @return 导出结果
      */
-    public <T> ExportResult execute(ExportRequest<T> request, AsyncType asyncType) {
+   /* public <T> ExportResult execute(ExportRequest<T> request, AsyncType asyncType) {
         // 参数校验
         validateExportRequest(request);
 
@@ -268,7 +268,7 @@ public class ExportEngine {
 
             return ExportResult.fail(taskId, "导出任务创建失败: " + e.getMessage());
         }
-    }
+    }*/
 
     /**
      * 处理导出任务 由异步处理器调用，执行实际的导出逻辑
@@ -276,7 +276,7 @@ public class ExportEngine {
      * @param task 导出任务
      * @param <T>  要导出的数据类型
      */
-    public <T> void processExportTask(ExportTask<T> task) {
+    public <T> ExcelProcessResult processExportTask(ExportTask<T> task) {
         String taskId = task.getTaskId();
         ExportRequest<T> request = task.getRequest();
 
@@ -306,6 +306,7 @@ public class ExportEngine {
             log.info("导出任务处理完成: {}, 文件URL: {}, 总耗时: {}ms",
                     taskId, fileUrl, task.getExecuteTime());
 
+            return ExcelProcessResult.asyncSuccess(taskId);
         } catch (Exception e) {
             log.error("导出任务处理失败: {}", taskId, e);
 
@@ -316,7 +317,8 @@ public class ExportEngine {
             task.markFinish();
 
             failedTasks++;
-            throw new ExcelExportException("导出任务处理失败: " + e.getMessage(), e);
+
+            return ExcelProcessResult.fail(taskId, "导出任务创建失败: " + e.getMessage());
         } finally {
             // 执行数据清理（如果有）
             cleanupDataSupplier(request);
@@ -461,9 +463,8 @@ public class ExportEngine {
      * @param taskId  任务ID
      * @param <T>     数据类型
      * @return 文件访问URL
-     * @throws Exception 导出异常
      */
-    private <T> String doExport(ExportRequest<T> request, String taskId) throws Exception {
+    private <T> String doExport(ExportRequest<T> request, String taskId) {
         File tempFile = createTempFile(request.getFileName());
 
         try (EnhancedExcelWriter writer = new EnhancedExcelWriter(tempFile.getAbsolutePath())) {

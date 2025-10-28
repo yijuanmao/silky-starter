@@ -1,7 +1,6 @@
 package com.silky.starter.excel.properties;
 
 import com.silky.starter.excel.enums.AsyncType;
-import com.silky.starter.excel.enums.StorageType;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -16,315 +15,134 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class SilkyExcelProperties {
 
     /**
-     * 是否启用Silky Excel组件
-     * 默认值：true
+     * 是否启用Silky Excel
      */
     private boolean enabled = true;
 
     /**
      * 异步处理配置
      */
-    private AsyncConfig async = new AsyncConfig();
+    private Async async = new Async();
 
     /**
-     * 存储配置
+     * 导出配置
      */
-    private StorageConfig storage = new StorageConfig();
+    private Export export = new Export();
 
     /**
-     * 线程池配置
+     * 导入配置
      */
-    private ThreadPoolConfig threadPool = new ThreadPoolConfig();
+    private Import importConfig = new Import();
 
-    /**
-     * 任务配置
-     */
-    private TaskConfig task = new TaskConfig();
-
-    /**
-     * 监控配置
-     */
-    private MonitorConfig monitor = new MonitorConfig();
 
     @Data
-    public static class AsyncConfig {
+    public static class Async {
+
         /**
-         * 默认异步处理类型
-         * 可选值：SYNC, THREAD_POOL, SPRING_ASYNC, DATABASE, CUSTOM
-         * 默认值：THREAD_POOL
+         * 是否启用异步处理
+         */
+        private boolean enabled = true;
+
+        /**
+         * 默认异步类型
          */
         private AsyncType defaultType = AsyncType.THREAD_POOL;
 
         /**
-         * 是否启用异步导出
-         * 默认值：true
+         * 线程池配置
          */
-        private boolean enabled = true;
+        private ThreadPool threadPool = new ThreadPool();
 
-        /**
-         * 自定义处理器配置
-         */
-        private CustomProcessorConfig custom = new CustomProcessorConfig();
+        @Data
+        public static class ThreadPool {
+            /**
+             * 核心线程数
+             */
+            private int corePoolSize = 5;
+
+            /**
+             * 最大线程数
+             */
+            private int maxPoolSize = 20;
+
+            /**
+             * 队列容量
+             */
+            private int queueCapacity = 100;
+
+            /**
+             * 线程存活时间（秒）
+             */
+            private int keepAliveSeconds = 60;
+        }
     }
 
     @Data
-    public static class CustomProcessorConfig {
-        /**
-         * 是否启用自定义处理器扫描
-         * 默认值：false
-         */
-        private boolean enabled = false;
+    public static class Export {
 
         /**
-         * 自定义处理器扫描包路径
-         * 多个包路径用逗号分隔
+         * 每个Sheet的最大行数
          */
-        private String scanPackages;
+        private int maxRowsPerSheet = 100000;
+
+        /**
+         * 批处理大小
+         */
+        private int batchSize = 1000;
+
+        /**
+         * 临时文件路径
+         */
+        private String tempFilePath = "./temp/exports";
+
+        /**
+         * 超时时间（分钟）
+         */
+        private long timeoutMinutes = 30;
+
+        /**
+         * 是否启用压缩
+         */
+        private boolean enableCompression = false;
+
+        /**
+         * 默认模板类型
+         */
+        private String defaultTemplateType;
     }
 
     @Data
-    public static class StorageConfig {
-        /**
-         * 默认存储类型
-         * 可选值：LOCAL, REDIS, MONGO, OSS
-         * 默认值：LOCAL
-         */
-        private StorageType defaultType = StorageType.LOCAL;
+    public static class Import {
 
         /**
-         * 本地存储配置
+         * 分页大小
          */
-        private LocalConfig local = new LocalConfig();
+        private int pageSize = 1000;
 
         /**
-         * Redis存储配置
+         * 最大错误数量
          */
-        private RedisConfig redis = new RedisConfig();
+        private int maxErrorCount = 100;
 
         /**
-         * MongoDB存储配置
+         * 临时文件路径
          */
-        private MongoConfig mongo = new MongoConfig();
+        private String tempFilePath = "./temp/imports";
 
         /**
-         * OSS存储配置
+         * 超时时间（分钟）
          */
-        private OssConfig oss = new OssConfig();
+        private long timeoutMinutes = 60;
+
+        /**
+         * 是否启用事务
+         */
+        private boolean enableTransaction = true;
+
+        /**
+         * 是否跳过表头
+         */
+        private boolean skipHeader = true;
     }
 
-    @Data
-    public static class LocalConfig {
-        /**
-         * 本地存储基础路径
-         * 默认值：/tmp/silky-excel
-         */
-        private String basePath = "/tmp/silky-excel";
-
-        /**
-         * 是否自动清理临时文件
-         * 默认值：true
-         */
-        private boolean autoClean = true;
-
-        /**
-         * 清理间隔（秒）
-         * 默认值：3600（1小时）
-         */
-        private long cleanInterval = 3600;
-
-        /**
-         * 文件保留天数
-         * 默认值：7
-         */
-        private int retentionDays = 7;
-    }
-
-    @Data
-    public static class RedisConfig {
-        /**
-         * 是否启用Redis存储
-         * 默认值：false
-         */
-        private boolean enabled = false;
-
-        /**
-         * Redis Key前缀
-         * 默认值：silky:excel:
-         */
-        private String keyPrefix = "silky:excel:";
-
-        /**
-         * 文件数据过期时间（秒）
-         * 默认值：86400（24小时）
-         */
-        private long expireSeconds = 86400;
-    }
-
-    @Data
-    public static class MongoConfig {
-        /**
-         * 是否启用MongoDB存储
-         * 默认值：false
-         */
-        private boolean enabled = false;
-
-        /**
-         * 集合名称
-         * 默认值：excel_files
-         */
-        private String collectionName = "excel_files";
-    }
-
-    @Data
-    public static class OssConfig {
-        /**
-         * 是否启用OSS存储
-         * 默认值：false
-         */
-        private boolean enabled = false;
-
-        /**
-         * OSS访问密钥
-         */
-        private String accessKey;
-
-        /**
-         * OSS秘密密钥
-         */
-        private String secretKey;
-
-        /**
-         * OSS端点
-         */
-        private String endpoint;
-
-        /**
-         * OSS桶名称
-         */
-        private String bucketName;
-
-        /**
-         * OSS区域
-         */
-        private String region;
-
-        /**
-         * URL过期时间（秒）
-         * 默认值：3600（1小时）
-         */
-        private long urlExpire = 3600;
-    }
-
-    @Data
-    public static class ThreadPoolConfig {
-
-        /**
-         * 核心线程数
-         * 默认值：10
-         */
-        private int coreSize = 10;
-
-        /**
-         * 最大线程数
-         * 默认值：50
-         */
-        private int maxSize = 50;
-
-        /**
-         * 队列容量
-         * 默认值：1000
-         */
-        private int queueCapacity = 1000;
-
-        /**
-         * 线程空闲时间（秒）
-         * 默认值：60
-         */
-        private int keepAliveSeconds = 60;
-
-        /**
-         * 线程名前缀
-         * 默认值：silky-excel-
-         */
-        private String threadNamePrefix = "silky-excel-";
-
-        /**
-         * 是否允许核心线程超时
-         * 默认值：false
-         */
-        private boolean allowCoreThreadTimeOut = false;
-
-        /**
-         * 关闭时是否等待任务完成
-         * 默认值：true
-         */
-        private boolean waitForTasksToCompleteOnShutdown = true;
-
-        /**
-         * 等待任务完成的最大时间（秒）
-         * 默认值：30
-         */
-        private int awaitTerminationSeconds = 30;
-    }
-
-    @Data
-    public static class TaskConfig {
-        /**
-         * 默认分页大小
-         * 默认值：2000
-         */
-        private int defaultPageSize = 2000;
-
-        /**
-         * 任务默认超时时间（毫秒）
-         * 默认值：3600000（1小时）
-         */
-        private long defaultTimeout = 3600000;
-
-        /**
-         * 最大重试次数
-         * 默认值：3
-         */
-        private int maxRetryCount = 3;
-
-        /**
-         * 重试间隔（毫秒）
-         * 默认值：5000
-         */
-        private long retryInterval = 5000;
-    }
-
-    @Data
-    public static class MonitorConfig {
-        /**
-         * 是否启用监控
-         * 默认值：true
-         */
-        private boolean enabled = true;
-
-        /**
-         * 监控数据保留天数
-         * 默认值：30
-         */
-        private int retentionDays = 30;
-
-        /**
-         * 监控数据采集间隔（秒）
-         * 默认值：60
-         */
-        private int collectInterval = 60;
-    }
-
-    /**
-     * 获取完整的配置信息字符串
-     *
-     * @return 配置信息
-     */
-    public String getConfigInfo() {
-        return String.format(
-                "Silky Excel配置: 启用=%s, 默认异步方式=%s, 默认存储=%s, 线程池=%d/%d, 默认分页=%d",
-                enabled, async.getDefaultType(), storage.getDefaultType(),
-                threadPool.getCoreSize(), threadPool.getMaxSize(), task.getDefaultPageSize()
-        );
-    }
 }

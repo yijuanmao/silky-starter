@@ -2,6 +2,7 @@ package com.silky.starter.excel.core.async;
 
 import cn.hutool.core.collection.CollectionUtil;
 import com.silky.starter.excel.core.exception.ExcelExportException;
+import com.silky.starter.excel.core.model.ExcelProcessResult;
 import com.silky.starter.excel.core.model.export.ExportTask;
 import lombok.Getter;
 
@@ -20,7 +21,7 @@ public interface ExportAsyncProcessor extends AsyncProcessor {
      *
      * @param task 要处理的导出任务，包含任务ID、请求参数和记录信息
      */
-    void submit(ExportTask<?> task) throws ExcelExportException;
+    ExcelProcessResult submit(ExportTask<?> task) throws ExcelExportException;
 
     /**
      * 处理导出任务
@@ -29,7 +30,7 @@ public interface ExportAsyncProcessor extends AsyncProcessor {
      *
      * @param task 要处理的导出任务
      */
-    void process(ExportTask<?> task) throws ExcelExportException;
+    ExcelProcessResult process(ExportTask<?> task) throws ExcelExportException;
 
     /**
      * 批量提交导出任务

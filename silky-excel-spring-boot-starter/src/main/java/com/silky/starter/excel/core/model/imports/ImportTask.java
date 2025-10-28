@@ -19,12 +19,6 @@ import lombok.*;
 public class ImportTask<T> extends BaseAsyncTask {
 
     /**
-     * 任务唯一标识
-     * 用于任务跟踪和管理
-     */
-    private String taskId;
-
-    /**
      * 导入请求配置
      * 包含导出操作的所有参数
      */
@@ -77,12 +71,13 @@ public class ImportTask<T> extends BaseAsyncTask {
      */
     public static <T> ImportTask<T> create(String taskId, ImportRequest<T> request, ImportRecord record) {
         long now = System.currentTimeMillis();
-        return ImportTask.<T>builder()
-                .taskId(taskId)
+        ImportTask<T> importTask = ImportTask.<T>builder()
                 .request(request)
                 .record(record)
                 .createTime(now)
                 .build();
+        importTask.setTaskId(taskId);
+        return importTask;
     }
 
     /**

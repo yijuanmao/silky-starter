@@ -1,4 +1,4 @@
-package com.silky.starter.excel.core.async;
+package com.silky.starter.excel.core.async.model;
 
 import lombok.*;
 

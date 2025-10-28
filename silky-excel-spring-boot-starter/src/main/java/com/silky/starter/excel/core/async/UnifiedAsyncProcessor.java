@@ -1,6 +1,7 @@
 package com.silky.starter.excel.core.async;
 
 import com.silky.starter.excel.core.exception.ExcelExportException;
+import com.silky.starter.excel.core.model.ExcelProcessResult;
 import com.silky.starter.excel.enums.TaskType;
 
 /**
@@ -18,11 +19,17 @@ public interface UnifiedAsyncProcessor extends AsyncProcessor {
 
     /**
      * 提交任务
+     *
+     * @param task 任务
+     * @return 任务处理结果
      */
-    void submit(AsyncTask task) throws ExcelExportException;
+    ExcelProcessResult submit(AsyncTask task) throws ExcelExportException;
 
     /**
      * 处理任务
+     *
+     * @param task 任务
+     * @return 任务处理结果
      */
-    void process(AsyncTask task) throws ExcelExportException;
+    ExcelProcessResult process(AsyncTask task) throws ExcelExportException;
 }

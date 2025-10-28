@@ -3,7 +3,9 @@ package com.silky.starter.excel.core.async.executor;
 import cn.hutool.core.date.LocalDateTimeUtil;
 import com.silky.starter.excel.core.async.*;
 import com.silky.starter.excel.core.async.factory.AsyncProcessorFactory;
+import com.silky.starter.excel.core.async.model.ProcessorStatus;
 import com.silky.starter.excel.core.exception.ExcelExportException;
+import com.silky.starter.excel.core.model.ExcelProcessResult;
 import com.silky.starter.excel.core.model.export.ExportTask;
 import com.silky.starter.excel.core.model.imports.ImportTask;
 import com.silky.starter.excel.enums.AsyncType;
@@ -60,6 +62,8 @@ public class AsyncExecutor implements InitializingBean {
      */
     private final Map<AsyncType, AtomicLong> asyncTypeCounters = new ConcurrentHashMap<>(9);
 
+    private final AsyncType defaultType;
+
     /**
      * 执行器启动时间
      */
@@ -73,6 +77,7 @@ public class AsyncExecutor implements InitializingBean {
                          SilkyExcelProperties properties) {
         this.processorFactory = processorFactory;
         this.properties = properties;
+        this.defaultType = properties.getAsync().getDefaultType();
 
         // 初始化统计计数器
         for (TaskType taskType : TaskType.values()) {
@@ -81,6 +86,11 @@ public class AsyncExecutor implements InitializingBean {
         for (AsyncType asyncType : AsyncType.values()) {
             asyncTypeCounters.put(asyncType, new AtomicLong(0));
         }
+    }
+
+    @Override
+    public void afterPropertiesSet() {
+        this.init();
     }
 
     /**
@@ -95,7 +105,6 @@ public class AsyncExecutor implements InitializingBean {
         }
 
         // 检查默认处理器是否可用
-        AsyncType defaultType = properties.getAsync().getDefaultType();
         boolean defaultAvailable = checkDefaultProcessorAvailable(defaultType);
 
         if (!defaultAvailable) {
@@ -105,36 +114,6 @@ public class AsyncExecutor implements InitializingBean {
         log.info("异步执行器初始化完成，默认异步类型: {}, 可用状态: {}", defaultType, defaultAvailable);
     }
 
-    /**
-     * 检查默认处理器是否可用
-     */
-    private boolean checkDefaultProcessorAvailable(AsyncType defaultType) {
-        try {
-            // 尝试获取统一处理器
-            processorFactory.getUnifiedProcessor(defaultType);
-            return true;
-        } catch (Exception e) {
-            log.debug("默认统一处理器不可用: {}", defaultType);
-        }
-
-        try {
-            // 尝试获取导出处理器
-            processorFactory.getExportProcessor(defaultType);
-            return true;
-        } catch (Exception e) {
-            log.debug("默认导出处理器不可用: {}", defaultType);
-        }
-
-        try {
-            // 尝试获取导入处理器
-            processorFactory.getImportProcessor(defaultType);
-            return true;
-        } catch (Exception e) {
-            log.debug("默认导入处理器不可用: {}", defaultType);
-        }
-
-        return false;
-    }
 
     // ==================== 统一任务提交方法 ====================
 
@@ -143,8 +122,8 @@ public class AsyncExecutor implements InitializingBean {
      *
      * @param task 异步任务
      */
-    public void submit(AsyncTask task) {
-        submit(task, null);
+    public ExcelProcessResult submit(AsyncTask task) {
+        return this.submit(task, defaultType);
     }
 
     /**
@@ -153,7 +132,7 @@ public class AsyncExecutor implements InitializingBean {
      * @param task      异步任务
      * @param asyncType 异步处理类型，如果为null则使用配置的默认类型
      */
-    public void submit(AsyncTask task, AsyncType asyncType) {
+    public ExcelProcessResult submit(AsyncTask task, AsyncType asyncType) {
         // 参数校验
         validateAsyncTask(task);
 
@@ -167,7 +146,7 @@ public class AsyncExecutor implements InitializingBean {
         if (!properties.getAsync().isEnabled()) {
             log.debug("异步处理被禁用，使用同步方式执行任务: {}", task.getTaskId());
             processSync(task);
-            return;
+            return ExcelProcessResult.fail(task.getTaskId(), "异步处理被禁用，请使用同步方式执行任务");
         }
 
         // 确定目标异步类型
@@ -179,10 +158,10 @@ public class AsyncExecutor implements InitializingBean {
         try {
             // 优先使用统一处理器
             if (useUnifiedProcessor(task, targetType)) {
-                submitWithUnifiedProcessor(task, targetType);
+                return submitWithUnifiedProcessor(task, targetType);
             } else {
                 // 使用专门的处理器
-                submitWithSpecializedProcessor(task, targetType);
+                return submitWithSpecializedProcessor(task, targetType);
             }
 
         } catch (Exception e) {
@@ -209,7 +188,7 @@ public class AsyncExecutor implements InitializingBean {
     /**
      * 使用统一处理器提交任务
      */
-    private void submitWithUnifiedProcessor(AsyncTask task, AsyncType asyncType) {
+    private ExcelProcessResult submitWithUnifiedProcessor(AsyncTask task, AsyncType asyncType) {
         UnifiedAsyncProcessor processor = processorFactory.getUnifiedProcessor(asyncType);
 
         if (!processor.isAvailable()) {
@@ -226,11 +205,11 @@ public class AsyncExecutor implements InitializingBean {
     /**
      * 使用专门处理器提交任务
      */
-    private void submitWithSpecializedProcessor(AsyncTask task, AsyncType asyncType) {
+    private ExcelProcessResult submitWithSpecializedProcessor(AsyncTask task, AsyncType asyncType) {
         if (task.getTaskType() == TaskType.EXPORT) {
-            submitExportTask((ExportTask<?>) task, asyncType);
+            return submitExportTask((ExportTask<?>) task, asyncType);
         } else if (task.getTaskType() == TaskType.IMPORT) {
-            submitImportTask((ImportTask<?>) task, asyncType);
+            return submitImportTask((ImportTask<?>) task, asyncType);
         } else {
             throw new IllegalArgumentException("不支持的任务类型: " + task.getTaskType());
         }
@@ -281,7 +260,7 @@ public class AsyncExecutor implements InitializingBean {
     /**
      * 提交导出任务的具体实现
      */
-    private void submitExportTask(ExportTask<?> task, AsyncType asyncType) {
+    private ExcelProcessResult submitExportTask(ExportTask<?> task, AsyncType asyncType) {
         totalSubmittedTasks.incrementAndGet();
         taskTypeCounters.get(TaskType.EXPORT).incrementAndGet();
         asyncTypeCounters.get(asyncType).incrementAndGet();
@@ -289,7 +268,7 @@ public class AsyncExecutor implements InitializingBean {
         if (!properties.getAsync().isEnabled()) {
             log.debug("异步导出被禁用，使用同步方式执行任务: {}", task.getTaskId());
             processExportSync(task);
-            return;
+            return ExcelProcessResult.fail(task.getTaskId(), "任务被取消");
         }
 
         try {
@@ -683,10 +662,37 @@ public class AsyncExecutor implements InitializingBean {
         log.info("异步执行器关闭完成");
     }
 
-    @Override
-    public void afterPropertiesSet() {
-        this.init();
+    /**
+     * 检查默认处理器是否可用
+     */
+    private boolean checkDefaultProcessorAvailable(AsyncType defaultType) {
+        try {
+            // 尝试获取统一处理器
+            processorFactory.getUnifiedProcessor(defaultType);
+            return true;
+        } catch (Exception e) {
+            log.debug("默认统一处理器不可用: {}", defaultType);
+        }
+
+        try {
+            // 尝试获取导出处理器
+            processorFactory.getExportProcessor(defaultType);
+            return true;
+        } catch (Exception e) {
+            log.debug("默认导出处理器不可用: {}", defaultType);
+        }
+
+        try {
+            // 尝试获取导入处理器
+            processorFactory.getImportProcessor(defaultType);
+            return true;
+        } catch (Exception e) {
+            log.debug("默认导入处理器不可用: {}", defaultType);
+        }
+
+        return false;
     }
+
 
     // ==================== 内部状态类 ====================
 
@@ -836,4 +842,5 @@ public class AsyncExecutor implements InitializingBean {
             return distribution;
         }
     }
+
 }

@@ -5,6 +5,8 @@ import com.silky.starter.excel.core.exception.ExcelExportException;
 import com.silky.starter.excel.core.model.imports.ImportTask;
 import lombok.Getter;
 
+import java.util.List;
+
 /**
  * 导入异步处理器接口
  *
@@ -54,7 +56,7 @@ public interface ImportAsyncProcessor extends AsyncProcessor {
      *
      * @param tasks 要处理的导入任务列表
      */
-    default void processBatch(java.util.List<ImportTask<?>> tasks) throws ExcelExportException {
+    default void processBatch(List<ImportTask<?>> tasks) throws ExcelExportException {
         if (tasks == null || tasks.isEmpty()) {
             return;
         }

@@ -1,7 +1,7 @@
 package com.silky.starter.excel.core.async;
 
+import com.silky.starter.excel.core.async.model.ProcessorStatus;
 import com.silky.starter.excel.core.exception.ExcelExportException;
-import com.silky.starter.excel.core.model.export.ExportTask;
 
 /**
  * 异步处理器接口

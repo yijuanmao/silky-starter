@@ -1,25 +1,24 @@
-package com.silky.starter.excel.core.async.impl.export;
+package com.silky.starter.excel.core.async.impl.imports;
 
 import cn.hutool.core.date.LocalDateTimeUtil;
-import com.silky.starter.excel.core.async.ExportAsyncProcessor;
+import com.silky.starter.excel.core.async.ImportAsyncProcessor;
 import com.silky.starter.excel.core.async.model.ProcessorStatus;
-import com.silky.starter.excel.core.engine.ExportEngine;
+import com.silky.starter.excel.core.engine.ImportEngine;
 import com.silky.starter.excel.core.exception.ExcelExportException;
-import com.silky.starter.excel.core.model.ExcelProcessResult;
-import com.silky.starter.excel.core.model.export.ExportTask;
+import com.silky.starter.excel.core.model.imports.ImportTask;
 import com.silky.starter.excel.enums.AsyncType;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * 同步处理器 在当前线程中立即执行导出任务，适用于小数据量或需要立即返回结果的场景 ，简单可靠，没有异步调用的复杂性
+ * 同步处理器 在当前线程中立即执行导入任务，适用于小数据量或需要立即返回结果的场景 ，简单可靠，没有异步调起的复杂性
  *
  * @author zy
- * @date 2025-10-24 14:49
+ * @date 2025-10-28 15:25
  **/
 @Slf4j
-public class ExportSyncAsyncProcessor implements ExportAsyncProcessor {
+public class ImportSyncAsyncProcessor implements ImportAsyncProcessor {
 
     /**
      * 已处理任务计数器
@@ -42,10 +41,10 @@ public class ExportSyncAsyncProcessor implements ExportAsyncProcessor {
     private volatile long lastActiveTime = System.currentTimeMillis();
 
 
-    private final ExportEngine exportEngine;
+    private final ImportEngine importEngine;
 
-    public ExportSyncAsyncProcessor(ExportEngine exportEngine) {
-        this.exportEngine = exportEngine;
+    public ImportSyncAsyncProcessor(ImportEngine importEngine) {
+        this.importEngine = importEngine;
     }
 
     /**
@@ -59,60 +58,60 @@ public class ExportSyncAsyncProcessor implements ExportAsyncProcessor {
     }
 
     /**
-     * 提交导出任务
+     * 提交导入任务
      * 同步执行，立即处理任务并阻塞直到完成
      *
-     * @param task 要处理的导出任务
+     * @param task 要处理的导入任务
      */
     @Override
-    public ExcelProcessResult submit(ExportTask<?> task) throws ExcelExportException {
+    public void submit(ImportTask<?> task) throws ExcelExportException {
         // 检查处理器状态
         if (!isAvailable()) {
             throw new IllegalStateException("同步处理器当前不可用，无法处理任务");
         }
 
-        log.debug("开始同步执行导出任务: {}", task.getTaskId());
+        log.debug("开始同步执行导入任务: {}", task.getTaskId());
 
         try {
             // 直接调用process方法执行任务
             process(task);
-            log.debug("同步导出任务执行完成: {}", task.getTaskId());
+            log.debug("同步导入任务执行完成: {}", task.getTaskId());
 
         } catch (Exception e) {
-            log.error("同步导出任务执行失败: {}", task.getTaskId(), e);
+            log.error("同步导入任务执行失败: {}", task.getTaskId(), e);
             throw new ExcelExportException("同步执行任务失败: " + e.getMessage(), e);
         }
     }
 
     /**
-     * 处理导出任务
-     * 实际执行导出逻辑
+     * 处理导入任务
+     * 实际执行导入逻辑
      *
-     * @param task 要处理的导出任务
+     * @param task 要处理的导入任务
      */
     @Override
-    public ExcelProcessResult process(ExportTask<?> task) throws ExcelExportException {
+    public void process(ImportTask<?> task) throws ExcelExportException {
         // 更新最后活跃时间
         lastActiveTime = System.currentTimeMillis();
 
         try {
-            log.info("开始同步处理导出任务: {}, 业务类型: {}",
+            log.info("开始同步处理导入任务: {}, 业务类型: {}",
                     task.getTaskId(), task.getRequest().getBusinessType());
 
             // 标记任务开始执行
             task.markStart();
 
-            // 调用导出引擎处理任务
-            exportEngine.processExportTask(task);
+            // 调用导入引擎处理任务
+            importEngine.processImportTask(task);
 
             // 增加处理计数
             processedCount.incrementAndGet();
 
-            log.info("同步导出任务处理完成: {}, 总处理时间: {}ms",
+            log.info("同步导入任务处理完成: {}, 总处理时间: {}ms",
                     task.getTaskId(), task.getExecuteTime());
 
         } catch (Exception e) {
-            log.error("同步导出任务处理失败: {}", task.getTaskId(), e);
+            log.error("同步导入任务处理失败: {}", task.getTaskId(), e);
             throw new RuntimeException("同步任务处理失败: " + e.getMessage(), e);
         } finally {
             // 标记任务完成
@@ -157,7 +156,7 @@ public class ExportSyncAsyncProcessor implements ExportAsyncProcessor {
      */
     @Override
     public String getDescription() {
-        return "同步处理器 - 在当前线程中立即执行导出任务";
+        return "同步处理器 - 在当前线程中立即执行导入任务";
     }
 
     /**

@@ -55,7 +55,7 @@ public class ExportResult {
      * @return 成功结果实例
      */
     public static ExportResult success(String taskId) {
-        return new ExportResult(true, taskId, "导出任务提交成功", null, null, null);
+        return success(taskId, "");
     }
 
     /**
@@ -66,7 +66,7 @@ public class ExportResult {
      * @return 成功结果实例
      */
     public static ExportResult success(String taskId, String fileUrl) {
-        return new ExportResult(true, taskId, "导出任务提交成功", fileUrl, null, null);
+        return success(taskId, fileUrl, 0L);
     }
 
     /**
@@ -88,7 +88,7 @@ public class ExportResult {
      * @return 失败结果实例
      */
     public static ExportResult fail(String message) {
-        return new ExportResult(false, null, message, null, null, null);
+        return fail(null, message);
     }
 
     /**
@@ -99,7 +99,7 @@ public class ExportResult {
      * @return 失败结果实例
      */
     public static ExportResult fail(String taskId, String message) {
-        return new ExportResult(false, taskId, message, null, null, null);
+        return new ExportResult(false, taskId, message, "", 0L, 0L);
     }
 
     /**

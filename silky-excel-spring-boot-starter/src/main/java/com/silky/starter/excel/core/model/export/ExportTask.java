@@ -18,12 +18,6 @@ import lombok.*;
 public class ExportTask<T> extends BaseAsyncTask {
 
     /**
-     * 任务唯一标识
-     * 用于任务跟踪和管理
-     */
-    private String taskId;
-
-    /**
      * 导出请求配置
      * 包含导出操作的所有参数
      */
@@ -76,12 +70,13 @@ public class ExportTask<T> extends BaseAsyncTask {
      */
     public static <T> ExportTask<T> create(String taskId, ExportRequest<T> request, ExportRecord record) {
         long now = System.currentTimeMillis();
-        return ExportTask.<T>builder()
-                .taskId(taskId)
+        ExportTask<T> build = ExportTask.<T>builder()
                 .request(request)
                 .record(record)
                 .createTime(now)
                 .build();
+        build.setTaskId(taskId);
+        return build;
     }
 
     /**

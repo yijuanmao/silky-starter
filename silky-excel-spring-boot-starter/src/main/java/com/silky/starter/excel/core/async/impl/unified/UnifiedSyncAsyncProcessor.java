@@ -1,17 +1,19 @@
-package com.silky.starter.excel.core.async.impl;
+package com.silky.starter.excel.core.async.impl.unified;
 
 import com.silky.starter.excel.core.async.AsyncTask;
-import com.silky.starter.excel.core.async.ProcessorStatus;
+import com.silky.starter.excel.core.async.model.ProcessorStatus;
 import com.silky.starter.excel.core.async.UnifiedAsyncProcessor;
 import com.silky.starter.excel.core.engine.ExportEngine;
 import com.silky.starter.excel.core.engine.ImportEngine;
 import com.silky.starter.excel.core.exception.ExcelExportException;
+import com.silky.starter.excel.core.model.ExcelProcessResult;
 import com.silky.starter.excel.core.model.export.ExportTask;
 import com.silky.starter.excel.core.model.imports.ImportTask;
 import com.silky.starter.excel.enums.AsyncType;
 import com.silky.starter.excel.enums.TaskType;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -76,48 +78,56 @@ public class UnifiedSyncAsyncProcessor implements UnifiedAsyncProcessor {
      * @param task 要处理的任务
      */
     @Override
-    public void submit(AsyncTask task) throws ExcelExportException {
+    public ExcelProcessResult submit(AsyncTask task) throws ExcelExportException {
         if (!isAvailable()) {
             throw new IllegalStateException("统一同步处理器当前不可用，无法处理任务");
         }
         log.debug("开始同步执行任务: {}, 类型: {}", task.getTaskId(), task.getTaskType());
         try {
-            process(task);
+            ExcelProcessResult result = this.process(task);
             log.debug("同步任务执行完成: {}", task.getTaskId());
+            return result;
         } catch (Exception e) {
             log.error("同步任务执行失败: {}", task.getTaskId(), e);
-            throw new ExcelExportException("同步执行任务失败: " + e.getMessage(), e);
+//            throw new ExcelExportException("同步执行任务失败: " + e.getMessage(), e);
+            return ExcelProcessResult.fail(task.getTaskId(), "同步执行任务失败: " + e.getMessage());
         }
     }
 
+    /**
+     * 处理任务
+     *
+     * @param task 任务
+     * @return 处理结果
+     */
     @Override
-    public void process(AsyncTask task) throws ExcelExportException {
+    public ExcelProcessResult process(AsyncTask task) throws ExcelExportException {
         lastActiveTime = System.currentTimeMillis();
         try {
             log.info("开始同步处理任务: {}, 类型: {}, 业务类型: {}",
                     task.getTaskId(), task.getTaskType(), task.getBusinessType());
 
+            ExcelProcessResult result;
             if (task instanceof ExportTask) {
                 ExportTask<?> exportTask = (ExportTask<?>) task;
                 exportTask.markStart();
-                exportEngine.processExportTask(exportTask);
+                result = exportEngine.processExportTask(exportTask);
                 exportCount.incrementAndGet();
             } else if (task instanceof ImportTask) {
                 ImportTask<?> importTask = (ImportTask<?>) task;
                 importTask.markStart();
-                importEngine.processImportTask(importTask);
+                result = importEngine.processImportTask(importTask);
                 importCount.incrementAndGet();
             } else {
                 throw new IllegalArgumentException("不支持的任务类型: " + task.getClass().getName());
             }
-
             processedCount.incrementAndGet();
-
             log.info("同步任务处理完成: {}, 类型: {}", task.getTaskId(), task.getTaskType());
 
+            return result;
         } catch (Exception e) {
             log.error("同步任务处理失败: {}", task.getTaskId(), e);
-            throw new ExcelExportException("同步任务处理失败: " + e.getMessage(), e);
+            return ExcelProcessResult.fail(task.getTaskId(), "同步任务处理失败: " + e.getMessage());
         } finally {
             // 标记任务完成
             if (task instanceof ExportTask) {
@@ -164,7 +174,7 @@ public class UnifiedSyncAsyncProcessor implements UnifiedAsyncProcessor {
                 .message(message)
                 .processedCount(processedCount.get())
                 .startTime(java.time.LocalDateTime.now())
-                .lastActiveTime(java.time.LocalDateTime.now())
+                .lastActiveTime(LocalDateTime.now())
                 .build();
     }
 

@@ -1,12 +1,11 @@
-package com.silky.starter.excel.core.async.impl.export;
+package com.silky.starter.excel.core.async.impl.imports;
 
 import cn.hutool.core.date.LocalDateTimeUtil;
-import com.silky.starter.excel.core.async.ExportAsyncProcessor;
+import com.silky.starter.excel.core.async.ImportAsyncProcessor;
 import com.silky.starter.excel.core.async.model.ProcessorStatus;
-import com.silky.starter.excel.core.engine.ExportEngine;
+import com.silky.starter.excel.core.engine.ImportEngine;
 import com.silky.starter.excel.core.exception.ExcelExportException;
-import com.silky.starter.excel.core.model.ExcelProcessResult;
-import com.silky.starter.excel.core.model.export.ExportTask;
+import com.silky.starter.excel.core.model.imports.ImportTask;
 import com.silky.starter.excel.enums.AsyncType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -18,15 +17,13 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * 线程池异步处理器
- * 使用内置线程池执行导出任务，适用于大多数异步导出场景
- * 支持任务队列、线程池监控和优雅关闭
+ * 导入线程池异步处理器
  *
  * @author zy
- * @date 2025-10-24 14:33
+ * @date 2025-10-28 15:26
  **/
 @Slf4j
-public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
+public class ImportThreadPoolAsyncProcessor implements ImportAsyncProcessor {
 
     /**
      * 已处理任务计数器
@@ -56,13 +53,13 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
      */
     private ThreadPoolExecutor threadPoolExecutor;
 
-    private final ExportEngine exportEngine;
+    private final ImportEngine importEngine;
 
     private final ThreadPoolTaskExecutor taskExecutor;
 
-    public ExportThreadPoolAsyncProcessor(ExportEngine exportEngine,
+    public ImportThreadPoolAsyncProcessor(ImportEngine importEngine,
                                           ThreadPoolTaskExecutor taskExecutor) {
-        this.exportEngine = exportEngine;
+        this.importEngine = importEngine;
         this.taskExecutor = taskExecutor;
     }
 
@@ -76,12 +73,12 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
     }
 
     /**
-     * 提交导出任务 将任务提交到异步处理系统，立即返回，任务会在后台执行
+     * 提交导入任务 将任务提交到异步处理系统，立即返回，任务会在后台执行
      *
-     * @param task 要处理的导出任务，包含任务ID、请求参数和记录信息，注意：此方法应该是非阻塞的，提交后立即返回
+     * @param task 要处理的导入任务，包含任务ID、请求参数和记录信息，注意：此方法应该是非阻塞的，提交后立即返回
      */
     @Override
-    public ExcelProcessResult submit(ExportTask<?> task) throws ExcelExportException {
+    public void submit(ImportTask<?> task) throws ExcelExportException {
         // 检查处理器状态
         if (!isAvailable()) {
             throw new ExcelExportException("Spring线程池处理器当前不可用，无法接收新任务");
@@ -102,7 +99,6 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
 
             log.debug("任务已成功提交到Spring线程池: {}", task.getTaskId());
 
-            return ExcelProcessResult.success(task.getTaskId());
         } catch (Exception e) {
             log.error("Spring线程池提交任务失败: {}", task.getTaskId(), e);
             throw new ExcelExportException("提交任务到Spring线程池失败: " + e.getMessage(), e);
@@ -110,31 +106,31 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
     }
 
     /**
-     * 处理导出任务，实际执行导出任务的核心方法，包含数据查询、Excel生成和文件上传
+     * 处理导入任务，实际执行导入任务的核心方法，包含数据查询、Excel生成和文件上传
      *
-     * @param task 要处理的导出任务
+     * @param task 要处理的导入任务
      */
     @Override
-    public ExcelProcessResult process(ExportTask<?> task) throws ExcelExportException {
+    public void process(ImportTask<?> task) throws ExcelExportException {
         // 更新最后活跃时间
         lastActiveTime = System.currentTimeMillis();
 
         try {
-            log.info("开始处理导出任务: {}, 业务类型: {}", task.getTaskId(), task.getRequest().getBusinessType());
+            log.info("开始处理导入任务: {}, 业务类型: {}", task.getTaskId(), task.getRequest().getBusinessType());
 
             // 标记任务开始执行
             task.markStart();
 
-            // 调用导出引擎处理任务
-            exportEngine.processExportTask(task);
+            // 调用导入引擎处理任务
+            importEngine.processImportTask(task);
 
             // 增加处理计数
             processedCount.incrementAndGet();
 
-            log.info("导出任务处理完成: {}, 总处理时间: {}ms", task.getTaskId(), task.getExecuteTime());
+            log.info("导入任务处理完成: {}, 总处理时间: {}ms", task.getTaskId(), task.getExecuteTime());
 
         } catch (Exception e) {
-            log.error("导出任务处理失败: {}", task.getTaskId(), e);
+            log.error("导入任务处理失败: {}", task.getTaskId(), e);
             throw new ExcelExportException("任务处理失败: " + e.getMessage(), e);
         } finally {
             // 标记任务完成
@@ -229,10 +225,10 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
      * 提交任务并返回Future（扩展方法）
      * 允许调用方获取任务执行结果
      *
-     * @param task 导出任务
+     * @param task 导入任务
      * @return Future对象，可以用于获取任务执行状态和结果
      */
-    public Future<?> submitWithFuture(ExportTask<?> task) {
+    public Future<?> submitWithFuture(ImportTask<?> task) {
         if (!isAvailable()) {
             throw new ExcelExportException("Spring线程池处理器当前不可用");
         }
@@ -246,10 +242,10 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
      * 提交任务并返回ListenableFuture（扩展方法）
      * 支持Spring的异步回调机制
      *
-     * @param task 导出任务
+     * @param task 导入任务
      * @return ListenableFuture对象，支持回调监听
      */
-    public ListenableFuture<String> submitWithListenableFuture(ExportTask<?> task) {
+    public ListenableFuture<String> submitWithListenableFuture(ImportTask<?> task) {
         if (!isAvailable()) {
             throw new ExcelExportException("Spring线程池处理器当前不可用");
         }
@@ -258,5 +254,4 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
             return task.getTaskId();
         });
     }
-
 }

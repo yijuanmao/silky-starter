@@ -5,6 +5,7 @@ import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.excel.core.async.executor.AsyncExecutor;
 import com.silky.starter.excel.core.exception.ExcelExportException;
+import com.silky.starter.excel.core.model.ExcelProcessResult;
 import com.silky.starter.excel.core.model.export.ExportDataProcessor;
 import com.silky.starter.excel.core.model.imports.DataImporter;
 import com.silky.starter.excel.core.model.imports.ImportRequest;
@@ -73,9 +74,9 @@ public class ImportEngine {
      * @param <T>     数据类型
      * @return 导入结果
      */
-    public <T> ImportResult execute(ImportRequest<T> request) {
-        return execute(request, null);
-    }
+//    public <T> ImportResult execute(ImportRequest<T> request) {
+//        return execute(request, AsyncType.THREAD_POOL);
+//    }
 
     /**
      * 执行导入任务（指定异步方式）
@@ -85,7 +86,7 @@ public class ImportEngine {
      * @param <T>       数据类型
      * @return 导入结果
      */
-    public <T> ImportResult execute(ImportRequest<T> request, AsyncType asyncType) {
+   /* public <T> ImportResult execute(ImportRequest<T> request, AsyncType asyncType) {
         // 参数校验
         validateImportRequest(request);
 
@@ -129,7 +130,7 @@ public class ImportEngine {
 
             return ImportResult.fail(taskId, "导入任务创建失败: " + e.getMessage());
         }
-    }
+    }*/
 
     /**
      * 处理导入任务
@@ -137,7 +138,7 @@ public class ImportEngine {
      * @param task 导入任务
      * @param <T>  数据类型
      */
-    public <T> void processImportTask(ImportTask<T> task) {
+    public <T> ExcelProcessResult processImportTask(ImportTask<T> task) {
         String taskId = task.getTaskId();
         ImportRequest<T> request = task.getRequest();
 
@@ -174,7 +175,7 @@ public class ImportEngine {
             task.markFinish();
 
             log.info("导入任务处理完成: {}, 结果: {}", taskId, result.getSummary());
-
+            return ExcelProcessResult.asyncSuccess(taskId);
         } catch (Exception e) {
             log.error("导入任务处理失败: {}", taskId, e);
 
@@ -186,7 +187,7 @@ public class ImportEngine {
 
             failedImports++;
 
-            throw new ExcelExportException("导入任务处理失败: " + e.getMessage(), e);
+            return ExcelProcessResult.fail(taskId, "导入任务创建失败: " + e.getMessage());
 
         } finally {
             // 执行数据清理

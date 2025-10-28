@@ -124,18 +124,16 @@ public class EnhancedExcelReader<T> implements Closeable {
     /**
      * 读取所有数据
      * 注意：仅适用于小数据量，大数据量请使用分页读取
-     *
-     * @return 所有数据列表
      */
-    public List<T> readAll() {
+    public void readAll() {
         try {
-
-            List<T> data = reader.read(dataClass);
+    /*        List<T> data = reader.readAll();
             totalRows = data.size();
 
             log.debug("Excel所有数据读取成功: 数据量={}", data.size());
 
-            return data;
+            return data;*/
+            reader.readAll();
 
         } catch (Exception e) {
             log.error("Excel所有数据读取失败", e);
@@ -150,7 +148,8 @@ public class EnhancedExcelReader<T> implements Closeable {
      */
     public boolean hasMoreData() {
         try {
-            return reader.hasMoreData();
+//            return reader.hasMoreData();
+            return true;
         } catch (Exception e) {
             log.error("检查Excel数据状态失败", e);
             return false;
