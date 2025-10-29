@@ -32,9 +32,7 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
      */
     @Override
     public <T> ExportResult export(ExportRequest<T> request) {
-        ExportTask<T> exportTask = new ExportTask<T>();
-        ExcelProcessResult result = asyncExecutor.submit(exportTask);
-        return ExportResult.success(result.getTaskId());
+        return this.export(request, AsyncType.ASYNC);
     }
 
     /**
@@ -46,7 +44,20 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
      */
     @Override
     public <T> ExportResult export(ExportRequest<T> request, AsyncType asyncType) {
-        return null;
+        ExportTask<T> exportTask = new ExportTask<>();
+        exportTask.setRequest(request);
+        exportTask.setRecord();
+        exportTask.setCreateTime();
+        exportTask.setStartTime();
+        exportTask.setFinishTime();
+        exportTask.setExecuteThread();
+        exportTask.setContext();
+        exportTask.setTaskId();
+        exportTask.setTaskType();
+        exportTask.setBusinessType();
+
+        ExcelProcessResult result = asyncExecutor.submit(exportTask);
+        return ExportResult.success(result.getTaskId());
     }
 
     /**

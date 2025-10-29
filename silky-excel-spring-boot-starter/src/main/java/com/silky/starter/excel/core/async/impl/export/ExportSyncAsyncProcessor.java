@@ -70,17 +70,15 @@ public class ExportSyncAsyncProcessor implements ExportAsyncProcessor {
         if (!isAvailable()) {
             throw new IllegalStateException("同步处理器当前不可用，无法处理任务");
         }
-
         log.debug("开始同步执行导出任务: {}", task.getTaskId());
-
         try {
             // 直接调用process方法执行任务
-            process(task);
+            ExcelProcessResult result = process(task);
             log.debug("同步导出任务执行完成: {}", task.getTaskId());
-
+            return result;
         } catch (Exception e) {
             log.error("同步导出任务执行失败: {}", task.getTaskId(), e);
-            throw new ExcelExportException("同步执行任务失败: " + e.getMessage(), e);
+            return ExcelProcessResult.fail(task.getTaskId(), "同步导出任务执行失败: " + e.getMessage());
         }
     }
 
@@ -103,17 +101,16 @@ public class ExportSyncAsyncProcessor implements ExportAsyncProcessor {
             task.markStart();
 
             // 调用导出引擎处理任务
-            exportEngine.processExportTask(task);
+            ExcelProcessResult result = exportEngine.processExportTask(task);
 
             // 增加处理计数
             processedCount.incrementAndGet();
 
-            log.info("同步导出任务处理完成: {}, 总处理时间: {}ms",
-                    task.getTaskId(), task.getExecuteTime());
-
+            log.debug("同步导出任务处理完成: {}, 总处理时间: {}ms", task.getTaskId(), task.getExecuteTime());
+            return result;
         } catch (Exception e) {
             log.error("同步导出任务处理失败: {}", task.getTaskId(), e);
-            throw new RuntimeException("同步任务处理失败: " + e.getMessage(), e);
+            return ExcelProcessResult.fail(task.getTaskId(), "同步任务处理失败: " + e.getMessage());
         } finally {
             // 标记任务完成
             task.markFinish();
@@ -137,8 +134,7 @@ public class ExportSyncAsyncProcessor implements ExportAsyncProcessor {
      */
     @Override
     public ProcessorStatus getStatus() {
-        String message = String.format("已处理任务: %d, 运行时长: %dms",
-                processedCount.get(), getUptime());
+        String message = String.format("已处理任务: %d, 运行时长: %dms", processedCount.get(), getUptime());
 
         return ProcessorStatus.builder()
                 .type(getType())

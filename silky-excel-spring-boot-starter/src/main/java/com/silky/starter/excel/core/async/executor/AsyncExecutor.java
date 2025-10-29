@@ -62,7 +62,7 @@ public class AsyncExecutor implements InitializingBean {
      */
     private final Map<AsyncType, AtomicLong> asyncTypeCounters = new ConcurrentHashMap<>(9);
 
-    private final AsyncType defaultType;
+    private final AsyncType defaultAsyncType;
 
     /**
      * 执行器启动时间
@@ -77,7 +77,7 @@ public class AsyncExecutor implements InitializingBean {
                          SilkyExcelProperties properties) {
         this.processorFactory = processorFactory;
         this.properties = properties;
-        this.defaultType = properties.getAsync().getDefaultType();
+        this.defaultAsyncType = properties.getAsync().getDefaultType();
 
         // 初始化统计计数器
         for (TaskType taskType : TaskType.values()) {
@@ -103,19 +103,13 @@ public class AsyncExecutor implements InitializingBean {
         if (!processorFactory.isInitialized()) {
             log.warn("异步处理器工厂未初始化，异步执行器可能无法正常工作");
         }
-
         // 检查默认处理器是否可用
-        boolean defaultAvailable = checkDefaultProcessorAvailable(defaultType);
-
+        boolean defaultAvailable = checkDefaultProcessorAvailable(defaultAsyncType);
         if (!defaultAvailable) {
-            log.warn("默认异步处理器不可用: {}, 将使用降级策略", defaultType);
+            log.warn("默认异步处理器不可用: {}, 将使用降级策略", defaultAsyncType);
         }
-
-        log.info("异步执行器初始化完成，默认异步类型: {}, 可用状态: {}", defaultType, defaultAvailable);
+        log.info("异步执行器初始化完成，默认异步类型: {}, 可用状态: {}", defaultAsyncType, defaultAvailable);
     }
-
-
-    // ==================== 统一任务提交方法 ====================
 
     /**
      * 统一提交任务 - 使用默认异步方式
@@ -123,7 +117,7 @@ public class AsyncExecutor implements InitializingBean {
      * @param task 异步任务
      */
     public ExcelProcessResult submit(AsyncTask task) {
-        return this.submit(task, defaultType);
+        return this.submit(task, defaultAsyncType);
     }
 
     /**
@@ -145,16 +139,13 @@ public class AsyncExecutor implements InitializingBean {
         // 检查异步处理是否启用
         if (!properties.getAsync().isEnabled()) {
             log.debug("异步处理被禁用，使用同步方式执行任务: {}", task.getTaskId());
-            processSync(task);
-            return ExcelProcessResult.fail(task.getTaskId(), "异步处理被禁用，请使用同步方式执行任务");
+            return processSync(task);
         }
-
         // 确定目标异步类型
         AsyncType targetType = determineAsyncType(asyncType);
 
         // 更新异步类型统计
         asyncTypeCounters.get(targetType).incrementAndGet();
-
         try {
             // 优先使用统一处理器
             if (useUnifiedProcessor(task, targetType)) {
@@ -168,52 +159,10 @@ public class AsyncExecutor implements InitializingBean {
             log.error("任务提交失败: {}, 错误: {}, 降级为同步执行",
                     task.getTaskId(), e.getMessage());
             fallbackTasks.incrementAndGet();
-            processSync(task);
+            return processSync(task);
         }
     }
 
-    /**
-     * 判断是否使用统一处理器
-     */
-    private boolean useUnifiedProcessor(AsyncTask task, AsyncType asyncType) {
-        try {
-            UnifiedAsyncProcessor processor = processorFactory.getUnifiedProcessor(asyncType);
-            return processor.isAvailable() && processor.supports(task.getTaskType());
-        } catch (Exception e) {
-            log.debug("统一处理器不可用或不支持该任务类型: {}, {}", asyncType, task.getTaskType());
-            return false;
-        }
-    }
-
-    /**
-     * 使用统一处理器提交任务
-     */
-    private ExcelProcessResult submitWithUnifiedProcessor(AsyncTask task, AsyncType asyncType) {
-        UnifiedAsyncProcessor processor = processorFactory.getUnifiedProcessor(asyncType);
-
-        if (!processor.isAvailable()) {
-            throw new ExcelExportException("统一处理器不可用: " + asyncType);
-        }
-
-        processor.submit(task);
-        successSubmittedTasks.incrementAndGet();
-
-        log.debug("任务提交成功(统一处理器): {}, 类型: {}, 处理器: {}",
-                task.getTaskId(), task.getTaskType(), asyncType);
-    }
-
-    /**
-     * 使用专门处理器提交任务
-     */
-    private ExcelProcessResult submitWithSpecializedProcessor(AsyncTask task, AsyncType asyncType) {
-        if (task.getTaskType() == TaskType.EXPORT) {
-            return submitExportTask((ExportTask<?>) task, asyncType);
-        } else if (task.getTaskType() == TaskType.IMPORT) {
-            return submitImportTask((ImportTask<?>) task, asyncType);
-        } else {
-            throw new IllegalArgumentException("不支持的任务类型: " + task.getTaskType());
-        }
-    }
 
     // ==================== 专门任务提交方法 ====================
 
@@ -243,7 +192,7 @@ public class AsyncExecutor implements InitializingBean {
      * @param task 导入任务
      */
     public void submitImport(ImportTask<?> task) {
-        submitImport(task, null);
+        submitImport(task, AsyncType.ASYNC);
     }
 
     /**
@@ -277,57 +226,99 @@ public class AsyncExecutor implements InitializingBean {
             if (!processor.isAvailable()) {
                 log.warn("导出处理器 {} 不可用，任务: {}, 降级为同步执行", asyncType, task.getTaskId());
                 fallbackTasks.incrementAndGet();
-                processExportSync(task);
-                return;
+                return processExportSync(task);
             }
 
-            processor.submit(task);
+            ExcelProcessResult result = processor.submit(task);
             successSubmittedTasks.incrementAndGet();
 
             log.debug("导出任务提交成功: {}, 处理器: {}", task.getTaskId(), asyncType);
-
+            return result;
         } catch (Exception e) {
             log.error("导出处理器 {} 提交任务失败: {}, 错误: {}, 降级为同步执行",
                     asyncType, task.getTaskId(), e.getMessage());
             fallbackTasks.incrementAndGet();
-            processExportSync(task);
+            return processExportSync(task);
         }
     }
 
     /**
      * 提交导入任务的具体实现
      */
-    private void submitImportTask(ImportTask<?> task, AsyncType asyncType) {
+    private ExcelProcessResult submitImportTask(ImportTask<?> task, AsyncType asyncType) {
         totalSubmittedTasks.incrementAndGet();
         taskTypeCounters.get(TaskType.IMPORT).incrementAndGet();
         asyncTypeCounters.get(asyncType).incrementAndGet();
 
         if (!properties.getAsync().isEnabled()) {
             log.debug("异步导入被禁用，使用同步方式执行任务: {}", task.getTaskId());
-            processImportSync(task);
-            return;
+            return processImportSync(task);
         }
-
         try {
             ImportAsyncProcessor processor = processorFactory.getImportProcessor(asyncType);
 
             if (!processor.isAvailable()) {
                 log.warn("导入处理器 {} 不可用，任务: {}, 降级为同步执行", asyncType, task.getTaskId());
                 fallbackTasks.incrementAndGet();
-                processImportSync(task);
-                return;
+                return processImportSync(task);
             }
 
-            processor.submit(task);
+            ExcelProcessResult result = processor.submit(task);
             successSubmittedTasks.incrementAndGet();
 
             log.debug("导入任务提交成功: {}, 处理器: {}", task.getTaskId(), asyncType);
 
+            return result;
         } catch (Exception e) {
             log.error("导入处理器 {} 提交任务失败: {}, 错误: {}, 降级为同步执行",
                     asyncType, task.getTaskId(), e.getMessage());
             fallbackTasks.incrementAndGet();
-            processImportSync(task);
+            return processImportSync(task);
+        }
+    }
+
+    /**
+     * 判断是否使用统一处理器
+     */
+    private boolean useUnifiedProcessor(AsyncTask task, AsyncType asyncType) {
+        try {
+            UnifiedAsyncProcessor processor = processorFactory.getUnifiedProcessor(asyncType);
+            return processor.isAvailable() && processor.supports(task.getTaskType());
+        } catch (Exception e) {
+            log.debug("统一处理器不可用或不支持该任务类型: {}, {}", asyncType, task.getTaskType());
+            return false;
+        }
+    }
+
+    /**
+     * 使用统一处理器提交任务
+     */
+    private ExcelProcessResult submitWithUnifiedProcessor(AsyncTask task, AsyncType asyncType) {
+        UnifiedAsyncProcessor processor = processorFactory.getUnifiedProcessor(asyncType);
+
+        if (!processor.isAvailable()) {
+            throw new ExcelExportException("统一处理器不可用: " + asyncType);
+        }
+
+        ExcelProcessResult result = processor.submit(task);
+        successSubmittedTasks.incrementAndGet();
+
+        log.debug("任务提交成功(统一处理器): {}, 类型: {}, 处理器: {}",
+                task.getTaskId(), task.getTaskType(), asyncType);
+
+        return result;
+    }
+
+    /**
+     * 使用专门处理器提交任务
+     */
+    private ExcelProcessResult submitWithSpecializedProcessor(AsyncTask task, AsyncType asyncType) {
+        if (task.getTaskType() == TaskType.EXPORT) {
+            return submitExportTask((ExportTask<?>) task, asyncType);
+        } else if (task.getTaskType() == TaskType.IMPORT) {
+            return submitImportTask((ImportTask<?>) task, asyncType);
+        } else {
+            throw new IllegalArgumentException("不支持的任务类型: " + task.getTaskType());
         }
     }
 
@@ -336,43 +327,47 @@ public class AsyncExecutor implements InitializingBean {
     /**
      * 统一同步处理任务
      */
-    private void processSync(AsyncTask task) {
+    private ExcelProcessResult processSync(AsyncTask task) {
         try {
             if (task.getTaskType() == TaskType.EXPORT) {
-                processExportSync((ExportTask<?>) task);
+                return processExportSync((ExportTask<?>) task);
             } else if (task.getTaskType() == TaskType.IMPORT) {
-                processImportSync((ImportTask<?>) task);
+                return processImportSync((ImportTask<?>) task);
             } else {
                 throw new IllegalArgumentException("不支持的任务类型: " + task.getTaskType());
             }
         } catch (Exception e) {
             log.error("同步处理任务失败: {}", task.getTaskId(), e);
-            throw new ExcelExportException("任务处理失败: " + e.getMessage(), e);
+            return ExcelProcessResult.fail(task.getTaskId(), "任务处理失败: " + e.getMessage());
         }
     }
 
     /**
      * 同步处理导出任务
+     *
+     * @param task 导出任务
      */
-    private void processExportSync(ExportTask<?> task) {
+    private ExcelProcessResult processExportSync(ExportTask<?> task) {
         try {
             ExportAsyncProcessor syncProcessor = processorFactory.getExportProcessor(AsyncType.SYNC);
-            syncProcessor.process(task);
+            ExcelProcessResult result = syncProcessor.process(task);
             log.debug("同步导出任务处理完成: {}", task.getTaskId());
+            return result;
         } catch (Exception e) {
             log.error("同步处理导出任务失败: {}", task.getTaskId(), e);
-            throw new ExcelExportException("导出任务处理失败: " + e.getMessage(), e);
+            return ExcelProcessResult.fail(task.getTaskId(), "导出任务处理失败: " + e.getMessage());
         }
     }
 
     /**
      * 同步处理导入任务
      */
-    private void processImportSync(ImportTask<?> task) {
+    private ExcelProcessResult processImportSync(ImportTask<?> task) {
         try {
             ImportAsyncProcessor syncProcessor = processorFactory.getImportProcessor(AsyncType.SYNC);
-            syncProcessor.process(task);
+            ExcelProcessResult result = syncProcessor.process(task);
             log.debug("同步导入任务处理完成: {}", task.getTaskId());
+            return result;
         } catch (Exception e) {
             log.error("同步处理导入任务失败: {}", task.getTaskId(), e);
             throw new ExcelExportException("导入任务处理失败: " + e.getMessage(), e);
@@ -598,9 +593,8 @@ public class AsyncExecutor implements InitializingBean {
         if (asyncType != null) {
             return asyncType;
         }
-
         // 其次使用全局默认配置
-        return properties.getAsync().getDefaultType();
+        return defaultAsyncType;
     }
 
     /**

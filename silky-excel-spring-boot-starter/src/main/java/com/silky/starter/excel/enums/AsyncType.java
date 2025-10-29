@@ -17,19 +17,9 @@ public enum AsyncType {
     SYNC("同步执行"),
 
     /**
-     * 线程池异步执行 - 使用内置线程池执行
+     * 异步
      */
-    THREAD_POOL("线程池异步"),
-
-    /**
-     * Spring异步执行 - 使用Spring的@Async执行
-     */
-    SPRING_ASYNC("Spring异步"),
-
-    /**
-     * 数据库异步执行 - 将任务持久化到数据库后异步处理
-     */
-    DATABASE("数据库异步"),
+    ASYNC("异步"),
 
     /**
      * 自定义异步执行 - 使用用户自定义的异步处理器
@@ -47,6 +37,7 @@ public enum AsyncType {
 
     /**
      * 根据编码获取枚举
+     *
      * @param code 枚举编码
      * @return 对应的枚举值，如果找不到返回null
      */
@@ -61,6 +52,7 @@ public enum AsyncType {
 
     /**
      * 检查是否为异步类型
+     *
      * @return 如果是异步类型返回true，同步类型返回false
      */
     public boolean isAsync() {

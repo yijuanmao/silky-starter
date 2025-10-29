@@ -5,6 +5,7 @@ import com.silky.starter.excel.core.async.ImportAsyncProcessor;
 import com.silky.starter.excel.core.async.model.ProcessorStatus;
 import com.silky.starter.excel.core.engine.ImportEngine;
 import com.silky.starter.excel.core.exception.ExcelExportException;
+import com.silky.starter.excel.core.model.ExcelProcessResult;
 import com.silky.starter.excel.core.model.imports.ImportTask;
 import com.silky.starter.excel.enums.AsyncType;
 import lombok.extern.slf4j.Slf4j;
@@ -64,7 +65,7 @@ public class ImportSyncAsyncProcessor implements ImportAsyncProcessor {
      * @param task 要处理的导入任务
      */
     @Override
-    public void submit(ImportTask<?> task) throws ExcelExportException {
+    public ExcelProcessResult submit(ImportTask<?> task) throws ExcelExportException {
         // 检查处理器状态
         if (!isAvailable()) {
             throw new IllegalStateException("同步处理器当前不可用，无法处理任务");
@@ -74,12 +75,13 @@ public class ImportSyncAsyncProcessor implements ImportAsyncProcessor {
 
         try {
             // 直接调用process方法执行任务
-            process(task);
+            ExcelProcessResult result = process(task);
             log.debug("同步导入任务执行完成: {}", task.getTaskId());
-
+            return result;
         } catch (Exception e) {
             log.error("同步导入任务执行失败: {}", task.getTaskId(), e);
-            throw new ExcelExportException("同步执行任务失败: " + e.getMessage(), e);
+//            throw new ExcelExportException("同步执行任务失败: " + e.getMessage(), e);
+            return ExcelProcessResult.fail(task.getTaskId(), "同步导入任务执行失败: " + e.getMessage());
         }
     }
 
@@ -90,7 +92,7 @@ public class ImportSyncAsyncProcessor implements ImportAsyncProcessor {
      * @param task 要处理的导入任务
      */
     @Override
-    public void process(ImportTask<?> task) throws ExcelExportException {
+    public ExcelProcessResult process(ImportTask<?> task) throws ExcelExportException {
         // 更新最后活跃时间
         lastActiveTime = System.currentTimeMillis();
 
@@ -102,17 +104,17 @@ public class ImportSyncAsyncProcessor implements ImportAsyncProcessor {
             task.markStart();
 
             // 调用导入引擎处理任务
-            importEngine.processImportTask(task);
+            ExcelProcessResult result = importEngine.processImportTask(task);
 
             // 增加处理计数
             processedCount.incrementAndGet();
 
-            log.info("同步导入任务处理完成: {}, 总处理时间: {}ms",
-                    task.getTaskId(), task.getExecuteTime());
+            log.debug("同步导入任务处理完成: {}, 总处理时间: {}ms", task.getTaskId(), task.getExecuteTime());
 
+            return result;
         } catch (Exception e) {
             log.error("同步导入任务处理失败: {}", task.getTaskId(), e);
-            throw new RuntimeException("同步任务处理失败: " + e.getMessage(), e);
+            return ExcelProcessResult.fail(task.getTaskId(), "同步导入任务处理失败: " + e.getMessage());
         } finally {
             // 标记任务完成
             task.markFinish();

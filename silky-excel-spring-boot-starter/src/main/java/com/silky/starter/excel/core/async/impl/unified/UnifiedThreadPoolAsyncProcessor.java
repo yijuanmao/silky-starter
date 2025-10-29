@@ -55,7 +55,7 @@ public class UnifiedThreadPoolAsyncProcessor implements UnifiedAsyncProcessor {
      */
     @Override
     public String getType() {
-        return AsyncType.THREAD_POOL.name();
+        return AsyncType.ASYNC.name();
     }
 
     /**

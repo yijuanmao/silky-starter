@@ -12,7 +12,6 @@ import com.silky.starter.excel.core.model.imports.ImportRequest;
 import com.silky.starter.excel.core.model.imports.ImportResult;
 import com.silky.starter.excel.core.model.imports.ImportTask;
 import com.silky.starter.excel.entity.ImportRecord;
-import com.silky.starter.excel.enums.AsyncType;
 import com.silky.starter.excel.enums.ImportStatus;
 import com.silky.starter.excel.service.imports.ImportRecordService;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 导入引擎核心类，负责协调整个导入流程，包括文件下载、数据读取、数据处理和数据导入
@@ -55,17 +55,17 @@ public class ImportEngine {
     /**
      * 已处理导入任务总数
      */
-    private long totalProcessedImports = 0;
+    private AtomicLong totalProcessedImports = new AtomicLong(0);
 
     /**
      * 成功导入任务数
      */
-    private long successImports = 0;
+    private AtomicLong successImports = new AtomicLong(0);
 
     /**
      * 失败导入任务数
      */
-    private long failedImports = 0;
+    private AtomicLong failedImports = new AtomicLong(0);
 
     /**
      * 执行导入任务
@@ -165,17 +165,18 @@ public class ImportEngine {
             // 更新完成状态
             if (result.isSuccess()) {
                 recordService.updateSuccess(taskId, result);
-                successImports++;
+                totalProcessedImports.incrementAndGet();
+                successImports.incrementAndGet();
             } else {
                 recordService.updateFail(taskId, result.getMessage());
-                failedImports++;
+                failedImports.incrementAndGet();
             }
-
             // 标记任务完成
             task.markFinish();
 
             log.info("导入任务处理完成: {}, 结果: {}", taskId, result.getSummary());
-            return ExcelProcessResult.asyncSuccess(taskId);
+            return ExcelProcessResult.asyncSuccess(taskId, totalProcessedImports.get(),
+                    successImports.get(), failedImports.get());
         } catch (Exception e) {
             log.error("导入任务处理失败: {}", taskId, e);
 
@@ -184,9 +185,7 @@ public class ImportEngine {
 
             // 标记任务完成（失败）
             task.markFinish();
-
-            failedImports++;
-
+            failedImports.incrementAndGet();
             return ExcelProcessResult.fail(taskId, "导入任务创建失败: " + e.getMessage());
 
         } finally {
@@ -242,9 +241,9 @@ public class ImportEngine {
                     taskId, result.getSummary(), costTime);
 
             if (result.isSuccess()) {
-                successImports++;
+                successImports.incrementAndGet();
             } else {
-                failedImports++;
+                failedImports.incrementAndGet();
             }
 
             return result.withCostTime(costTime);
@@ -255,7 +254,7 @@ public class ImportEngine {
             // 更新失败状态
             recordService.updateFail(taskId, "同步导入失败: " + e.getMessage());
 
-            failedImports++;
+            failedImports.incrementAndGet();
 
             return ImportResult.fail(taskId, "同步导入失败: " + e.getMessage());
 

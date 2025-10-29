@@ -100,9 +100,9 @@ public class ExcelProcessResult implements Serializable {
     /**
      * 创建异步处理结果
      */
-    public static ExcelProcessResult asyncSuccess(String taskId) {
-        return new ExcelProcessResult(true, taskId, "导入任务已提交，正在后台处理",
-                0L, 0L, 0L, 0L, null, null, null);
+    public static ExcelProcessResult asyncSuccess(String taskId, String message, Long totalCount) {
+        return new ExcelProcessResult(true, taskId, message,
+                totalCount, null, null, 0L, null, null, null);
     }
 
     /**

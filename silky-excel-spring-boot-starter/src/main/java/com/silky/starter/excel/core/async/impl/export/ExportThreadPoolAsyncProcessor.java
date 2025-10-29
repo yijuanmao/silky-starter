@@ -72,7 +72,7 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
      */
     @Override
     public String getType() {
-        return AsyncType.THREAD_POOL.name();
+        return AsyncType.ASYNC.name();
     }
 
     /**
@@ -93,19 +93,14 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
         try {
             // 使用Spring线程池提交任务
             taskExecutor.execute(() -> {
-                try {
-                    process(task);
-                } catch (Exception e) {
-                    log.error("Spring线程池任务执行失败: {}", task.getTaskId(), e);
-                }
+                process(task);
             });
-
             log.debug("任务已成功提交到Spring线程池: {}", task.getTaskId());
 
-            return ExcelProcessResult.success(task.getTaskId());
+            return ExcelProcessResult.asyncSuccess(task.getTaskId(), "任务已提交到Spring线程池", processedCount.get());
         } catch (Exception e) {
             log.error("Spring线程池提交任务失败: {}", task.getTaskId(), e);
-            throw new ExcelExportException("提交任务到Spring线程池失败: " + e.getMessage(), e);
+            return ExcelProcessResult.fail(task.getTaskId(), "提交任务到Spring线程池失败: " + e.getMessage());
         }
     }
 
@@ -126,16 +121,16 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
             task.markStart();
 
             // 调用导出引擎处理任务
-            exportEngine.processExportTask(task);
+            ExcelProcessResult result = exportEngine.processExportTask(task);
 
             // 增加处理计数
             processedCount.incrementAndGet();
 
             log.info("导出任务处理完成: {}, 总处理时间: {}ms", task.getTaskId(), task.getExecuteTime());
-
+            return result;
         } catch (Exception e) {
             log.error("导出任务处理失败: {}", task.getTaskId(), e);
-            throw new ExcelExportException("任务处理失败: " + e.getMessage(), e);
+            return ExcelProcessResult.fail(task.getTaskId(), "导出任务处理失败: " + e.getMessage());
         } finally {
             // 标记任务完成
             task.markFinish();
