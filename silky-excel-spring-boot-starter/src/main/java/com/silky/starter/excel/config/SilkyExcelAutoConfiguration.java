@@ -19,6 +19,8 @@ import com.silky.starter.excel.service.imports.ImportRecordService;
 import com.silky.starter.excel.service.imports.impl.InMemoryImportRecordService;
 import com.silky.starter.excel.service.storage.StorageService;
 import com.silky.starter.excel.service.storage.impl.DefaultStorageService;
+import com.silky.starter.excel.template.ExcelExportTemplate;
+import com.silky.starter.excel.template.impl.DefaultExcelExportTemplate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -112,7 +114,6 @@ public class SilkyExcelAutoConfiguration {
         return new UnifiedThreadPoolAsyncProcessor(exportEngine, importEngine, silkyExcelTaskExecutor);
     }
 
-
     @Bean
     @ConditionalOnMissingBean
     public AsyncProcessorFactory asyncProcessorFactory(SilkyExcelProperties properties) {
@@ -151,7 +152,6 @@ public class SilkyExcelAutoConfiguration {
         return new ExportEngine(storageService, recordService, asyncExecutor);
     }
 
-
     @Bean
     @ConditionalOnMissingBean
     public ImportRecordService importRecordService() {
@@ -164,5 +164,9 @@ public class SilkyExcelAutoConfiguration {
         return new ImportEngine(importRecordService, asyncExecutor);
     }
 
-
+    @Bean
+    @ConditionalOnMissingBean
+    public ExcelExportTemplate excelExportTemplate(AsyncExecutor asyncExecutor) {
+        return new DefaultExcelExportTemplate(asyncExecutor);
+    }
 }
