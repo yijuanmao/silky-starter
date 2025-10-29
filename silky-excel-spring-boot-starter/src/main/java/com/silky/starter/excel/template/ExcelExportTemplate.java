@@ -21,17 +21,7 @@ public interface ExcelExportTemplate {
      * @param <T>     数据类型
      * @return 导出结果
      */
-    <T> ExportResult export(ExportRequest<T> request);
-
-    /**
-     * 导出数据（指定异步方式）
-     *
-     * @param request   导出请求
-     * @param asyncType 异步类型
-     * @param <T>       数据类型
-     * @return 导出结果
-     */
-    <T> ExportResult export(ExportRequest<T> request, AsyncType asyncType);
+    <T> ExportResult exportAsync(ExportRequest<T> request);
 
     /**
      * 同步导出数据（适合小数据量）
@@ -43,32 +33,41 @@ public interface ExcelExportTemplate {
     <T> ExportResult exportSync(ExportRequest<T> request);
 
     /**
+     * 导出数据，制定异步方式类型
+     *
+     * @param request   导出请求
+     * @param asyncType 异步类型
+     * @return 导出结果
+     */
+    <T> ExportResult export(ExportRequest<T> request, AsyncType asyncType);
+
+    /**
      * 同步导入数据（适合小数据量）
      *
      * @param request 导出请求
      * @param <T>     数据类型
-     * @return 导出结果
+     * @return 导入结果
      */
     <T> ImportResult importSync(ImportRequest<T> request);
 
     /**
-     * 导出数据
+     * 导入数据,异步方法
      *
      * @param request 导出请求
      * @param <T>     数据类型
-     * @return 导出结果
+     * @return 导入结果
      */
-    <T> ExportResult importAsync(ExportRequest<T> request);
+    <T> ImportResult importAsync(ImportRequest<T> request);
 
     /**
-     * 导出数据（指定异步方式）
+     * 导入数据（指定异步方式）
      *
      * @param request   导出请求
      * @param asyncType 异步类型
      * @param <T>       数据类型
-     * @return 导出结果
+     * @return 导入结果
      */
-    <T> ExportResult importAsync(ExportRequest<T> request, AsyncType asyncType);
+    <T> ImportResult imports(ImportRequest<T> request, AsyncType asyncType);
 
 
 }

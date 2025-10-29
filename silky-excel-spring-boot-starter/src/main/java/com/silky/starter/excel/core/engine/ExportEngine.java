@@ -286,8 +286,9 @@ public class ExportEngine {
         task.markStart();
 
         try {
-            // 更新状态为处理中
-            recordService.updateStatus(taskId, ExportStatus.PROCESSING);
+            // 创建导出记录
+            ExportRecord record = createExportRecord(taskId, request);
+            recordService.save(record);
 
             // 执行数据准备（如果有）
             prepareDataSupplier(request);
@@ -303,10 +304,9 @@ public class ExportEngine {
 
             successTasks++;
 
-            log.info("导出任务处理完成: {}, 文件URL: {}, 总耗时: {}ms",
-                    taskId, fileUrl, task.getExecuteTime());
+            log.info("导出任务处理完成: {}, 文件URL: {}, 总耗时: {}ms", taskId, fileUrl, task.getExecuteTime());
 
-            return ExcelProcessResult.asyncSuccess(taskId);
+            return ExcelProcessResult.asyncSuccess(taskId, "导出完成", record.getTotalCount());
         } catch (Exception e) {
             log.error("导出任务处理失败: {}", taskId, e);
 
@@ -710,7 +710,7 @@ public class ExportEngine {
                 .storageType(request.getStorageType())
                 .asyncType(request.getAsyncType())
                 .createUser(request.getCreateUser())
-                .status(ExportStatus.PENDING)
+                .status(ExportStatus.PROCESSING)
                 .createTime(LocalDateTime.now())
                 .params(request.getParams())
                 .totalCount(0L)

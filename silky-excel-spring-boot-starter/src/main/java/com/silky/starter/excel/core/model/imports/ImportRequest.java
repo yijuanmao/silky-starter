@@ -75,14 +75,14 @@ public class ImportRequest<T> {
     private Integer pageSize;
 
     /**
-     * 是否启用事务， 默认true，导入失败时回滚已处理数据
+     * 是否启用事务， 默认false，导入失败时回滚已处理数据
      */
-    private Boolean enableTransaction;
+    private boolean enableTransaction;
 
     /**
-     * 是否跳过表头，默认true，跳过Excel的第一行（表头）
+     * 是否跳过表头，默认false，跳过Excel的第一行（表头）
      */
-    private Boolean skipHeader;
+    private boolean skipHeader;
 
     /**
      * 超时时间（毫秒），导入任务的最大执行时间

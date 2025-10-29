@@ -1,5 +1,6 @@
 package com.silky.starter.excel.core.engine;
 
+import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
@@ -150,8 +151,9 @@ public class ImportEngine {
         File tempFile = null;
 
         try {
-            // 更新状态为处理中
-            recordService.updateStatus(taskId, ImportStatus.PROCESSING);
+            // 创建导入记录
+            ImportRecord record = createImportRecord(taskId, request);
+            recordService.addImportRecord(record);
 
             // 下载文件到本地
             tempFile = downloadImportFile(request, taskId);
@@ -175,8 +177,7 @@ public class ImportEngine {
             task.markFinish();
 
             log.info("导入任务处理完成: {}, 结果: {}", taskId, result.getSummary());
-            return ExcelProcessResult.asyncSuccess(taskId, totalProcessedImports.get(),
-                    successImports.get(), failedImports.get());
+            return ExcelProcessResult.asyncSuccess(taskId, "异步导入完成", totalProcessedImports.get());
         } catch (Exception e) {
             log.error("导入任务处理失败: {}", taskId, e);
 
@@ -284,14 +285,14 @@ public class ImportEngine {
         List<ImportResult.ImportError> allErrors = new ArrayList<>();
 
         try (EnhancedExcelReader<T> reader = new EnhancedExcelReader<>(tempFile.getAbsolutePath(),
-                request.getDataClass(), request.getSkipHeader())) {
+                request.getDataClass(), request.isSkipHeader())) {
 
             int pageNum = 1;
             boolean hasMoreData = true;
             long startImportTime = System.currentTimeMillis();
 
             // 开始事务（如果启用）
-            if (request.getEnableTransaction()) {
+            if (request.isEnableTransaction()) {
                 request.getDataImporter().beginTransaction();
             }
 
@@ -311,7 +312,7 @@ public class ImportEngine {
                 }
                 // 分页读取数据
                 List<T> pageData = reader.readPage(pageNum, request.getPageSize());
-                if (pageData == null || pageData.isEmpty()) {
+                if (CollectionUtil.isEmpty(pageData)) {
                     log.debug("第{}页数据为空，导入完成", pageNum);
                     break;
                 }
@@ -346,7 +347,7 @@ public class ImportEngine {
             long totalCostTime = System.currentTimeMillis() - startImportTime;
 
             // 提交事务（如果启用）
-            if (request.getEnableTransaction()) {
+            if (request.isEnableTransaction()) {
                 request.getDataImporter().commitTransaction();
             }
 
@@ -365,7 +366,7 @@ public class ImportEngine {
 
         } catch (Exception e) {
             // 回滚事务（如果启用）
-            if (request.getEnableTransaction()) {
+            if (request.isEnableTransaction()) {
                 try {
                     request.getDataImporter().rollbackTransaction();
                 } catch (Exception rollbackEx) {
@@ -506,7 +507,7 @@ public class ImportEngine {
                 .fileUrl(request.getFileUrl())
                 .storageType(request.getStorageType())
                 .createUser(request.getCreateUser())
-                .status(ImportStatus.PENDING)
+                .status(ImportStatus.PROCESSING)
                 .createTime(LocalDateTime.now())
                 .params(request.getParams())
                 .totalCount(0L)

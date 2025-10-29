@@ -1,5 +1,6 @@
 package com.silky.starter.excel.template.impl;
 
+import cn.hutool.core.util.IdUtil;
 import com.silky.starter.excel.core.async.executor.AsyncExecutor;
 import com.silky.starter.excel.core.model.ExcelProcessResult;
 import com.silky.starter.excel.core.model.export.ExportRequest;
@@ -7,7 +8,9 @@ import com.silky.starter.excel.core.model.export.ExportResult;
 import com.silky.starter.excel.core.model.export.ExportTask;
 import com.silky.starter.excel.core.model.imports.ImportRequest;
 import com.silky.starter.excel.core.model.imports.ImportResult;
+import com.silky.starter.excel.core.model.imports.ImportTask;
 import com.silky.starter.excel.enums.AsyncType;
+import com.silky.starter.excel.enums.TaskType;
 import com.silky.starter.excel.template.ExcelExportTemplate;
 
 /**
@@ -31,33 +34,8 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
      * @return 导出结果
      */
     @Override
-    public <T> ExportResult export(ExportRequest<T> request) {
+    public <T> ExportResult exportAsync(ExportRequest<T> request) {
         return this.export(request, AsyncType.ASYNC);
-    }
-
-    /**
-     * 导出数据（指定异步方式）
-     *
-     * @param request   导出请求
-     * @param asyncType 异步类型
-     * @return 导出结果
-     */
-    @Override
-    public <T> ExportResult export(ExportRequest<T> request, AsyncType asyncType) {
-        ExportTask<T> exportTask = new ExportTask<>();
-        exportTask.setRequest(request);
-        exportTask.setRecord();
-        exportTask.setCreateTime();
-        exportTask.setStartTime();
-        exportTask.setFinishTime();
-        exportTask.setExecuteThread();
-        exportTask.setContext();
-        exportTask.setTaskId();
-        exportTask.setTaskType();
-        exportTask.setBusinessType();
-
-        ExcelProcessResult result = asyncExecutor.submit(exportTask);
-        return ExportResult.success(result.getTaskId());
     }
 
     /**
@@ -68,40 +46,77 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
      */
     @Override
     public <T> ExportResult exportSync(ExportRequest<T> request) {
-        return null;
+        return this.export(request, AsyncType.SYNC);
     }
 
     /**
-     * 同步导入数据（适合小数据量）
-     *
-     * @param request 导出请求
-     * @return 导出结果
-     */
-    @Override
-    public <T> ImportResult importSync(ImportRequest<T> request) {
-        return null;
-    }
-
-    /**
-     * 导出数据
-     *
-     * @param request 导出请求
-     * @return 导出结果
-     */
-    @Override
-    public <T> ExportResult importAsync(ExportRequest<T> request) {
-        return null;
-    }
-
-    /**
-     * 导出数据（指定异步方式）
+     * 导出数据，制定异步方式类型
      *
      * @param request   导出请求
      * @param asyncType 异步类型
      * @return 导出结果
      */
     @Override
-    public <T> ExportResult importAsync(ExportRequest<T> request, AsyncType asyncType) {
-        return null;
+    public <T> ExportResult export(ExportRequest<T> request, AsyncType asyncType) {
+        ExportTask<T> exportTask = new ExportTask<>();
+        exportTask.setRequest(request);
+        exportTask.setTaskId(buildTaskId());
+        exportTask.setTaskType(TaskType.EXPORT);
+        exportTask.setBusinessType(request.getBusinessType());
+
+        ExcelProcessResult result = asyncExecutor.submit(exportTask, asyncType);
+        return ExportResult.success(result.getTaskId());
     }
+
+    /**
+     * 同步导入数据（适合小数据量）
+     *
+     * @param request 导出请求
+     * @return 导入结果
+     */
+    @Override
+    public <T> ImportResult importSync(ImportRequest<T> request) {
+        return this.imports(request, AsyncType.SYNC);
+    }
+
+    /**
+     * 导入数据,异步方法
+     *
+     * @param request 导出请求
+     * @param <T>     数据类型
+     * @return 导入结果
+     */
+    @Override
+    public <T> ImportResult importAsync(ImportRequest<T> request) {
+        return this.imports(request, AsyncType.ASYNC);
+    }
+
+    /**
+     * 导入数据（指定异步方式）
+     *
+     * @param request   导出请求
+     * @param asyncType 异步类型
+     * @return 导入结果
+     */
+    @Override
+    public <T> ImportResult imports(ImportRequest<T> request, AsyncType asyncType) {
+        ImportTask<T> importTask = new ImportTask<>();
+        importTask.setRequest(request);
+        importTask.setTaskId(buildTaskId());
+        importTask.setTaskType(TaskType.IMPORT);
+        importTask.setBusinessType(request.getBusinessType());
+
+        ExcelProcessResult result = asyncExecutor.submitImport(importTask, asyncType);
+        return ImportResult.success(result.getTaskId(), result.getTotalCount(), result.getSuccessCount());
+    }
+
+    /**
+     * 生成任务ID
+     *
+     * @return 任务ID
+     */
+    private String buildTaskId() {
+        return IdUtil.fastSimpleUUID();
+    }
+
 }

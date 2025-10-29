@@ -1,8 +1,8 @@
 package com.silky.starter.excel.core.async.impl.unified;
 
 import com.silky.starter.excel.core.async.AsyncTask;
-import com.silky.starter.excel.core.async.model.ProcessorStatus;
 import com.silky.starter.excel.core.async.UnifiedAsyncProcessor;
+import com.silky.starter.excel.core.async.model.ProcessorStatus;
 import com.silky.starter.excel.core.engine.ExportEngine;
 import com.silky.starter.excel.core.engine.ImportEngine;
 import com.silky.starter.excel.core.exception.ExcelExportException;
@@ -89,7 +89,6 @@ public class UnifiedSyncAsyncProcessor implements UnifiedAsyncProcessor {
             return result;
         } catch (Exception e) {
             log.error("同步任务执行失败: {}", task.getTaskId(), e);
-//            throw new ExcelExportException("同步执行任务失败: " + e.getMessage(), e);
             return ExcelProcessResult.fail(task.getTaskId(), "同步执行任务失败: " + e.getMessage());
         }
     }
@@ -104,8 +103,7 @@ public class UnifiedSyncAsyncProcessor implements UnifiedAsyncProcessor {
     public ExcelProcessResult process(AsyncTask task) throws ExcelExportException {
         lastActiveTime = System.currentTimeMillis();
         try {
-            log.info("开始同步处理任务: {}, 类型: {}, 业务类型: {}",
-                    task.getTaskId(), task.getTaskType(), task.getBusinessType());
+            log.info("开始同步处理任务: {}, 类型: {}, 业务类型: {}", task.getTaskId(), task.getTaskType(), task.getBusinessType());
 
             ExcelProcessResult result;
             if (task instanceof ExportTask) {

@@ -111,14 +111,6 @@ public class AsyncExecutor implements InitializingBean {
         log.info("异步执行器初始化完成，默认异步类型: {}, 可用状态: {}", defaultAsyncType, defaultAvailable);
     }
 
-    /**
-     * 统一提交任务 - 使用默认异步方式
-     *
-     * @param task 异步任务
-     */
-    public ExcelProcessResult submit(AsyncTask task) {
-        return this.submit(task, defaultAsyncType);
-    }
 
     /**
      * 统一提交任务 - 指定异步方式
@@ -187,23 +179,14 @@ public class AsyncExecutor implements InitializingBean {
     }
 
     /**
-     * 提交导入任务 - 使用默认异步方式
-     *
-     * @param task 导入任务
-     */
-    public void submitImport(ImportTask<?> task) {
-        submitImport(task, AsyncType.ASYNC);
-    }
-
-    /**
      * 提交导入任务 - 指定异步方式
      *
      * @param task      导入任务
      * @param asyncType 异步处理类型
      */
-    public void submitImport(ImportTask<?> task, AsyncType asyncType) {
+    public ExcelProcessResult submitImport(ImportTask<?> task, AsyncType asyncType) {
         validateImportTask(task);
-        submitImportTask(task, determineAsyncType(asyncType));
+        return this.submitImportTask(task, determineAsyncType(asyncType));
     }
 
     /**
