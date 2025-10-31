@@ -1,0 +1,6 @@
+silky:
+  excel:
+    enabled: true
+    async:
+      enabled: true
+

@@ -32,7 +32,6 @@ public interface StorageStrategy {
      *
      * @param fileKey  文件存储的唯一标识
      * @param response HttpServletResponse对象，用于输出文件流
-     * @throws Exception 如果下载过程中发生错误
      */
     void downloadFile(String fileKey, HttpServletResponse response) throws ExcelExportException;
 

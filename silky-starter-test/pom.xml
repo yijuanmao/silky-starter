@@ -17,6 +17,7 @@
         <module>silky-starter-statemachine-test</module>
         <module>silky-starter-rabbitmq-test</module>
         <module>silky-starter-redis-test</module>
+        <module>silky-starter-excel-test</module>
     </modules>
 
 

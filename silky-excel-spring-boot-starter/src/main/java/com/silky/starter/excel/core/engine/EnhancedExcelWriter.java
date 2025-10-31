@@ -1,6 +1,12 @@
 package com.silky.starter.excel.core.engine;
 
+import cn.hutool.core.io.FileUtil;
+import cn.idev.excel.EasyExcel;
 import cn.idev.excel.ExcelWriter;
+import cn.idev.excel.FastExcel;
+import cn.idev.excel.FastExcelFactory;
+import cn.idev.excel.write.builder.ExcelWriterBuilder;
+import cn.idev.excel.write.metadata.WriteSheet;
 import com.silky.starter.excel.core.exception.ExcelExportException;
 import lombok.Getter;
 
@@ -76,7 +82,12 @@ public class EnhancedExcelWriter implements Closeable {
         this.maxRowsPerSheet = maxRowsPerSheet;
 
         try {
-            this.writer = new FastExcelWriter(filePath);
+            this.writer = FastExcelFactory
+                    .write(FileUtil.newFile(filePath))
+                    .autoCloseStream(false)
+                    .build();
+
+//            this.writer = new FastExcelWriter(filePath);
             log.info("增强Excel写入器初始化成功: {}, 每Sheet最大行数: {}", filePath, maxRowsPerSheet);
         } catch (Exception e) {
             log.error("增强Excel写入器初始化失败: {}", filePath, e);
@@ -123,7 +134,7 @@ public class EnhancedExcelWriter implements Closeable {
             }
 
             // 写入表头
-            writer.writeHeader(headers);
+//            writer.writeHeader(headers);
             headerWritten = true;
             currentHeaders = headers;
             currentSheetRows++; // 表头占一行
@@ -208,7 +219,9 @@ public class EnhancedExcelWriter implements Closeable {
      */
     private <T> void writeBatchData(List<T> data, Class<T> clazz) {
         try {
-            writer.write(data, clazz);
+            WriteSheet writeSheet = EasyExcel.writerSheet(getCurrentSheetName()).build();
+//            writer.write(data, clazz);
+            writer.write(data, writeSheet);
             int dataSize = data.size();
             totalRows += dataSize;
             currentSheetRows += dataSize;
@@ -240,12 +253,12 @@ public class EnhancedExcelWriter implements Closeable {
         headerWritten = false;
 
         try {
-            writer.createSheet(getCurrentSheetName(sheetName));
+//            writer.createSheet(getCurrentSheetName(sheetName));
             log.debug("创建新Sheet: {}", getCurrentSheetName(sheetName));
 
             // 如果之前有表头，在新Sheet中重新写入
             if (currentHeaders != null) {
-                writer.writeHeader(currentHeaders);
+//                writer.writeHeader(currentHeaders);
                 headerWritten = true;
                 currentSheetRows++; // 表头占一行
             }

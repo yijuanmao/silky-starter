@@ -1,6 +1,7 @@
 package com.silky.starter.excel.properties;
 
 import com.silky.starter.excel.enums.AsyncType;
+import com.silky.starter.excel.enums.StorageType;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -34,6 +35,26 @@ public class SilkyExcelProperties {
      */
     private Import importConfig = new Import();
 
+
+    private Storage storage = new Storage();
+
+
+
+    @Data
+    public static class Storage {
+
+        /**
+         * 默认存储类型
+         * 可选值：LOCAL, REDIS, MONGO, OSS
+         * 默认值：LOCAL
+         */
+        private StorageType defaultType = StorageType.LOCAL;
+
+        /**
+         * 本地存储配置
+         */
+        private LocalConfig local = new LocalConfig();
+    }
 
     @Data
     public static class Async {
@@ -145,4 +166,31 @@ public class SilkyExcelProperties {
         private boolean skipHeader = true;
     }
 
+
+    @Data
+    public static class LocalConfig {
+        /**
+         * 本地存储基础路径
+         * 默认值：/tmp/silky-excel
+         */
+        private String basePath = "/tmp/silky-excel";
+
+        /**
+         * 是否自动清理临时文件
+         * 默认值：true
+         */
+        private boolean autoClean = true;
+
+        /**
+         * 清理间隔（秒）
+         * 默认值：3600（1小时）
+         */
+        private long cleanInterval = 3600;
+
+        /**
+         * 文件保留天数
+         * 默认值：7
+         */
+        private int retentionDays = 7;
+    }
 }

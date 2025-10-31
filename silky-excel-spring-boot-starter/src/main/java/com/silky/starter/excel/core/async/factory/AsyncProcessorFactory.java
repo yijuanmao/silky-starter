@@ -126,16 +126,15 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
         log.info("开始自动发现异步处理器...");
 
         // 发现统一处理器（优先）
-        Map<String, UnifiedAsyncProcessor> unifiedProcessors = applicationContext.getBeansOfType(UnifiedAsyncProcessor.class);
-        unifiedProcessors.forEach((beanName, processor) -> {
-            String type = processor.getType();
-            unifiedProcessorMap.put(type, processor);
-            processorMap.put(type, processor);
-            log.info("注册统一异步处理器: {} -> {}", type, processor.getClass().getSimpleName());
-        });
+//        Map<String, UnifiedAsyncProcessor> unifiedProcessors = applicationContext.getBeansOfType(UnifiedAsyncProcessor.class);
+//        unifiedProcessors.forEach((beanName, processor) -> {
+//            String type = processor.getType();
+//            unifiedProcessorMap.put(type, processor);
+//            processorMap.put(type, processor);
+//            log.info("注册统一异步处理器: {} -> {}", type, processor.getClass().getSimpleName());
+//        });
         // 发现导出处理器
-        Map<String, ExportAsyncProcessor> exportProcessors =
-                applicationContext.getBeansOfType(ExportAsyncProcessor.class);
+        Map<String, ExportAsyncProcessor> exportProcessors = applicationContext.getBeansOfType(ExportAsyncProcessor.class);
         exportProcessors.forEach((beanName, processor) -> {
             String type = processor.getType();
             // 如果统一处理器已经注册了相同类型，则跳过
