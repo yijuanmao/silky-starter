@@ -4,7 +4,6 @@ import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
-import com.silky.starter.excel.core.async.executor.AsyncExecutor;
 import com.silky.starter.excel.core.exception.ExcelExportException;
 import com.silky.starter.excel.core.model.ExcelProcessResult;
 import com.silky.starter.excel.core.model.export.ExportDataProcessor;
@@ -36,11 +35,9 @@ public class ImportEngine {
 
     private final ImportRecordService recordService;
 
-    private final AsyncExecutor asyncExecutor;
 
-    public ImportEngine(ImportRecordService recordService, AsyncExecutor asyncExecutor) {
+    public ImportEngine(ImportRecordService recordService) {
         this.recordService = recordService;
-        this.asyncExecutor = asyncExecutor;
     }
 
     /**
@@ -69,17 +66,6 @@ public class ImportEngine {
     private AtomicLong failedImports = new AtomicLong(0);
 
     /**
-     * 执行导入任务
-     *
-     * @param request 导入请求
-     * @param <T>     数据类型
-     * @return 导入结果
-     */
-//    public <T> ImportResult execute(ImportRequest<T> request) {
-//        return execute(request, AsyncType.THREAD_POOL);
-//    }
-
-    /**
      * 执行导入任务（指定异步方式）
      *
      * @param request   导入请求
@@ -87,7 +73,7 @@ public class ImportEngine {
      * @param <T>       数据类型
      * @return 导入结果
      */
-   /* public <T> ImportResult execute(ImportRequest<T> request, AsyncType asyncType) {
+   /* public <T> ImportResult executeImport(ImportRequest<T> request, AsyncType asyncType) {
         // 参数校验
         validateImportRequest(request);
 
@@ -108,23 +94,23 @@ public class ImportEngine {
             cacheTask(task);
 
             // 确定异步方式
-            AsyncType targetAsyncType = asyncType != null ? asyncType : AsyncType.THREAD_POOL;
+            AsyncType targetAsyncType = asyncType != null ? asyncType : AsyncType.ASYNC;
 
             // 提交任务到异步执行器
-            asyncExecutor.submit(task, targetAsyncType);
+            asyncExecutor.submitImport(task, targetAsyncType);
 
             long costTime = System.currentTimeMillis() - startTime;
 
             log.info("导入任务创建成功: {}, 业务类型: {}, 异步方式: {}, 耗时: {}ms",
                     taskId, request.getBusinessType(), targetAsyncType, costTime);
 
-            totalProcessedImports++;
+            totalProcessedImports.incrementAndGet();
 
             return ImportResult.asyncSuccess(taskId);
 
         } catch (Exception e) {
             log.error("导入任务创建失败: {}, 业务类型: {}", taskId, request.getBusinessType(), e);
-            failedImports++;
+            failedImports.incrementAndGet();
 
             // 更新记录状态为失败
             recordService.updateFail(taskId, "任务创建失败: " + e.getMessage());

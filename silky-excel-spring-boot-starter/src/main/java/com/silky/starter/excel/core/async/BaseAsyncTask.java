@@ -39,9 +39,6 @@ public abstract class BaseAsyncTask implements AsyncTask {
         if (taskType == null) {
             throw new IllegalArgumentException("任务类型不能为空");
         }
-        if (!StringUtils.hasText(businessType)) {
-            throw new IllegalArgumentException("业务类型不能为空");
-        }
     }
 
     /**

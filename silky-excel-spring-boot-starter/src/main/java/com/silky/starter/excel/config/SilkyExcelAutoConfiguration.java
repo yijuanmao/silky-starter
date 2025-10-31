@@ -147,9 +147,8 @@ public class SilkyExcelAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public ExportEngine exportEngine(StorageService storageService,
-                                     ExportRecordService recordService,
-                                     AsyncExecutor asyncExecutor) {
-        return new ExportEngine(storageService, recordService, asyncExecutor);
+                                     ExportRecordService recordService) {
+        return new ExportEngine(storageService, recordService);
     }
 
     @Bean
@@ -160,8 +159,8 @@ public class SilkyExcelAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public ImportEngine importEngine(ImportRecordService importRecordService, AsyncExecutor asyncExecutor) {
-        return new ImportEngine(importRecordService, asyncExecutor);
+    public ImportEngine importEngine(ImportRecordService importRecordService) {
+        return new ImportEngine(importRecordService);
     }
 
     @Bean

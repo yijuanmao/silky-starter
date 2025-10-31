@@ -1,5 +1,6 @@
 package com.silky.starter.excel.template;
 
+import com.silky.starter.excel.core.async.model.ProcessorStatus;
 import com.silky.starter.excel.core.model.export.ExportRequest;
 import com.silky.starter.excel.core.model.export.ExportResult;
 import com.silky.starter.excel.core.model.imports.ImportRequest;
@@ -69,5 +70,11 @@ public interface ExcelExportTemplate {
      */
     <T> ImportResult imports(ImportRequest<T> request, AsyncType asyncType);
 
-
+    /**
+     * 获取处理器状态
+     *
+     * @param asyncType 处理器类型
+     * @return 处理器状态
+     */
+    ProcessorStatus getProcessorStatus(String asyncType);
 }

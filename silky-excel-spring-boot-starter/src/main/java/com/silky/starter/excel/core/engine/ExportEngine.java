@@ -5,10 +5,12 @@ import cn.hutool.core.date.LocalDateTimeUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
-import com.silky.starter.excel.core.async.executor.AsyncExecutor;
 import com.silky.starter.excel.core.exception.ExcelExportException;
 import com.silky.starter.excel.core.model.ExcelProcessResult;
-import com.silky.starter.excel.core.model.export.*;
+import com.silky.starter.excel.core.model.export.ExportDataProcessor;
+import com.silky.starter.excel.core.model.export.ExportPageData;
+import com.silky.starter.excel.core.model.export.ExportRequest;
+import com.silky.starter.excel.core.model.export.ExportTask;
 import com.silky.starter.excel.entity.ExportRecord;
 import com.silky.starter.excel.enums.ExportStatus;
 import com.silky.starter.excel.service.export.ExportRecordService;
@@ -64,14 +66,10 @@ public class ExportEngine {
 
     private final ExportRecordService recordService;
 
-    private final AsyncExecutor asyncExecutor;
-
     public ExportEngine(StorageService storageService,
-                        ExportRecordService recordService,
-                        AsyncExecutor asyncExecutor) {
+                        ExportRecordService recordService) {
         this.storageService = storageService;
         this.recordService = recordService;
-        this.asyncExecutor = asyncExecutor;
     }
 
     /**
@@ -82,7 +80,7 @@ public class ExportEngine {
      * @param <T>             数据类型
      * @return 导出结果
      */
-    public <T> ExportResult executeWithSheets(ExportRequest<T> request, long maxRowsPerSheet) {
+    /*public <T> ExportResult executeWithSheets(ExportRequest<T> request, long maxRowsPerSheet) {
         // 参数校验
         validateExportRequest(request);
 
@@ -124,12 +122,12 @@ public class ExportEngine {
 
             return ExportResult.fail(taskId, "多Sheet导出任务创建失败: " + e.getMessage());
         }
-    }
+    }*/
 
     /**
      * 处理多Sheet导出任务
      */
-    private <T> String doExportWithSheets(ExportRequest<T> request, String taskId, long maxRowsPerSheet) {
+   /* private <T> String doExportWithSheets(ExportRequest<T> request, String taskId, long maxRowsPerSheet) {
         File tempFile = createTempFile(request.getFileName());
 
         try (EnhancedExcelWriter writer = new EnhancedExcelWriter(tempFile.getAbsolutePath(), maxRowsPerSheet)) {
@@ -203,7 +201,7 @@ public class ExportEngine {
             // 清理临时文件
             cleanupTempFile(tempFile);
         }
-    }
+    }*/
 
     /**
      * 执行导出任务（使用配置的默认异步方式） 这是主要的导出入口方法，适用于大多数场景
@@ -224,7 +222,7 @@ public class ExportEngine {
      * @param <T>       要导出的数据类型
      * @return 导出结果
      */
-   /* public <T> ExportResult execute(ExportRequest<T> request, AsyncType asyncType) {
+    /*public <T> ExportResult execute(ExportRequest<T> request, AsyncType asyncType) {
         // 参数校验
         validateExportRequest(request);
 
@@ -335,7 +333,7 @@ public class ExportEngine {
      * @param <T>     要导出的数据类型
      * @return 导出结果，包含文件URL
      */
-    public <T> ExportResult exportSync(ExportRequest<T> request) {
+   /* public <T> ExportResult exportSync(ExportRequest<T> request) {
         // 参数校验
         validateExportRequest(request);
 
@@ -384,7 +382,7 @@ public class ExportEngine {
             // 执行数据清理
             cleanupDataSupplier(request);
         }
-    }
+    }*/
 
     /**
      * 根据任务ID获取任务信息
@@ -432,7 +430,7 @@ public class ExportEngine {
      * @param taskId 任务ID
      * @return 如果重新执行成功返回true，否则返回false
      */
-    public boolean retryTask(String taskId) {
+  /*  public boolean retryTask(String taskId) {
         ExportTask<?> task = taskCache.get(taskId);
         if (task == null) {
             log.warn("尝试重新执行不存在的任务: {}", taskId);
@@ -454,7 +452,7 @@ public class ExportEngine {
             log.error("任务重新执行失败: {}", taskId, e);
             return false;
         }
-    }
+    }*/
 
     /**
      * 执行导出逻辑的核心方法
@@ -575,9 +573,8 @@ public class ExportEngine {
      *
      * @param request 导出请求
      * @param <T>     数据类型
-     * @throws Exception 准备异常
      */
-    private <T> void prepareDataSupplier(ExportRequest<T> request) throws Exception {
+    private <T> void prepareDataSupplier(ExportRequest<T> request) {
         if (request.getDataSupplier() != null) {
             request.getDataSupplier().prepare(request.getParams());
         }

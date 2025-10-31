@@ -2,6 +2,9 @@ package com.silky.starter.excel.template.impl;
 
 import cn.hutool.core.util.IdUtil;
 import com.silky.starter.excel.core.async.executor.AsyncExecutor;
+import com.silky.starter.excel.core.async.model.ProcessorStatus;
+import com.silky.starter.excel.core.engine.ExportEngine;
+import com.silky.starter.excel.core.engine.ImportEngine;
 import com.silky.starter.excel.core.model.ExcelProcessResult;
 import com.silky.starter.excel.core.model.export.ExportRequest;
 import com.silky.starter.excel.core.model.export.ExportResult;
@@ -64,7 +67,7 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
         exportTask.setTaskType(TaskType.EXPORT);
         exportTask.setBusinessType(request.getBusinessType());
 
-        ExcelProcessResult result = asyncExecutor.submit(exportTask, asyncType);
+        ExcelProcessResult result = asyncExecutor.submitExport(exportTask, asyncType);
         return ExportResult.success(result.getTaskId());
     }
 
@@ -108,6 +111,17 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
 
         ExcelProcessResult result = asyncExecutor.submitImport(importTask, asyncType);
         return ImportResult.success(result.getTaskId(), result.getTotalCount(), result.getSuccessCount());
+    }
+
+    /**
+     * 获取处理器状态
+     *
+     * @param asyncType 处理器类型
+     * @return 处理器状态
+     */
+    @Override
+    public ProcessorStatus getProcessorStatus(String asyncType) {
+        return asyncExecutor.getProcessorStatus(asyncType);
     }
 
     /**

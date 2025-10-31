@@ -118,7 +118,7 @@ public class AsyncExecutor implements InitializingBean {
      * @param task      异步任务
      * @param asyncType 异步处理类型，如果为null则使用配置的默认类型
      */
-    public ExcelProcessResult submit(AsyncTask task, AsyncType asyncType) {
+   /* public ExcelProcessResult submit(AsyncTask task, AsyncType asyncType) {
         // 参数校验
         validateAsyncTask(task);
 
@@ -153,19 +153,8 @@ public class AsyncExecutor implements InitializingBean {
             fallbackTasks.incrementAndGet();
             return processSync(task);
         }
-    }
+    }*/
 
-
-    // ==================== 专门任务提交方法 ====================
-
-    /**
-     * 提交导出任务 - 使用默认异步方式
-     *
-     * @param task 导出任务
-     */
-    public void submitExport(ExportTask<?> task) {
-        submitExport(task, null);
-    }
 
     /**
      * 提交导出任务 - 指定异步方式
@@ -173,24 +162,16 @@ public class AsyncExecutor implements InitializingBean {
      * @param task      导出任务
      * @param asyncType 异步处理类型
      */
-    public void submitExport(ExportTask<?> task, AsyncType asyncType) {
+    public ExcelProcessResult submitExport(ExportTask<?> task, AsyncType asyncType) {
         validateExportTask(task);
-        submitExportTask(task, determineAsyncType(asyncType));
-    }
-
-    /**
-     * 提交导入任务 - 指定异步方式
-     *
-     * @param task      导入任务
-     * @param asyncType 异步处理类型
-     */
-    public ExcelProcessResult submitImport(ImportTask<?> task, AsyncType asyncType) {
-        validateImportTask(task);
-        return this.submitImportTask(task, determineAsyncType(asyncType));
+        return submitExportTask(task, determineAsyncType(asyncType));
     }
 
     /**
      * 提交导出任务的具体实现
+     *
+     * @param task      导出任务
+     * @param asyncType 异步处理类型
      */
     private ExcelProcessResult submitExportTask(ExportTask<?> task, AsyncType asyncType) {
         totalSubmittedTasks.incrementAndGet();
@@ -223,6 +204,17 @@ public class AsyncExecutor implements InitializingBean {
             fallbackTasks.incrementAndGet();
             return processExportSync(task);
         }
+    }
+
+    /**
+     * 提交导入任务 - 指定异步方式
+     *
+     * @param task      导入任务
+     * @param asyncType 异步处理类型
+     */
+    public ExcelProcessResult submitImport(ImportTask<?> task, AsyncType asyncType) {
+        validateImportTask(task);
+        return this.submitImportTask(task, determineAsyncType(asyncType));
     }
 
     /**
