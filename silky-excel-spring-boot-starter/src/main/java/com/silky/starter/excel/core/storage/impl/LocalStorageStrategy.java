@@ -132,7 +132,7 @@ public class LocalStorageStrategy implements StorageStrategy {
      */
     @Override
     public StorageType getStorageType() {
-        return null;
+        return StorageType.LOCAL;
     }
 
     /**

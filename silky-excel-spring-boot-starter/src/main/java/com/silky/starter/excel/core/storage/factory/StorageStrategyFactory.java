@@ -1,5 +1,6 @@
 package com.silky.starter.excel.core.storage.factory;
 
+import cn.hutool.core.collection.CollectionUtil;
 import com.silky.starter.excel.core.storage.StorageStrategy;
 import com.silky.starter.excel.enums.StorageType;
 import org.springframework.beans.factory.InitializingBean;
@@ -20,14 +21,15 @@ public class StorageStrategyFactory implements InitializingBean {
 
     private final List<StorageStrategy> storageStrategies;
 
-    public StorageStrategyFactory(List<StorageStrategy> storageStrategies) {
-        this.storageStrategies = storageStrategies;
-    }
-
     /**
      * 存储策略映射表
      */
     private final Map<StorageType, StorageStrategy> strategyMap = new ConcurrentHashMap<>();
+
+    public StorageStrategyFactory(List<StorageStrategy> storageStrategies) {
+        this.storageStrategies = storageStrategies;
+    }
+
 
     /**
      * 初始化方法，注册所有存储策略
@@ -41,7 +43,7 @@ public class StorageStrategyFactory implements InitializingBean {
      * 初始化方法，注册所有存储策略
      */
     public void init() {
-        if (storageStrategies != null) {
+        if (CollectionUtil.isNotEmpty(this.storageStrategies)) {
             for (StorageStrategy strategy : storageStrategies) {
                 strategyMap.put(strategy.getStorageType(), strategy);
                 log.info("注册存储策略: {}", strategy.getStorageType());

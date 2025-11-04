@@ -94,8 +94,7 @@ public class ExportSyncAsyncProcessor implements ExportAsyncProcessor {
         lastActiveTime = System.currentTimeMillis();
 
         try {
-            log.info("开始同步处理导出任务: {}, 业务类型: {}",
-                    task.getTaskId(), task.getRequest().getBusinessType());
+            log.info("开始同步处理导出任务: {}, 业务类型: {}", task.getTaskId(), task.getRequest().getBusinessType());
 
             // 标记任务开始执行
             task.markStart();

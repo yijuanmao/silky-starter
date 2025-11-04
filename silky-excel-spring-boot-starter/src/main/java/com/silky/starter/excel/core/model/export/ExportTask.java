@@ -122,9 +122,10 @@ public class ExportTask<T> extends BaseAsyncTask {
     /**
      * 检查任务是否超时
      *
+     * @param taskTimeoutMinutes 任务超时时间（分钟）
      * @return 如果超时返回true，否则返回false
      */
-    public boolean isTimeout() {
+    public boolean isTimeout(int taskTimeoutMinutes) {
         if (request.getTimeout() == null) {
             return false;
         }

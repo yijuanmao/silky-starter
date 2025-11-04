@@ -12,6 +12,7 @@ import com.silky.starter.excel.core.engine.ExportEngine;
 import com.silky.starter.excel.core.engine.ImportEngine;
 import com.silky.starter.excel.core.storage.StorageStrategy;
 import com.silky.starter.excel.core.storage.factory.StorageStrategyFactory;
+import com.silky.starter.excel.core.storage.impl.LocalStorageStrategy;
 import com.silky.starter.excel.properties.SilkyExcelProperties;
 import com.silky.starter.excel.service.export.ExportRecordService;
 import com.silky.starter.excel.service.export.impl.InMemoryExportRecordService;
@@ -124,6 +125,13 @@ public class SilkyExcelAutoConfiguration {
     @ConditionalOnMissingBean
     public AsyncExecutor asyncExecutor(AsyncProcessorFactory asyncProcessorFactory, SilkyExcelProperties properties) {
         return new AsyncExecutor(asyncProcessorFactory, properties);
+    }
+
+
+    @Bean
+    @ConditionalOnMissingBean
+    public StorageStrategy localStorageStrategy(SilkyExcelProperties properties) {
+        return new LocalStorageStrategy(properties);
     }
 
     @Bean

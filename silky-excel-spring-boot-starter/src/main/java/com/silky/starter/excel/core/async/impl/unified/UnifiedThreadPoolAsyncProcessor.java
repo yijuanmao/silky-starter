@@ -82,9 +82,9 @@ public class UnifiedThreadPoolAsyncProcessor implements UnifiedAsyncProcessor {
             Long costTime = startTime - lastActiveTime;
             log.debug("任务已成功提交到统一线程池: {}, 类型: {}", task.getTaskId(), task.getTaskType());
             if (task instanceof ExportTask) {
-                return ExcelProcessResult.success(task.getTaskId(), processedCount.get(), exportCount.get(), costTime);
+                return ExcelProcessResult.success(task.getTaskId(), "", exportCount.get());
             } else if (task instanceof ImportTask) {
-                return ExcelProcessResult.success(task.getTaskId(), processedCount.get(), importCount.get(), costTime);
+                return ExcelProcessResult.success(task.getTaskId(), "", importCount.get());
             } else {
                 return ExcelProcessResult.fail(task.getTaskId(), "不支持的任务类型: " + task.getClass().getName());
             }

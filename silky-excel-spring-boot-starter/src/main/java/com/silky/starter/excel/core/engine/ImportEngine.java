@@ -163,7 +163,7 @@ public class ImportEngine {
             task.markFinish();
 
             log.info("导入任务处理完成: {}, 结果: {}", taskId, result.getSummary());
-            return ExcelProcessResult.asyncSuccess(taskId, "异步导入完成", totalProcessedImports.get());
+            return ExcelProcessResult.success(taskId, "异步导入完成", totalProcessedImports.get());
         } catch (Exception e) {
             log.error("导入任务处理失败: {}", taskId, e);
 

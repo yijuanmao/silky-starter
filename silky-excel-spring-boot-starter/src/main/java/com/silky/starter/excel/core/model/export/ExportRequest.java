@@ -22,8 +22,6 @@ import java.util.Map;
 @AllArgsConstructor
 public class ExportRequest<T> {
 
-    // ========== 必需参数 ==========
-
     /**
      * 数据类类型
      * 用于Excel表头生成和数据映射
@@ -118,4 +116,10 @@ public class ExportRequest<T> {
      */
     private Long timeout;
 
+    /**
+     * 每个Sheet的最大行数
+     * 超过该行数会自动创建新Sheet
+     * 默认值：200000
+     */
+    private long maxRowsPerSheet = 200000;
 }

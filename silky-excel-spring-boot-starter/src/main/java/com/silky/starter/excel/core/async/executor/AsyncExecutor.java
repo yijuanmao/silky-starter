@@ -601,6 +601,9 @@ public class AsyncExecutor implements InitializingBean {
         if (task == null) {
             throw new IllegalArgumentException("导出任务不能为null");
         }
+        if (task.getRequest() == null) {
+            throw new IllegalArgumentException("导出请求参数不能为null");
+        }
         task.validate();
     }
 

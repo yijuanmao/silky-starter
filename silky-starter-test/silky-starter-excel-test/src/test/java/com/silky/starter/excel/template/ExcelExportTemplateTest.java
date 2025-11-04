@@ -30,6 +30,7 @@ public class ExcelExportTemplateTest extends ExcelApplicationTest {
         ExportRequest<UserTest> request = new ExportRequest<>();
         request.setDataClass(UserTest.class);
         request.setFileName("test.xls");
+        request.setPageSize(100);
         request.setDataSupplier((pageNum, pageSize, params) -> {
             List<UserTest> userTests = this.findByCondition();
             return new ExportPageData<>(userTests, false);

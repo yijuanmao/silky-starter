@@ -94,7 +94,7 @@ public class ImportThreadPoolAsyncProcessor implements ImportAsyncProcessor {
         try {
             taskExecutor.execute(() -> process(task));
             log.debug("任务已成功提交到Spring线程池: {}", task.getTaskId());
-            return ExcelProcessResult.asyncSuccess(task.getTaskId(), "导入任务已提交到线程池", processedCount.get());
+            return ExcelProcessResult.success(task.getTaskId(), "导入任务已提交到线程池", processedCount.get());
         } catch (Exception e) {
             log.error("Spring线程池提交任务失败: {}", task.getTaskId(), e);
             throw new ExcelExportException("提交任务到线程池失败: " + e.getMessage(), e);
