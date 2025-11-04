@@ -6,8 +6,6 @@ import com.silky.starter.excel.core.async.impl.export.ExportSyncAsyncProcessor;
 import com.silky.starter.excel.core.async.impl.export.ExportThreadPoolAsyncProcessor;
 import com.silky.starter.excel.core.async.impl.imports.ImportSyncAsyncProcessor;
 import com.silky.starter.excel.core.async.impl.imports.ImportThreadPoolAsyncProcessor;
-import com.silky.starter.excel.core.async.impl.unified.UnifiedSyncAsyncProcessor;
-import com.silky.starter.excel.core.async.impl.unified.UnifiedThreadPoolAsyncProcessor;
 import com.silky.starter.excel.core.engine.ExportEngine;
 import com.silky.starter.excel.core.engine.ImportEngine;
 import com.silky.starter.excel.core.storage.StorageStrategy;
@@ -28,7 +26,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.List;
@@ -94,25 +91,6 @@ public class SilkyExcelAutoConfiguration {
             ImportEngine importEngine,
             ThreadPoolTaskExecutor silkyExcelTaskExecutor) {
         return new ImportThreadPoolAsyncProcessor(importEngine, silkyExcelTaskExecutor);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    @Primary
-    public UnifiedSyncAsyncProcessor unifiedSyncAsyncProcessor(
-            ExportEngine exportEngine,
-            ImportEngine importEngine) {
-        return new UnifiedSyncAsyncProcessor(exportEngine, importEngine);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    @Primary
-    public UnifiedThreadPoolAsyncProcessor unifiedThreadPoolAsyncProcessor(
-            ExportEngine exportEngine,
-            ImportEngine importEngine,
-            ThreadPoolTaskExecutor silkyExcelTaskExecutor) {
-        return new UnifiedThreadPoolAsyncProcessor(exportEngine, importEngine, silkyExcelTaskExecutor);
     }
 
     @Bean

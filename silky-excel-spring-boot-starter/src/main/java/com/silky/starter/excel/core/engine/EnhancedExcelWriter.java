@@ -87,15 +87,6 @@ public class EnhancedExcelWriter implements Closeable {
 
 
     /**
-     * 构造方法（默认每Sheet最大行数为20万）
-     *
-     * @param filePath Excel文件路径
-     */
-    public EnhancedExcelWriter(String filePath) {
-        this(filePath, DEFAULT_MAX_ROWS_PER_SHEET); // 默认20万行 per sheet
-    }
-
-    /**
      * 构造方法
      *
      * @param filePath        Excel文件路径
@@ -153,7 +144,7 @@ public class EnhancedExcelWriter implements Closeable {
     }
 
     /**
-     * 写入数据（简化版本）
+     * 写入数据
      */
     public <T> void write(List<T> data, Class<T> clazz, Map<String, String> headerMapping) {
         write(data, clazz, DEFAULT_SHEET_NAME, headerMapping);

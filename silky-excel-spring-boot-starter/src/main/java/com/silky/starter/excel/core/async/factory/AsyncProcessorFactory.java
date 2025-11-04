@@ -284,7 +284,7 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
         log.info("统一处理器: {}", getAvailableUnifiedTypes());
         log.info("导出处理器: {}", getAvailableExportTypes());
         log.info("导入处理器: {}", getAvailableImportTypes());
-        log.info("默认异步类型: {}", properties.getAsync().getDefaultType());
+        log.info("默认异步类型: {}", properties.getAsync().getAsyncType());
         log.info("==========================");
     }
 
@@ -326,7 +326,7 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
      * 获取默认统一处理器
      */
     public UnifiedAsyncProcessor getDefaultUnifiedProcessor() {
-        AsyncType defaultType = properties.getAsync().getDefaultType();
+        AsyncType defaultType = properties.getAsync().getAsyncType();
         return getUnifiedProcessor(defaultType);
     }
 
@@ -368,7 +368,7 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
      * 获取默认导出处理器
      */
     public ExportAsyncProcessor getDefaultExportProcessor() {
-        AsyncType defaultType = properties.getAsync().getDefaultType();
+        AsyncType defaultType = properties.getAsync().getAsyncType();
         return getExportProcessor(defaultType);
     }
 
@@ -410,7 +410,7 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
      * 获取默认导入处理器
      */
     public ImportAsyncProcessor getDefaultImportProcessor() {
-        AsyncType defaultType = properties.getAsync().getDefaultType();
+        AsyncType defaultType = properties.getAsync().getAsyncType();
         return getImportProcessor(defaultType);
     }
 
@@ -821,7 +821,7 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
         stats.put("availableUnifiedTypes", getAvailableUnifiedTypes());
         stats.put("availableExportTypes", getAvailableExportTypes());
         stats.put("availableImportTypes", getAvailableImportTypes());
-        stats.put("defaultAsyncType", properties.getAsync().getDefaultType());
+        stats.put("defaultAsyncType", properties.getAsync().getAsyncType());
         return stats;
     }
 

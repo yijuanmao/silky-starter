@@ -17,7 +17,6 @@ public class OssProperties {
      */
     private String provider;
 
-    // 通用配置
     /**
      * 访问密钥ID
      */

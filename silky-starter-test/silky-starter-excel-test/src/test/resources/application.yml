@@ -3,4 +3,9 @@ silky:
     enabled: true
     async:
       enabled: true
+    storage:
+      storageType: LOCAL
+      local:
+        basePath: F:\\tmp\\
+        autoClean: false
 

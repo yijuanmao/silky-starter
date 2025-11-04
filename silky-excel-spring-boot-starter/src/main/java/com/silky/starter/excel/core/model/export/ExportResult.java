@@ -102,45 +102,4 @@ public class ExportResult {
         return new ExportResult(false, taskId, message, "", 0L, 0L);
     }
 
-    /**
-     * 创建异步处理结果
-     *
-     * @param taskId 任务ID
-     * @return 异步处理结果实例
-     */
-    public static ExportResult asyncSuccess(String taskId) {
-        return new ExportResult(true, taskId, "导出任务已提交，正在后台处理", null, null, null);
-    }
-
-    /**
-     * 设置耗时
-     *
-     * @param costTime 耗时（毫秒）
-     * @return 当前实例（支持链式调用）
-     */
-    public ExportResult withCostTime(Long costTime) {
-        this.costTime = costTime;
-        return this;
-    }
-
-    /**
-     * 设置文件大小
-     *
-     * @param fileSize 文件大小（字节）
-     * @return 当前实例（支持链式调用）
-     */
-    public ExportResult withFileSize(Long fileSize) {
-        this.fileSize = fileSize;
-        return this;
-    }
-
-    /**
-     * 检查是否包含文件URL
-     *
-     * @return 如果包含文件URL返回true，否则返回false
-     */
-    public boolean hasFileUrl() {
-        return fileUrl != null && !fileUrl.trim().isEmpty();
-    }
-
 }

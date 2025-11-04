@@ -48,7 +48,7 @@ public class SilkyExcelProperties {
          * 可选值：LOCAL, REDIS, MONGO, OSS
          * 默认值：LOCAL
          */
-        private StorageType defaultType = StorageType.LOCAL;
+        private StorageType storageType = StorageType.LOCAL;
 
         /**
          * 本地存储配置
@@ -67,7 +67,7 @@ public class SilkyExcelProperties {
         /**
          * 默认异步类型
          */
-        private AsyncType defaultType = AsyncType.ASYNC;
+        private AsyncType asyncType = AsyncType.ASYNC;
 
         /**
          * 线程池配置
@@ -76,6 +76,7 @@ public class SilkyExcelProperties {
 
         @Data
         public static class ThreadPool {
+
             /**
              * 核心线程数
              */

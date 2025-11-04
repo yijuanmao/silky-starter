@@ -1,7 +1,6 @@
 package com.silky.starter.excel.core.engine;
 
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
@@ -15,8 +14,8 @@ import com.silky.starter.excel.entity.ExportRecord;
 import com.silky.starter.excel.enums.ExportStatus;
 import com.silky.starter.excel.service.export.ExportRecordService;
 import com.silky.starter.excel.service.storage.StorageService;
-import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
@@ -68,11 +67,6 @@ public class ExportEngine {
 
     private final ScheduledExecutorService cleanupExecutor;
 
-    /**
-     * 引擎启动时间
-     */
-    private final long engineStartTime = System.currentTimeMillis();
-
     // 统计信息
     private final AtomicLong totalProcessedTasks = new AtomicLong(0);
 
@@ -94,18 +88,19 @@ public class ExportEngine {
     }
 
     /**
-     * 处理导出任务 - 核心方法
+     * 异步导出接口
+     *
+     * @param task 导出任务
+     * @param <T>  导出数据类型
+     * @return 导出处理结果
      */
-    public <T> ExcelProcessResult processExportTask(ExportTask<T> task) {
+    public <T> ExcelProcessResult exportAsync(ExportTask<T> task) {
         String taskId = task.getTaskId();
         ExportRequest<T> request = task.getRequest();
 
-        log.info("开始处理导出任务: {}, 业务类型: {}", taskId, request.getBusinessType());
+        log.info("开始处理异步导出任务: {}, 业务类型: {}", taskId, request.getBusinessType());
 
-        // 验证请求参数
         validateExportRequest(request);
-
-        // 标记任务开始执行
         task.markStart();
         cacheTask(task);
 
@@ -113,43 +108,47 @@ public class ExportEngine {
         File tempFile = null;
 
         try {
-            // 创建导出记录
+            // 创建并保存导出记录
             record = createAndSaveExportRecord(taskId, request);
 
-            // 准备数据
             prepareExportData(request);
 
-            // 执行导出
+            // 创建临时文件
             tempFile = createTempFile(request.getFileName());
+
+            // 执行导出
             ExportResult exportResult = executeExport(request, taskId, tempFile);
 
-            // 上传文件
+            // 上传导出文件
             String fileUrl = uploadExportFile(tempFile, request, taskId);
 
-            // 更新记录状态
             updateRecordOnSuccess(record, fileUrl, exportResult.getTotalCount(), exportResult.getFileSize());
-
-            // 标记任务完成
             task.markFinish();
             successTasks.incrementAndGet();
 
             log.info("导出任务处理完成: {}, 文件URL: {}, 总数据量: {}, 耗时: {}ms",
                     taskId, fileUrl, exportResult.getTotalCount(), task.getExecuteTime());
 
-            return ExcelProcessResult.success(taskId, "导出完成", exportResult.getTotalCount());
+            return ExcelProcessResult.exportSuccess(taskId, fileUrl, exportResult.getTotalCount(), exportResult.getFileSize())
+                    .withCostTime(task.getExecuteTime())
+                    .withSheetCount(exportResult.getSheetCount());
 
         } catch (Exception e) {
             log.error("导出任务处理失败: {}", taskId, e);
             handleExportFailure(task, record, taskId, e);
             return ExcelProcessResult.fail(taskId, "导出失败: " + e.getMessage());
+
         } finally {
-            // 资源清理
             cleanupExportResources(request, tempFile, taskId);
         }
     }
 
     /**
-     * 同步导出 - 适合小数据量场景
+     * 同步导出接口
+     *
+     * @param request 导出请求
+     * @param <T>     导出数据类型
+     * @return 导出处理结果
      */
     public <T> ExcelProcessResult exportSync(ExportRequest<T> request) {
         String taskId = generateTaskId(request.getBusinessType());
@@ -159,32 +158,28 @@ public class ExportEngine {
 
         try {
             validateExportRequest(request);
-
             ExportRecord record = createAndSaveExportRecord(taskId, request);
             recordService.updateStatus(taskId, ExportStatus.PROCESSING);
-
             prepareExportData(request);
 
             File tempFile = createTempFile(request.getFileName());
             ExportResult exportResult = executeExport(request, taskId, tempFile);
             String fileUrl = uploadExportFile(tempFile, request, taskId);
-
             updateRecordOnSuccess(record, fileUrl, exportResult.getTotalCount(), exportResult.getFileSize());
             successTasks.incrementAndGet();
 
             long costTime = System.currentTimeMillis() - startTime;
             log.info("同步导出任务完成: {}, 文件URL: {}, 耗时: {}ms", taskId, fileUrl, costTime);
 
-            return ExcelProcessResult.success(taskId, "导出完成", exportResult.getTotalCount())
-                    .withCostTime(costTime);
+            return ExcelProcessResult.exportSuccess(taskId, fileUrl, exportResult.getTotalCount(), exportResult.getFileSize())
+                    .withCostTime(costTime)
+                    .withSheetCount(exportResult.getSheetCount());
 
         } catch (Exception e) {
             log.error("同步导出任务失败: {}, 业务类型: {}", taskId, request.getBusinessType(), e);
             recordService.updateFailed(taskId, "同步导出失败: " + e.getMessage());
             failedTasks.incrementAndGet();
-
             return ExcelProcessResult.fail(taskId, "同步导出失败: " + e.getMessage());
-
         } finally {
             cleanupExportData(request);
         }
@@ -192,6 +187,12 @@ public class ExportEngine {
 
     /**
      * 执行导出逻辑
+     *
+     * @param request  导出请求
+     * @param taskId   任务ID
+     * @param tempFile 临时文件
+     * @param <T>      导出数据类型
+     * @return 导出结果
      */
     private <T> ExportResult executeExport(ExportRequest<T> request, String taskId, File tempFile) {
         try (EnhancedExcelWriter writer = new EnhancedExcelWriter(tempFile.getAbsolutePath(),
@@ -201,7 +202,6 @@ public class ExportEngine {
 
             while (context.hasNext()) {
                 checkTaskTimeout(taskId);
-
                 ExportPageData<T> pageData = fetchPageData(request, context.getCurrentPage());
                 if (CollUtil.isEmpty(pageData.getData())) {
                     break;
@@ -209,16 +209,22 @@ public class ExportEngine {
 
                 List<T> processedData = processPageData(pageData.getData(), request.getProcessors(), context.getCurrentPage());
                 writePageData(writer, processedData, request, context.getCurrentPage());
-
                 updateExportProgress(context, processedData.size(), pageData.isHasNext());
             }
 
-            return context.getResult();
+            return new ExportResult(context.getProcessedCount(),
+                    tempFile.length(), writer.getCurrentSheet());
         }
     }
 
+
     /**
-     * 分页获取数据
+     * 获取分页数据
+     *
+     * @param request 导出请求
+     * @param pageNum 页码
+     * @param <T>     导出数据类型
+     * @return 分页数据
      */
     private <T> ExportPageData<T> fetchPageData(ExportRequest<T> request, int pageNum) {
         long startTime = System.currentTimeMillis();
@@ -233,6 +239,12 @@ public class ExportEngine {
 
     /**
      * 处理分页数据
+     *
+     * @param data       分页数据
+     * @param processors 数据处理器列表
+     * @param pageNum    页码
+     * @param <T>        导出数据类型
+     * @return 处理后的数据
      */
     private <T> List<T> processPageData(List<T> data, List<ExportDataProcessor<T>> processors, int pageNum) {
         if (CollUtil.isEmpty(processors)) {
@@ -244,7 +256,6 @@ public class ExportEngine {
             long startTime = System.currentTimeMillis();
             processedData = processor.process(processedData, pageNum);
             long costTime = System.currentTimeMillis() - startTime;
-
             log.debug("数据处理器执行完成: {}, 页码: {}, 耗时: {}ms",
                     processor.getClass().getSimpleName(), pageNum, costTime);
         }
@@ -252,7 +263,13 @@ public class ExportEngine {
     }
 
     /**
-     * 写入分页数据
+     * 写入分页数据到Excel
+     *
+     * @param writer  Excel写入器
+     * @param data    分页数据
+     * @param request 导出请求
+     * @param pageNum 页码
+     * @param <T>     导出数据类型
      */
     private <T> void writePageData(EnhancedExcelWriter writer, List<T> data,
                                    ExportRequest<T> request, int pageNum) {
@@ -271,13 +288,16 @@ public class ExportEngine {
 
     /**
      * 更新导出进度
+     *
+     * @param context   导出上下文
+     * @param batchSize 本次处理数据量
+     * @param hasNext   是否有下一页
+     * @param <T>       导出数据类型
      */
     private <T> void updateExportProgress(ExportContext<T> context, int batchSize, boolean hasNext) {
         context.addProcessedCount(batchSize);
         context.setHasNext(hasNext);
         context.nextPage();
-
-        // 更新进度到数据库
         recordService.updateProgress(context.getTaskId(), context.getProcessedCount());
 
         log.debug("导出进度更新: 任务ID={}, 当前页={}, 已处理={}, 还有下一页={}",
@@ -286,6 +306,9 @@ public class ExportEngine {
 
     /**
      * 准备导出数据
+     *
+     * @param request 导出请求
+     * @param <T>     导出数据类型
      */
     private <T> void prepareExportData(ExportRequest<T> request) {
         Optional.ofNullable(request.getDataSupplier())
@@ -296,10 +319,12 @@ public class ExportEngine {
     }
 
     /**
-     * 清理导出数据
+     * 清理导出数据相关资源
+     *
+     * @param request 导出请求
+     * @param <T>     导出数据类型
      */
     private <T> void cleanupExportData(ExportRequest<T> request) {
-        // 清理数据供应器
         Optional.ofNullable(request.getDataSupplier())
                 .ifPresent(supplier -> {
                     try {
@@ -309,7 +334,6 @@ public class ExportEngine {
                     }
                 });
 
-        // 清理数据处理器
         Optional.ofNullable(request.getProcessors())
                 .ifPresent(processors -> processors.forEach(processor -> {
                     try {
@@ -320,8 +344,12 @@ public class ExportEngine {
                 }));
     }
 
+
     /**
-     * 创建临时文件
+     * 清除临时文件
+     *
+     * @param fileName 临时文件名
+     * @return 临时文件
      */
     private File createTempFile(String fileName) {
         try {
@@ -349,7 +377,13 @@ public class ExportEngine {
     }
 
     /**
-     * 上传导出文件
+     * 更新导出文件上传
+     *
+     * @param tempFile 临时文件
+     * @param request  导出请求
+     * @param taskId   任务ID
+     * @param <T>      导出数据类型
+     * @return 文件访问URL
      */
     private <T> String uploadExportFile(File tempFile, ExportRequest<T> request, String taskId) {
         long startTime = System.currentTimeMillis();
@@ -362,32 +396,37 @@ public class ExportEngine {
 
     /**
      * 处理导出失败
+     *
+     * @param task   导出任务
+     * @param record 导出记录
+     * @param taskId 任务ID
+     * @param e      异常信息
      */
     private void handleExportFailure(ExportTask<?> task, ExportRecord record, String taskId, Exception e) {
         task.markFinish();
         failedTasks.incrementAndGet();
-
         if (record != null) {
             recordService.updateFailed(taskId, e.getMessage());
         }
     }
 
     /**
-     * 清理导出资源
+     * 清理导出相关资源
+     *
+     * @param request  导出请求
+     * @param tempFile 临时文件
+     * @param taskId   任务ID
      */
-    private <T> void cleanupExportResources(ExportRequest<T> request, File tempFile, String taskId) {
-        // 清理数据
+    private void cleanupExportResources(ExportRequest<?> request, File tempFile, String taskId) {
         cleanupExportData(request);
-
-        // 清理临时文件
         cleanupTempFile(tempFile);
-
-        // 调度缓存清理
         scheduleTaskCacheCleanup(taskId);
     }
 
     /**
      * 清理临时文件
+     *
+     * @param tempFile 临时文件
      */
     private void cleanupTempFile(File tempFile) {
         if (tempFile != null && tempFile.exists()) {
@@ -405,7 +444,9 @@ public class ExportEngine {
     }
 
     /**
-     * 检查任务超时
+     * 检查任务是否超时
+     *
+     * @param taskId 任务ID
      */
     private void checkTaskTimeout(String taskId) {
         ExportTask<?> task = taskCache.get(taskId);
@@ -416,6 +457,11 @@ public class ExportEngine {
 
     /**
      * 创建并保存导出记录
+     *
+     * @param taskId  任务ID
+     * @param request 导出请求
+     * @param <T>     导出数据类型
+     * @return 导出记录
      */
     private <T> ExportRecord createAndSaveExportRecord(String taskId, ExportRequest<T> request) {
         ExportRecord record = ExportRecord.builder()
@@ -437,7 +483,12 @@ public class ExportEngine {
     }
 
     /**
-     * 更新成功记录
+     * 更新导出记录为成功
+     *
+     * @param record     导出记录
+     * @param fileUrl    文件访问URL
+     * @param totalCount 总记录数
+     * @param fileSize   文件大小
      */
     private void updateRecordOnSuccess(ExportRecord record, String fileUrl, long totalCount, long fileSize) {
         recordService.update(record.getTaskId(), r -> {
@@ -450,6 +501,9 @@ public class ExportEngine {
 
     /**
      * 缓存任务
+     *
+     * @param task 导出任务
+     * @param <T>  导出数据类型
      */
     private <T> void cacheTask(ExportTask<T> task) {
         taskCache.put(task.getTaskId(), task);
@@ -459,6 +513,8 @@ public class ExportEngine {
 
     /**
      * 调度任务缓存清理
+     *
+     * @param taskId 任务ID
      */
     private void scheduleTaskCacheCleanup(String taskId) {
         cleanupExecutor.schedule(() -> {
@@ -469,6 +525,10 @@ public class ExportEngine {
 
     /**
      * 获取每个Sheet的最大行数
+     *
+     * @param request 导出请求
+     * @param <T>     导出数据类型
+     * @return 每个Sheet的最大行数
      */
     private <T> long getMaxRowsPerSheet(ExportRequest<T> request) {
         return Optional.of(request.getMaxRowsPerSheet())
@@ -476,7 +536,10 @@ public class ExportEngine {
     }
 
     /**
-     * 验证导出请求
+     * 校验导出请求
+     *
+     * @param request 请求参数
+     * @return 任务ID
      */
     private <T> void validateExportRequest(ExportRequest<T> request) {
         if (request == null) {
@@ -496,55 +559,23 @@ public class ExportEngine {
         }
     }
 
-    /**
-     * 生成任务ID
-     */
     private String generateTaskId(String businessType) {
         String prefix = StrUtil.isNotBlank(businessType) ?
                 businessType.replaceAll("[^a-zA-Z0-9]", "_") : "TASK";
         return prefix + "_" + System.currentTimeMillis() + "_" + IdUtil.fastSimpleUUID();
     }
 
-    /**
-     * 关闭引擎
-     */
-    public void shutdown() {
-        cleanupExecutor.shutdown();
-        try {
-            if (!cleanupExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
-                cleanupExecutor.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            cleanupExecutor.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
-        log.info("导出引擎已关闭");
-    }
 
-    /**
-     * 获取引擎状态
-     */
-    public EngineStatus getEngineStatus() {
-        return EngineStatus.builder()
-                .engineStartTime(DateUtil.date(engineStartTime).toLocalDateTime())
-                .totalProcessedTasks(totalProcessedTasks.get())
-                .successTasks(successTasks.get())
-                .failedTasks(failedTasks.get())
-                .cachedTasks(taskCache.size())
-                .uptime(System.currentTimeMillis() - engineStartTime)
-                .build();
-    }
-
-    /**
-     * 导出上下文 - 内部类
-     */
     private static class ExportContext<T> {
+        @Getter
         private final String taskId;
+        @Getter
         private final ExportRequest<T> request;
+        @Getter
         private int currentPage = 1;
+        @Getter
         private long processedCount = 0;
         private boolean hasNext = true;
-        private long fileSize = 0;
 
         public ExportContext(String taskId, ExportRequest<T> request) {
             this.taskId = taskId;
@@ -567,65 +598,18 @@ public class ExportEngine {
             return hasNext;
         }
 
-        public int getCurrentPage() {
-            return currentPage;
-        }
-
-        public long getProcessedCount() {
-            return processedCount;
-        }
-
-        public String getTaskId() {
-            return taskId;
-        }
-
-        public ExportResult getResult() {
-            return new ExportResult(processedCount, fileSize);
-        }
     }
 
-    /**
-     * 导出结果 - 内部类
-     */
     @Data
     private static class ExportResult {
         private final long totalCount;
         private final long fileSize;
+        private final int sheetCount;
 
-        public ExportResult(long totalCount, long fileSize) {
+        public ExportResult(long totalCount, long fileSize, int sheetCount) {
             this.totalCount = totalCount;
             this.fileSize = fileSize;
-        }
-    }
-
-    /**
-     * 引擎状态
-     */
-    @Data
-    @Builder
-    public static class EngineStatus {
-        private LocalDateTime engineStartTime;
-
-        private long totalProcessedTasks;
-
-        private long successTasks;
-
-        private long failedTasks;
-
-        private int cachedTasks;
-
-        private long uptime;
-
-        public double getSuccessRate() {
-            return totalProcessedTasks > 0 ? (double) successTasks / totalProcessedTasks : 0.0;
-        }
-
-        public double getFailureRate() {
-            return totalProcessedTasks > 0 ? (double) failedTasks / totalProcessedTasks : 0.0;
-        }
-
-        public long getAverageProcessTime() {
-            return totalProcessedTasks > 0 ? uptime / totalProcessedTasks : 0;
+            this.sheetCount = sheetCount;
         }
     }
 }

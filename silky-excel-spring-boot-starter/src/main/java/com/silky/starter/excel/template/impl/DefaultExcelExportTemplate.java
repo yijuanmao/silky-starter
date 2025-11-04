@@ -1,10 +1,9 @@
 package com.silky.starter.excel.template.impl;
 
 import cn.hutool.core.util.IdUtil;
+import cn.hutool.core.util.StrUtil;
 import com.silky.starter.excel.core.async.executor.AsyncExecutor;
 import com.silky.starter.excel.core.async.model.ProcessorStatus;
-import com.silky.starter.excel.core.engine.ExportEngine;
-import com.silky.starter.excel.core.engine.ImportEngine;
 import com.silky.starter.excel.core.model.ExcelProcessResult;
 import com.silky.starter.excel.core.model.export.ExportRequest;
 import com.silky.starter.excel.core.model.export.ExportResult;
@@ -61,11 +60,12 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
      */
     @Override
     public <T> ExportResult export(ExportRequest<T> request, AsyncType asyncType) {
+        request.setAsyncType(asyncType);
         ExportTask<T> exportTask = new ExportTask<>();
         exportTask.setRequest(request);
         exportTask.setTaskId(buildTaskId());
         exportTask.setTaskType(TaskType.EXPORT);
-        exportTask.setBusinessType(request.getBusinessType());
+        exportTask.setBusinessType(StrUtil.isBlank(request.getBusinessType()) ? "" : request.getBusinessType());
 
         ExcelProcessResult result = asyncExecutor.submitExport(exportTask, asyncType);
         return ExportResult.success(result.getTaskId());

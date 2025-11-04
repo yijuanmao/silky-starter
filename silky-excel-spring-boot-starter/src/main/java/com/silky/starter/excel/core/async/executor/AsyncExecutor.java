@@ -77,7 +77,7 @@ public class AsyncExecutor implements InitializingBean {
                          SilkyExcelProperties properties) {
         this.processorFactory = processorFactory;
         this.properties = properties;
-        this.defaultAsyncType = properties.getAsync().getDefaultType();
+        this.defaultAsyncType = properties.getAsync().getAsyncType();
 
         // 初始化统计计数器
         for (TaskType taskType : TaskType.values()) {
@@ -110,51 +110,6 @@ public class AsyncExecutor implements InitializingBean {
         }
         log.info("异步执行器初始化完成，默认异步类型: {}, 可用状态: {}", defaultAsyncType, defaultAvailable);
     }
-
-
-    /**
-     * 统一提交任务 - 指定异步方式
-     *
-     * @param task      异步任务
-     * @param asyncType 异步处理类型，如果为null则使用配置的默认类型
-     */
-   /* public ExcelProcessResult submit(AsyncTask task, AsyncType asyncType) {
-        // 参数校验
-        validateAsyncTask(task);
-
-        // 增加总提交计数
-        totalSubmittedTasks.incrementAndGet();
-
-        // 更新任务类型统计
-        taskTypeCounters.get(task.getTaskType()).incrementAndGet();
-
-        // 检查异步处理是否启用
-        if (!properties.getAsync().isEnabled()) {
-            log.debug("异步处理被禁用，使用同步方式执行任务: {}", task.getTaskId());
-            return processSync(task);
-        }
-        // 确定目标异步类型
-        AsyncType targetType = determineAsyncType(asyncType);
-
-        // 更新异步类型统计
-        asyncTypeCounters.get(targetType).incrementAndGet();
-        try {
-            // 优先使用统一处理器
-            if (useUnifiedProcessor(task, targetType)) {
-                return submitWithUnifiedProcessor(task, targetType);
-            } else {
-                // 使用专门的处理器
-                return submitWithSpecializedProcessor(task, targetType);
-            }
-
-        } catch (Exception e) {
-            log.error("任务提交失败: {}, 错误: {}, 降级为同步执行",
-                    task.getTaskId(), e.getMessage());
-            fallbackTasks.incrementAndGet();
-            return processSync(task);
-        }
-    }*/
-
 
     /**
      * 提交导出任务 - 指定异步方式

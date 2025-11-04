@@ -100,7 +100,7 @@ public class ExportSyncAsyncProcessor implements ExportAsyncProcessor {
             task.markStart();
 
             // 调用导出引擎处理任务
-            ExcelProcessResult result = exportEngine.processExportTask(task);
+            ExcelProcessResult result = exportEngine.exportSync(task.getRequest());
 
             // 增加处理计数
             processedCount.incrementAndGet();

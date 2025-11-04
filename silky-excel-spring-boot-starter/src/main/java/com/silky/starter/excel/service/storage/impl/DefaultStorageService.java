@@ -247,7 +247,7 @@ public class DefaultStorageService implements StorageService {
      */
     @Override
     public StorageType getDefaultStorageType() {
-        return properties.getStorage().getDefaultType();
+        return properties.getStorage().getStorageType();
     }
 
     /**
