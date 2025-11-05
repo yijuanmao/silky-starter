@@ -19,6 +19,10 @@ import java.util.List;
  * @date 2025-10-31 16:53
  **/
 public class ExcelExportTemplateTest extends ExcelApplicationTest {
+
+    // 提取测试数据为静态变量，提高复用率并降低内存消耗
+    private static final List<UserTest> TEST_DATA = createTestData();
+
     @Autowired
     private ExcelExportTemplate excelExportTemplate;
 
@@ -49,20 +53,21 @@ public class ExcelExportTemplateTest extends ExcelApplicationTest {
      */
     @Test
     public void testExportAsync() {
+        boolean hasNext = true;
         // 创建导出请求
         ExportRequest<UserTest> request = new ExportRequest<>();
         request.setDataClass(UserTest.class);
-//        request.setFileName("test_async.xls");
+        request.setFileName("test_async.xlsx");
         request.setPageSize(10);
         request.setDataSupplier((pageNum, pageSize, params) -> {
             //这里模拟数据库分页查询
             List<UserTest> userTests = this.findByCondition(pageNum, pageSize);
-            return new ExportPageData<>(userTests, true);
+            //hasNext 用于是否有下一页数据,如果查询findByCondition方法使用分页插件，就可以从分页插件中获取是否有下一页；·
+            return new ExportPageData<>(userTests, hasNext);
         });
         ExportResult result = excelExportTemplate.exportAsync(request);
         log.info("导出结果: {}", result);
     }
-
 
     /**
      * 查询数据库（带分页）
@@ -82,20 +87,20 @@ public class ExcelExportTemplateTest extends ExcelApplicationTest {
         return new ArrayList<>(allData.subList(fromIndex, toIndex));
     }
 
-    // 提取测试数据为静态变量，提高复用率并降低内存消耗
-    private static final List<UserTest> TEST_DATA = createTestData();
-
+    /**
+     * 创建测试数据
+     *
+     * @return 测试数据列表
+     */
     private static List<UserTest> createTestData() {
-        List<UserTest> list = new ArrayList<>(10);
-        list.add(new UserTest("张三", "13800138000"));
-        list.add(new UserTest("李四", "13800138001"));
-        list.add(new UserTest("王五", "13800138002"));
-        list.add(new UserTest("王️六", "13800138003"));
-        list.add(new UserTest("赵七", "13800138004"));
-        list.add(new UserTest("孙八", "13800138005"));
-        list.add(new UserTest("周九", "13800138006"));
-        list.add(new UserTest("吴八", "13800138007"));
-        list.add(new UserTest("郑十", "13800138008"));
+        int size = 300000;
+        // 预设容量避免频繁扩容，提高性能
+        List<UserTest> list = new ArrayList<>(size);
+
+        for (int i = 1; i <= size; i++) {
+            // 使用规律性数据便于识别和测试
+            list.add(new UserTest("用户" + i, "1380013" + String.format("%04d", i)));
+        }
         return list;
     }
 

@@ -1,8 +1,6 @@
 package com.silky.starter.excel.core.async;
 
-import cn.hutool.core.collection.CollectionUtil;
 import com.silky.starter.excel.core.exception.ExcelExportException;
-import com.silky.starter.excel.core.model.export.ExportResult;
 import com.silky.starter.excel.core.model.export.ExportTask;
 import lombok.Getter;
 
@@ -35,38 +33,6 @@ public interface ExportAsyncProcessor<R> extends AsyncProcessor {
      * @param task 要处理的导出任务
      */
     R process(ExportTask<?> task) throws ExcelExportException;
-
-    /**
-     * 批量提交导出任务
-     * 同时提交多个导出任务，提高批量处理效率
-     * 默认实现依次提交每个任务，子类可以重写此方法进行优化
-     *
-     * @param tasks 要处理的导出任务列表
-     */
-    default void submitBatch(java.util.List<ExportTask<?>> tasks) throws ExcelExportException {
-        if (CollectionUtil.isEmpty(tasks)) {
-            return;
-        }
-        for (ExportTask<?> task : tasks) {
-            submit(task);
-        }
-    }
-
-    /**
-     * 批量处理导出任务
-     * 同步处理多个导出任务，适用于需要严格控制资源使用的场景
-     * 默认实现依次处理每个任务，子类可以重写此方法进行优化
-     *
-     * @param tasks 要处理的导出任务列表
-     */
-    default void processBatch(java.util.List<ExportTask<?>> tasks) throws ExcelExportException {
-        if (tasks == null || tasks.isEmpty()) {
-            return;
-        }
-        for (ExportTask<?> task : tasks) {
-            this.process(task);
-        }
-    }
 
     /**
      * 检查任务是否正在处理中
