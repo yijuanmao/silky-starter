@@ -14,6 +14,7 @@ import com.silky.starter.excel.enums.ExportStatus;
 import com.silky.starter.excel.service.export.ExportRecordService;
 import com.silky.starter.excel.service.storage.StorageService;
 import lombok.Data;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
@@ -310,12 +311,13 @@ public class ExportEngine {
     private String generateTaskId(String businessType) {
         String prefix = StrUtil.isNotBlank(businessType) ?
                 businessType.replaceAll("[^a-zA-Z0-9]", "_") : "TASK";
-        return prefix + "_" + System.currentTimeMillis() + "_" + IdUtil.fastSimpleUUID();
+        return prefix + "_" + IdUtil.fastSimpleUUID();
     }
 
     /**
      * 导出上下文
      */
+    @Getter
     private static class ExportContext {
         private final String taskId;
         private long processedCount = 0;
@@ -328,13 +330,6 @@ public class ExportEngine {
             processedCount += count;
         }
 
-        public long getProcessedCount() {
-            return processedCount;
-        }
-
-        public String getTaskId() {
-            return taskId;
-        }
     }
 
     /**

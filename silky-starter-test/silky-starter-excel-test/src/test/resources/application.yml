@@ -1,11 +1,16 @@
+# 修正后的 application.yml 配置
 silky:
   excel:
     enabled: true
     async:
       enabled: true
+    export:
+      maxRowsPerSheet: 100000
+      batchSize: 1000
+    import:
+      pageSize: 1000
     storage:
       storageType: LOCAL
       local:
         basePath: F:\\tmp\\
         autoClean: false
-

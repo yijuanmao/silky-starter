@@ -105,7 +105,7 @@ public class SilkyExcelProperties {
         /**
          * 每个Sheet的最大行数
          */
-        private int maxRowsPerSheet = 100000;
+        private int maxRowsPerSheet = 200000;
 
         /**
          * 批处理大小
@@ -164,12 +164,13 @@ public class SilkyExcelProperties {
         /**
          * 是否跳过表头
          */
-        private boolean skipHeader = true;
+        private boolean skipHeader = false;
     }
 
 
     @Data
     public static class LocalConfig {
+
         /**
          * 本地存储基础路径
          * 默认值：/tmp/silky-excel

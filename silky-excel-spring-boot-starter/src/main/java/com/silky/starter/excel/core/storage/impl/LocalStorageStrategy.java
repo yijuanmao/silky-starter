@@ -105,7 +105,7 @@ public class LocalStorageStrategy implements StorageStrategy {
     @Override
     public String getFileUrl(String fileKey) {
         // 本地存储返回相对路径，实际项目中可能需要配置域名
-        return "/api/silky-excel/download/" + fileKey;
+        return properties.getStorage().getLocal().getBasePath() + fileKey;
     }
 
     /**

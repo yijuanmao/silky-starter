@@ -1,5 +1,6 @@
 package com.silky.starter.excel.core.engine;
 
+import cn.hutool.core.collection.CollectionUtil;
 import cn.idev.excel.EasyExcel;
 import cn.idev.excel.ExcelWriter;
 import cn.idev.excel.write.metadata.WriteSheet;
@@ -73,7 +74,7 @@ public class EnhancedExcelWriter implements Closeable {
      */
     public <T> void write(List<T> data, Class<T> clazz, String sheetName,
                           Map<String, String> headerMapping) {
-        if (data == null || data.isEmpty()) {
+        if (CollectionUtil.isEmpty(data)) {
             log.debug("数据为空，跳过写入");
             return;
         }
