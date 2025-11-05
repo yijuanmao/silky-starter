@@ -121,7 +121,7 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
             task.markStart();
 
             // 调用导出引擎处理任务
-            ExcelProcessResult result = exportEngine.exportSync(task.getRequest());
+            ExcelProcessResult result = exportEngine.exportSync(task.getRequest(), task.getTaskId());
 
             // 增加处理计数
             processedCount.incrementAndGet();

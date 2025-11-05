@@ -1,5 +1,6 @@
 package com.silky.starter.excel.core.model.export;
 
+import com.silky.starter.excel.enums.ExportStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -39,7 +40,7 @@ public class ExportResult {
     /**
      * 状态码
      */
-    private String code;
+    private ExportStatus code;
 
     /**
      * 导出文件URL/路径
@@ -81,7 +82,6 @@ public class ExportResult {
      */
     private LocalDateTime finishTime;
 
-
     /**
      * 创建成功结果
      */
@@ -89,7 +89,7 @@ public class ExportResult {
         ExportResult result = new ExportResult();
         result.setSuccess(true)
                 .setTaskId(taskId)
-                .setCode("SUCCESS")
+                .setCode(ExportStatus.COMPLETED)
                 .setMessage("导出成功")
                 .setFinishTime(LocalDateTime.now());
         return result;
@@ -115,7 +115,7 @@ public class ExportResult {
         ExportResult result = new ExportResult();
         result.setSuccess(true)
                 .setTaskId(taskId)
-                .setCode("PROCESSING")
+                .setCode(ExportStatus.PROCESSING)
                 .setMessage("异步导出任务已提交，请稍后查询结果");
         return result;
     }
@@ -127,27 +127,10 @@ public class ExportResult {
         ExportResult result = new ExportResult();
         result.setSuccess(false)
                 .setTaskId(taskId)
-                .setCode("FAILED")
+                .setCode(ExportStatus.FAILED)
                 .setMessage(message)
                 .setFinishTime(LocalDateTime.now());
         return result;
     }
-
-    /**
-     * 创建失败结果（含状态码）
-     */
-    public static ExportResult fail(String taskId, String code, String message) {
-        ExportResult result = fail(taskId, message);
-        result.setCode(code);
-        return result;
-    }
-
-    /**
-     * 是否为异步处理中状态
-     */
-    public boolean isProcessing() {
-        return "PROCESSING".equals(code);
-    }
-
 
 }

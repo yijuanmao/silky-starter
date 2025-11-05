@@ -1,6 +1,7 @@
 package com.silky.starter.excel.template.impl;
 
 import cn.hutool.core.util.IdUtil;
+import cn.hutool.core.util.StrUtil;
 import com.silky.starter.excel.core.async.executor.AsyncExecutor;
 import com.silky.starter.excel.core.async.model.ProcessorStatus;
 import com.silky.starter.excel.core.engine.ExportEngine;
@@ -28,15 +29,11 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
 
     private final AsyncExecutor asyncExecutor;
 
-    private final ExportEngine exportEngine;
-
     private final ImportEngine importEngine;
 
     public DefaultExcelExportTemplate(AsyncExecutor asyncExecutor,
-                                      ExportEngine exportEngine,
                                       ImportEngine importEngine) {
         this.asyncExecutor = asyncExecutor;
-        this.exportEngine = exportEngine;
         this.importEngine = importEngine;
     }
 
@@ -60,16 +57,7 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
     @Override
     public <T> ExportResult exportSync(ExportRequest<T> request) {
         try {
-            // 直接使用ExportEngine的同步导出
-            ExcelProcessResult processResult = exportEngine.exportSync(request);
-
-            return ExportResult.success(
-                    processResult.getTaskId(),
-                    processResult.getFileUrl(),
-                    processResult.getTotalCount(),
-                    processResult.getFileSize(),
-                    processResult.getCostTime());
-
+            return this.export(request, AsyncType.SYNC);
         } catch (Exception e) {
             log.error("同步导出失败", e);
             return ExportResult.fail("SYNC_" + System.currentTimeMillis(),
@@ -78,7 +66,7 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
     }
 
     /**
-     * 导出数据，制定异步方式类型
+     * 导出数据
      *
      * @param request   导出请求
      * @param asyncType 异步类型
@@ -86,22 +74,27 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
      */
     @Override
     public <T> ExportResult export(ExportRequest<T> request, AsyncType asyncType) {
-        if (AsyncType.SYNC.equals(asyncType)) {
-            return exportSync(request);
-        }
-        // 异步处理
         try {
             request.setAsyncType(asyncType);
             ExportTask<T> exportTask = createExportTask(request);
 
             ExcelProcessResult result = asyncExecutor.submitExport(exportTask, asyncType);
+            if (AsyncType.SYNC.equals(asyncType)) {
+                // 同步导出，直接返回结果
+                return ExportResult.success(
+                        result.getTaskId(),
+                        result.getFileUrl(),
+                        result.getTotalCount(),
+                        result.getFileSize(),
+                        result.getCostTime());
 
-            return ExportResult.asyncSuccess(result.getTaskId());
+            } else {
+                return ExportResult.asyncSuccess(result.getTaskId());
+            }
 
         } catch (Exception e) {
-            log.error("异步导出失败", e);
-            return ExportResult.fail("ASYNC_" + System.currentTimeMillis(),
-                    "异步导出失败: " + e.getMessage());
+            log.error("silky excel 导出失败", e);
+            return ExportResult.fail(asyncType.name() + "_" + System.currentTimeMillis(), "silky excel导出失败: " + e.getMessage());
         }
     }
 
@@ -183,7 +176,7 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
     private <T> ExportTask<T> createExportTask(ExportRequest<T> request) {
         ExportTask<T> task = new ExportTask<>();
         task.setRequest(request);
-        task.setTaskId(buildTaskId());
+        task.setTaskId(generateTaskId(request.getBusinessType()));
         task.setTaskType(TaskType.EXPORT);
         task.setBusinessType(request.getBusinessType());
         return task;
@@ -195,7 +188,7 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
     private <T> ImportTask<T> createImportTask(ImportRequest<T> request) {
         ImportTask<T> task = new ImportTask<>();
         task.setRequest(request);
-        task.setTaskId(buildTaskId());
+        task.setTaskId(generateTaskId(request.getBusinessType()));
         task.setTaskType(TaskType.IMPORT);
         task.setBusinessType(request.getBusinessType());
         return task;
@@ -204,8 +197,9 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
     /**
      * 生成任务ID
      */
-    private String buildTaskId() {
-        return IdUtil.fastSimpleUUID();
+    private String generateTaskId(String businessType) {
+        String prefix = StrUtil.isNotBlank(businessType) ?
+                businessType.replaceAll("[^a-zA-Z0-9]", "_") : "TASK";
+        return prefix + "_" + IdUtil.fastSimpleUUID();
     }
-
 }

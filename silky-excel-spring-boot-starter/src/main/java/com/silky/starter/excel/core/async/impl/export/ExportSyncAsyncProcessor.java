@@ -73,7 +73,7 @@ public class ExportSyncAsyncProcessor implements ExportAsyncProcessor {
         log.debug("开始同步执行导出任务: {}", task.getTaskId());
         try {
             // 直接调用process方法执行任务
-            ExcelProcessResult result = process(task);
+            ExcelProcessResult result = this.process(task);
             log.debug("同步导出任务执行完成: {}", task.getTaskId());
             return result;
         } catch (Exception e) {
@@ -100,7 +100,7 @@ public class ExportSyncAsyncProcessor implements ExportAsyncProcessor {
             task.markStart();
 
             // 调用导出引擎处理任务
-            ExcelProcessResult result = exportEngine.exportSync(task.getRequest());
+            ExcelProcessResult result = exportEngine.exportSync(task.getRequest(), task.getTaskId());
 
             // 增加处理计数
             processedCount.incrementAndGet();

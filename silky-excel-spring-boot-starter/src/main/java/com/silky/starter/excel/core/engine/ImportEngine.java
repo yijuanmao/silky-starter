@@ -64,7 +64,7 @@ public class ImportEngine {
             log.info("同步导入任务完成: {}, 结果: {}, 耗时: {}ms", taskId, result.getSummary(), costTime);
 
             return ExcelProcessResult.success(taskId, "导入完成", result.getTotalCount())
-                    .withCostTime(costTime);
+                    .setCostTime(costTime);
 
         } catch (Exception e) {
             log.error("同步导入任务失败: {}", taskId, e);

@@ -24,7 +24,6 @@ public interface AsyncProcessor {
      * 初始化处理器,在处理器注册到工厂后调用，用于初始化资源
      */
     default void init() throws ExcelExportException {
-        // 默认空实现
     }
 
     /**

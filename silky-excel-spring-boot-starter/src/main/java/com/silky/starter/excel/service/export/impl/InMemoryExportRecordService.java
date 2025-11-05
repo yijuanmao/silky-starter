@@ -153,7 +153,7 @@ public class InMemoryExportRecordService implements ExportRecordService {
      */
     @Override
     public void update(String taskId, Consumer<ExportRecord> updater) {
-        if (taskId == null || taskId.trim().isEmpty()) {
+        if (StrUtil.isBlank(taskId)) {
             throw new IllegalArgumentException("任务ID不能为空");
         }
         if (updater == null) {

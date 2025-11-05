@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 
 import java.io.Serializable;
 import java.util.Collections;
@@ -19,13 +20,13 @@ import java.util.Map;
  **/
 @Data
 @Builder
+@Accessors(chain = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class ExcelProcessResult implements Serializable {
 
     private static final long serialVersionUID = 3164749477679693130L;
 
-    // ==================== 基础信息 ====================
     /**
      * 处理是否成功
      */
@@ -44,14 +45,13 @@ public class ExcelProcessResult implements Serializable {
     /**
      * 处理类型：IMPORT/EXPORT
      */
-    private TaskType processType;
+    private TaskType taskType;
 
     /**
      * 处理耗时（毫秒）
      */
     private Long costTime;
 
-    // ==================== 数据统计信息 ====================
     /**
      * 总数据量
      */
@@ -72,7 +72,6 @@ public class ExcelProcessResult implements Serializable {
      */
     private Long skippedCount;
 
-    // ==================== 导出相关字段 ====================
     /**
      * 导出文件URL
      */
@@ -88,7 +87,6 @@ public class ExcelProcessResult implements Serializable {
      */
     private Integer sheetCount;
 
-    // ==================== 导入相关字段 ====================
     /**
      * 错误详情列表
      */
@@ -107,7 +105,7 @@ public class ExcelProcessResult implements Serializable {
                 .success(true)
                 .taskId(taskId)
                 .message(message)
-                .processType(TaskType.EXPORT)
+                .taskType(TaskType.EXPORT)
                 .totalCount(totalCount)
                 .successCount(totalCount)
                 .failedCount(0L)
@@ -124,7 +122,7 @@ public class ExcelProcessResult implements Serializable {
                 .success(true)
                 .taskId(taskId)
                 .message("导出完成")
-                .processType(TaskType.EXPORT)
+                .taskType(TaskType.EXPORT)
                 .fileUrl(fileUrl)
                 .totalCount(totalCount)
                 .successCount(totalCount)
@@ -143,7 +141,7 @@ public class ExcelProcessResult implements Serializable {
                 .success(true)
                 .taskId(taskId)
                 .message(message)
-                .processType(TaskType.EXPORT)
+                .taskType(TaskType.EXPORT)
                 .totalCount(totalCount)
                 .build();
     }
@@ -158,7 +156,7 @@ public class ExcelProcessResult implements Serializable {
                 .success(true)
                 .taskId(taskId)
                 .message("导入完成")
-                .processType(TaskType.IMPORT)
+                .taskType(TaskType.IMPORT)
                 .totalCount(totalCount)
                 .successCount(successCount)
                 .failedCount(0L)
@@ -177,7 +175,7 @@ public class ExcelProcessResult implements Serializable {
                 .success(true)
                 .taskId(taskId)
                 .message("导入部分完成")
-                .processType(TaskType.IMPORT)
+                .taskType(TaskType.IMPORT)
                 .totalCount(totalCount)
                 .successCount(successCount)
                 .failedCount(failedCount)
@@ -194,7 +192,7 @@ public class ExcelProcessResult implements Serializable {
                 .success(false)
                 .taskId(taskId)
                 .message(message)
-                .processType(TaskType.IMPORT)
+                .taskType(TaskType.IMPORT)
                 .failedCount(errors != null ? (long) errors.size() : 0L)
                 .errors(errors != null ? errors : Collections.emptyList())
                 .build();
@@ -226,62 +224,12 @@ public class ExcelProcessResult implements Serializable {
                 .success(false)
                 .taskId(taskId)
                 .message(message)
-                .failedCount(1L)
+//                .failedCount(1L)
                 .errors(Collections.emptyList())
                 .build();
     }
 
-    // ==================== 链式调用方法 ====================
 
-    /**
-     * 设置耗时
-     */
-    public ExcelProcessResult withCostTime(Long costTime) {
-        this.costTime = costTime;
-        return this;
-    }
-
-    /**
-     * 设置统计信息
-     */
-    public ExcelProcessResult withStatistics(Map<String, Object> statistics) {
-        this.statistics = statistics;
-        return this;
-    }
-
-    /**
-     * 设置文件URL
-     */
-    public ExcelProcessResult withFileUrl(String fileUrl) {
-        this.fileUrl = fileUrl;
-        return this;
-    }
-
-    /**
-     * 设置文件大小
-     */
-    public ExcelProcessResult withFileSize(Long fileSize) {
-        this.fileSize = fileSize;
-        return this;
-    }
-
-    /**
-     * 设置Sheet数量
-     */
-    public ExcelProcessResult withSheetCount(Integer sheetCount) {
-        this.sheetCount = sheetCount;
-        return this;
-    }
-
-    /**
-     * 设置处理类型
-     */
-    public ExcelProcessResult withProcessType(TaskType processType) {
-        this.processType = processType;
-        return this;
-    }
-
-    // ==================== 业务方法 ====================
 
     /**
      * 计算成功率
@@ -311,7 +259,7 @@ public class ExcelProcessResult implements Serializable {
      * 获取结果摘要
      */
     public String getSummary() {
-        if (TaskType.EXPORT.equals(processType)) {
+        if (TaskType.EXPORT.equals(taskType)) {
             return String.format("导出结果: 总数=%d, 文件=%s, 大小=%d字节, 耗时=%dms",
                     totalCount != null ? totalCount : 0,
                     fileUrl != null ? fileUrl : "无",
@@ -346,14 +294,14 @@ public class ExcelProcessResult implements Serializable {
      * 是否为导出结果
      */
     public boolean isExport() {
-        return TaskType.EXPORT.equals(processType);
+        return TaskType.EXPORT.equals(taskType);
     }
 
     /**
      * 是否为导入结果
      */
     public boolean isImport() {
-        return TaskType.IMPORT.equals(processType);
+        return TaskType.IMPORT.equals(taskType);
     }
 
     /**

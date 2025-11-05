@@ -135,10 +135,8 @@ public class AsyncExecutor implements InitializingBean {
 
         if (!properties.getAsync().isEnabled()) {
             log.debug("异步导出被禁用，使用同步方式执行任务: {}", task.getTaskId());
-            processExportSync(task);
-            return ExcelProcessResult.fail(task.getTaskId(), "任务被取消");
+            return processExportSync(task);
         }
-
         try {
             ExportAsyncProcessor processor = processorFactory.getExportProcessor(asyncType);
 

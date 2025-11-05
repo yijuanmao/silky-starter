@@ -2,18 +2,17 @@ package com.silky.starter.excel.core.engine;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.excel.core.exception.ExcelExportException;
 import com.silky.starter.excel.core.model.ExcelProcessResult;
 import com.silky.starter.excel.core.model.export.ExportDataProcessor;
 import com.silky.starter.excel.core.model.export.ExportPageData;
 import com.silky.starter.excel.core.model.export.ExportRequest;
+import com.silky.starter.excel.core.model.export.ExportResult;
 import com.silky.starter.excel.entity.ExportRecord;
 import com.silky.starter.excel.enums.ExportStatus;
 import com.silky.starter.excel.service.export.ExportRecordService;
 import com.silky.starter.excel.service.storage.StorageService;
-import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -25,6 +24,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 导出引擎，负责协调导出任务的整个生命周期，包括任务创建、数据处理、文件生成和上传
@@ -35,9 +35,24 @@ import java.util.Optional;
 @Slf4j
 public class ExportEngine {
 
-    private static final int DEFAULT_MAX_ROWS_PER_SHEET = 200000;
+    private static final long DEFAULT_MAX_ROWS_PER_SHEET = 200000;
 
     private static final String TEMP_FILE_PREFIX = "silky_export_";
+
+    /**
+     * 已处理任务总数
+     */
+    private final AtomicLong totalProcessedTasks = new AtomicLong(0);
+
+    /**
+     * 成功任务数
+     */
+    private final AtomicLong successTasks = new AtomicLong(0);
+
+    /**
+     * 失败任务数
+     */
+    private final AtomicLong failedTasks = new AtomicLong(0);
 
     private final StorageService storageService;
 
@@ -51,8 +66,7 @@ public class ExportEngine {
     /**
      * 同步导出
      */
-    public <T> ExcelProcessResult exportSync(ExportRequest<T> request) {
-        String taskId = generateTaskId(request.getBusinessType());
+    public <T> ExcelProcessResult exportSync(ExportRequest<T> request, String taskId) {
         long startTime = System.currentTimeMillis();
 
         log.info("开始同步导出任务: {}, 业务类型: {}", taskId, request.getBusinessType());
@@ -73,7 +87,7 @@ public class ExportEngine {
             tempFile = createTempFile(request.getFileName());
 
             // 执行导出
-            ExportResult exportResult = executeExport(request, taskId, tempFile);
+            ExportResult exportResult = this.executeExport(request, taskId, tempFile);
 
             // 上传文件
             String fileUrl = uploadExportFile(tempFile, request, taskId);
@@ -84,15 +98,25 @@ public class ExportEngine {
             long costTime = System.currentTimeMillis() - startTime;
             log.info("同步导出任务完成: {}, 文件URL: {}, 耗时: {}ms", taskId, fileUrl, costTime);
 
-            return ExcelProcessResult.exportSuccess(taskId, fileUrl,
-                            exportResult.getTotalCount(), exportResult.getFileSize())
-                    .withCostTime(costTime)
-                    .withSheetCount(exportResult.getSheetCount());
+            totalProcessedTasks.incrementAndGet();
+            successTasks.incrementAndGet();
+
+            return ExcelProcessResult.exportSuccess(taskId,
+                            fileUrl,
+                            exportResult.getTotalCount(),
+                            tempFile.length())
+                    .setCostTime(costTime)
+                    .setSheetCount(exportResult.getSheetCount())
+                    .setTotalCount(exportResult.getTotalCount())
+                    .setSuccessCount(exportResult.getSuccessCount())
+                    .setFailedCount(exportResult.getFailedCount());
 
         } catch (Exception e) {
+            failedTasks.incrementAndGet();
             log.error("同步导出任务失败: {}", taskId, e);
             recordService.updateFailed(taskId, "导出失败: " + e.getMessage());
-            return ExcelProcessResult.fail(taskId, "导出失败: " + e.getMessage());
+            return ExcelProcessResult.fail(taskId, "导出失败: " + e.getMessage())
+                    .setFailedCount(failedTasks.get());
         } finally {
             cleanupExportData(request);
             cleanupTempFile(tempFile);
@@ -101,6 +125,10 @@ public class ExportEngine {
 
     /**
      * 执行导出逻辑
+     *
+     * @param request  导出请求
+     * @param taskId   任务ID
+     * @param tempFile 临时文件
      */
     private <T> ExportResult executeExport(ExportRequest<T> request, String taskId, File tempFile) {
         try (EnhancedExcelWriter writer = new EnhancedExcelWriter(tempFile.getAbsolutePath(),
@@ -139,11 +167,17 @@ public class ExportEngine {
                 hasNext = pageData.isHasNext();
                 pageNum++;
             }
-
-            return new ExportResult(context.getProcessedCount(),
-                    tempFile.length(), writer.getCurrentSheetIndex());
-
+            if (request.getAsyncType().isAsync()) {
+                return ExportResult.asyncSuccess(taskId);
+            } else {
+                return ExportResult.success(taskId)
+                        .setTotalCount(totalProcessedTasks.get())
+                        .setSuccessCount(successTasks.get())
+                        .setFailedCount(failedTasks.get())
+                        .setSheetCount(writer.getCurrentSheetIndex());
+            }
         } catch (Exception e) {
+            log.error("导出执行失败: {}", taskId, e);
             throw new ExcelExportException("导出执行失败: " + e.getMessage(), e);
         }
     }
@@ -301,25 +335,19 @@ public class ExportEngine {
      * 获取最大行数
      */
     private <T> long getMaxRowsPerSheet(ExportRequest<T> request) {
-        return Optional.ofNullable(request.getMaxRowsPerSheet())
-                .orElse((long) DEFAULT_MAX_ROWS_PER_SHEET);
+        return Optional.of(request.getMaxRowsPerSheet())
+                .orElse(DEFAULT_MAX_ROWS_PER_SHEET);
     }
 
-    /**
-     * 生成任务ID
-     */
-    private String generateTaskId(String businessType) {
-        String prefix = StrUtil.isNotBlank(businessType) ?
-                businessType.replaceAll("[^a-zA-Z0-9]", "_") : "TASK";
-        return prefix + "_" + IdUtil.fastSimpleUUID();
-    }
 
     /**
      * 导出上下文
      */
     @Getter
     private static class ExportContext {
+
         private final String taskId;
+
         private long processedCount = 0;
 
         public ExportContext(String taskId) {
@@ -330,21 +358,5 @@ public class ExportEngine {
             processedCount += count;
         }
 
-    }
-
-    /**
-     * 导出结果
-     */
-    @Data
-    private static class ExportResult {
-        private final long totalCount;
-        private final long fileSize;
-        private final int sheetCount;
-
-        public ExportResult(long totalCount, long fileSize, int sheetCount) {
-            this.totalCount = totalCount;
-            this.fileSize = fileSize;
-            this.sheetCount = sheetCount;
-        }
     }
 }
