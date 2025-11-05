@@ -1,8 +1,12 @@
 package com.silky.starter.excel.core.model.export;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
+
+import java.time.LocalDateTime;
 
 /**
  * 导出结果
@@ -11,95 +15,139 @@ import lombok.NoArgsConstructor;
  * @date 2025-10-24 11:19
  **/
 @Data
+@Builder
+@Accessors(chain = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class ExportResult {
 
     /**
      * 导出是否成功
-     * true表示操作成功，false表示操作失败
      */
     private boolean success;
 
     /**
-     * 任务ID
+     * 导出任务ID
      */
     private String taskId;
 
     /**
-     * 消息
+     * 结果消息
      */
-    private String msg;
+    private String message;
 
     /**
-     * 文件URL
+     * 状态码
+     */
+    private String code;
+
+    /**
+     * 导出文件URL/路径
      */
     private String fileUrl;
 
     /**
-     * 文件大小（字节）
-     * 导出成功时包含的文件大小
+     * 导出文件大小（字节）
      */
     private Long fileSize;
 
     /**
+     * 总数据量
+     */
+    private Long totalCount;
+
+    /**
+     * 成功导出数量
+     */
+    private Long successCount;
+
+    /**
+     * 失败数量
+     */
+    private Long failedCount;
+
+    /**
+     * Sheet数量
+     */
+    private Integer sheetCount;
+
+    /**
      * 导出耗时（毫秒）
-     * 从任务提交到完成的时间
      */
     private Long costTime;
 
     /**
+     * 导出完成时间
+     */
+    private LocalDateTime finishTime;
+
+
+    /**
      * 创建成功结果
-     *
-     * @param taskId 任务ID
-     * @return 成功结果实例
      */
     public static ExportResult success(String taskId) {
-        return success(taskId, "");
+        ExportResult result = new ExportResult();
+        result.setSuccess(true)
+                .setTaskId(taskId)
+                .setCode("SUCCESS")
+                .setMessage("导出成功")
+                .setFinishTime(LocalDateTime.now());
+        return result;
     }
 
     /**
-     * 创建成功结果
-     *
-     * @param taskId  任务ID
-     * @param fileUrl 文件URL
-     * @return 成功结果实例
+     * 创建成功结果（含文件信息）
      */
-    public static ExportResult success(String taskId, String fileUrl) {
-        return success(taskId, fileUrl, 0L);
+    public static ExportResult success(String taskId, String fileUrl, Long totalCount, Long fileSize, Long costTime) {
+        ExportResult result = success(taskId);
+        result.setFileUrl(fileUrl)
+                .setTotalCount(totalCount)
+                .setSuccessCount(totalCount)
+                .setFileSize(fileSize)
+                .setCostTime(costTime);
+        return result;
     }
 
     /**
-     * 创建成功结果（包含文件信息）
-     *
-     * @param taskId   任务ID
-     * @param fileUrl  文件URL
-     * @param fileSize 文件大小
-     * @return 成功结果实例
+     * 创建异步处理结果
      */
-    public static ExportResult success(String taskId, String fileUrl, Long fileSize) {
-        return new ExportResult(true, taskId, "导出完成", fileUrl, fileSize, null);
+    public static ExportResult asyncSuccess(String taskId) {
+        ExportResult result = new ExportResult();
+        result.setSuccess(true)
+                .setTaskId(taskId)
+                .setCode("PROCESSING")
+                .setMessage("异步导出任务已提交，请稍后查询结果");
+        return result;
     }
 
     /**
      * 创建失败结果
-     *
-     * @param message 错误消息
-     * @return 失败结果实例
      */
-    public static ExportResult fail(String message) {
-        return fail(null, message);
+    public static ExportResult fail(String taskId, String message) {
+        ExportResult result = new ExportResult();
+        result.setSuccess(false)
+                .setTaskId(taskId)
+                .setCode("FAILED")
+                .setMessage(message)
+                .setFinishTime(LocalDateTime.now());
+        return result;
     }
 
     /**
-     * 创建失败结果（包含任务ID）
-     *
-     * @param taskId  任务ID
-     * @param message 错误消息
-     * @return 失败结果实例
+     * 创建失败结果（含状态码）
      */
-    public static ExportResult fail(String taskId, String message) {
-        return new ExportResult(false, taskId, message, "", 0L, 0L);
+    public static ExportResult fail(String taskId, String code, String message) {
+        ExportResult result = fail(taskId, message);
+        result.setCode(code);
+        return result;
     }
+
+    /**
+     * 是否为异步处理中状态
+     */
+    public boolean isProcessing() {
+        return "PROCESSING".equals(code);
+    }
+
 
 }

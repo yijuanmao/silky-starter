@@ -1,7 +1,5 @@
 package com.silky.starter.excel.core.engine;
 
-import cn.hutool.core.collection.ListUtil;
-import cn.hutool.core.io.FileUtil;
 import cn.idev.excel.EasyExcel;
 import cn.idev.excel.ExcelWriter;
 import cn.idev.excel.write.metadata.WriteSheet;
@@ -9,8 +7,6 @@ import com.silky.starter.excel.core.exception.ExcelExportException;
 import lombok.Getter;
 
 import java.io.Closeable;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -26,90 +22,54 @@ public class EnhancedExcelWriter implements Closeable {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(EnhancedExcelWriter.class);
 
-    /**
-     * 获取底层FastExcelWriter实例
-     */
-    @Getter
     private final ExcelWriter writer;
 
-    /**
-     * 文件路径
-     */
-    @Getter
     private final String filePath;
 
-    /**
-     * 获取总写入行数
-     */
-    @Getter
+    private final long maxRowsPerSheet;
+
     private final AtomicLong totalRows = new AtomicLong(0);
 
-    /**
-     * 获取当前Sheet序号
-     */
-    @Getter
-    private int currentSheet = 1;
+    private final AtomicLong currentSheetRows = new AtomicLong(0);
 
     private int currentSheetIndex = 0;
 
-    /**
-     * 获取当前Sheet行数
-     */
-    @Getter
-    private final AtomicLong currentSheetRows = new AtomicLong(0);
-
-    /**
-     * 获取每个Sheet的最大行数
-     */
-    @Getter
-    private final long maxRowsPerSheet;
-
-    /**
-     * 表头是否已写入,用于新Sheet创建时判断是否需要重新写入表头
-     */
-    private boolean headerWritten = false;
-
-    /**
-     * 当前Sheet的表头
-     */
-    private List<String> currentHeaders;
-
-    /**
-     * 当前WriteSheet实例
-     */
     private WriteSheet currentWriteSheet;
 
+    private List<String> currentHeaders;
 
-    // 常量定义
     private static final int DEFAULT_MAX_ROWS_PER_SHEET = 200000;
 
     private static final String DEFAULT_SHEET_NAME = "数据";
 
+    public EnhancedExcelWriter(String filePath) {
+        this(filePath, DEFAULT_MAX_ROWS_PER_SHEET);
+    }
 
-    /**
-     * 构造方法
-     *
-     * @param filePath        Excel文件路径
-     * @param maxRowsPerSheet 每个Sheet的最大行数（包含表头）
-     */
     public EnhancedExcelWriter(String filePath, long maxRowsPerSheet) {
         this.filePath = filePath;
         this.maxRowsPerSheet = maxRowsPerSheet;
 
         try {
-            this.writer = EasyExcel.write(FileUtil.getOutputStream(filePath))
-                    .autoCloseStream(false)
+            // 修复：使用正确的EasyExcel API创建writer
+            this.writer = EasyExcel.write(filePath)
+                    .autoCloseStream(true)  // 设置为true让EasyExcel管理流
                     .build();
-            log.info("增强Excel写入器初始化成功: {}, 每Sheet最大行数: {}", filePath, maxRowsPerSheet);
+
+            log.info("Excel写入器初始化成功: {}, 每Sheet最大行数: {}", filePath, maxRowsPerSheet);
         } catch (Exception e) {
-            log.error("增强Excel写入器初始化失败: {}", filePath, e);
-            throw new ExcelExportException("增强Excel写入器初始化失败: " + e.getMessage(), e);
+            log.error("Excel写入器初始化失败: {}", filePath, e);
+            throw new ExcelExportException("Excel写入器初始化失败: " + e.getMessage(), e);
         }
     }
 
     /**
-     * 写入数据（推荐使用） - 自动处理表头和分Sheet
-     * @param clazz
+     * 写入数据
+     *
+     * @param data          数据列表
+     * @param clazz         数据类
+     * @param sheetName     Sheet名称
+     * @param headerMapping 表头映射
      */
     public <T> void write(List<T> data, Class<T> clazz, String sheetName,
                           Map<String, String> headerMapping) {
@@ -117,59 +77,30 @@ public class EnhancedExcelWriter implements Closeable {
             log.debug("数据为空，跳过写入");
             return;
         }
+        // 修复：确保有Sheet存在
+        if (currentWriteSheet == null) {
+            createNewSheet(sheetName, clazz);
+        }
 
         int fromIndex = 0;
         final int totalSize = data.size();
 
         while (fromIndex < totalSize) {
-            // 检查是否需要创建新Sheet
             if (needNewSheet()) {
-                createNewSheet(sheetName, clazz, headerMapping);
+                createNewSheet(sheetName, clazz);
             }
 
-            // 计算当前批次大小
-            long remainingCapacity = maxRowsPerSheet - currentSheetRows.get() - 1; // -1 为表头
+            long remainingCapacity = maxRowsPerSheet - currentSheetRows.get();
             int batchSize = (int) Math.min(remainingCapacity, totalSize - fromIndex);
 
             if (batchSize <= 0) {
-                // 当前Sheet已满，创建新Sheet后继续
                 continue;
             }
 
             List<T> batchData = data.subList(fromIndex, fromIndex + batchSize);
             writeBatchData(batchData);
-
             fromIndex += batchSize;
         }
-    }
-
-    /**
-     * 写入数据
-     */
-    public <T> void write(List<T> data, Class<T> clazz, Map<String, String> headerMapping) {
-        write(data, clazz, DEFAULT_SHEET_NAME, headerMapping);
-    }
-
-    /**
-     * 写入数据（最简版本）
-     */
-    public <T> void write(List<T> data, Class<T> clazz) {
-        write(data, clazz, DEFAULT_SHEET_NAME, null);
-    }
-
-    /**
-     * 手动写入表头（适用于需要精确控制表头的情况）
-     */
-    public <T> void writeHeader(Class<T> clazz, Map<String, String> headerMapping, String sheetName) {
-        createNewSheet(sheetName, clazz, headerMapping);
-    }
-
-    public <T> void writeHeader(Class<T> clazz, Map<String, String> headerMapping) {
-        writeHeader(clazz, headerMapping, DEFAULT_SHEET_NAME);
-    }
-
-    public <T> void writeHeader(Class<T> clazz) {
-        writeHeader(clazz, null, DEFAULT_SHEET_NAME);
     }
 
     /**
@@ -177,6 +108,11 @@ public class EnhancedExcelWriter implements Closeable {
      */
     private <T> void writeBatchData(List<T> data) {
         try {
+            // 修复：确保使用正确的WriteSheet
+            if (currentWriteSheet == null) {
+                throw new ExcelExportException("WriteSheet未初始化");
+            }
+
             writer.write(data, currentWriteSheet);
 
             int batchSize = data.size();
@@ -193,32 +129,24 @@ public class EnhancedExcelWriter implements Closeable {
     }
 
     /**
-     * 检查是否需要创建新Sheet
-     */
-    private boolean needNewSheet() {
-        return currentWriteSheet == null || currentSheetRows.get() >= maxRowsPerSheet - 1;
-    }
-
-    /**
      * 创建新Sheet
+     *
+     * @param baseSheetName 基础Sheet名称
+     * @param clazz         数据类
      */
-    private <T> void createNewSheet(String baseSheetName, Class<T> clazz,
-                                    Map<String, String> headerMapping) {
+    private <T> void createNewSheet(String baseSheetName, Class<T> clazz) {
         currentSheetIndex++;
         currentSheetRows.set(0);
 
         String sheetName = getSheetName(baseSheetName, currentSheetIndex);
 
         try {
-            // 构建表头
-            this.currentHeaders = buildHeaders(clazz, headerMapping);
-
-            // 创建WriteSheet
+            // 修复：使用EasyExcel的head直接设置数据类，而不是手动构建表头
             this.currentWriteSheet = EasyExcel.writerSheet(sheetName)
-                    .head(buildEasyExcelHeaders(currentHeaders))
+                    .head(clazz)  // 修复：直接使用数据类，EasyExcel会自动处理注解
                     .build();
 
-            log.debug("创建新Sheet: {}", sheetName);
+            log.info("创建新Sheet: {}", sheetName);
 
         } catch (Exception e) {
             log.error("创建新Sheet失败: {}", sheetName, e);
@@ -227,52 +155,30 @@ public class EnhancedExcelWriter implements Closeable {
     }
 
     /**
-     * 构建表头列表
+     * 写入数据
+     *
+     * @param data          数据列表
+     * @param clazz         数据类
+     * @param headerMapping 表头映射
      */
-    private <T> List<String> buildHeaders(Class<T> clazz, Map<String, String> headerMapping) {
-        Field[] fields = clazz.getDeclaredFields();
-        List<String> headers = new ArrayList<>(fields.length);
-        for (Field field : fields) {
-            String headerName = getHeaderName(field, headerMapping);
-            headers.add(headerName);
-        }
-        return headers;
+    public <T> void write(List<T> data, Class<T> clazz, Map<String, String> headerMapping) {
+        write(data, clazz, DEFAULT_SHEET_NAME, headerMapping);
     }
 
     /**
-     * 构建EasyExcel需要的表头格式
+     * 写入数据
+     *
+     * @param data  数据列表
+     * @param clazz 数据类
      */
-    private List<List<String>> buildEasyExcelHeaders(List<String> headers) {
-        List<List<String>> easyExcelHeaders = new ArrayList<>(headers.size());
-        for (String header : headers) {
-            easyExcelHeaders.add(ListUtil.toList(header));
-        }
-        return easyExcelHeaders;
+    public <T> void write(List<T> data, Class<T> clazz) {
+        write(data, clazz, DEFAULT_SHEET_NAME, null);
     }
 
-    /**
-     * 获取表头名称
-     */
-    private String getHeaderName(Field field, Map<String, String> headerMapping) {
-        String fieldName = field.getName();
-
-        // 优先使用自定义映射
-        if (headerMapping != null && headerMapping.containsKey(fieldName)) {
-            return headerMapping.get(fieldName);
-        }
-        // 使用注解
-        cn.idev.excel.annotation.ExcelProperty annotation =
-                field.getAnnotation(cn.idev.excel.annotation.ExcelProperty.class);
-        if (annotation != null && annotation.value().length > 0) {
-            return annotation.value()[0];
-        }
-        // 默认使用字段名
-        return fieldName;
+    private boolean needNewSheet() {
+        return currentWriteSheet == null || currentSheetRows.get() >= maxRowsPerSheet;
     }
 
-    /**
-     * 获取当前Sheet名称
-     */
     public String getCurrentSheetName() {
         return getSheetName(DEFAULT_SHEET_NAME, currentSheetIndex);
     }
@@ -281,34 +187,18 @@ public class EnhancedExcelWriter implements Closeable {
         return sheetIndex == 1 ? baseName : baseName + "_" + sheetIndex;
     }
 
-    /**
-     * 获取当前统计信息
-     */
-    public String getStats() {
-        return String.format("总行数: %d, 当前Sheet: %s, 当前Sheet行数: %d",
-                totalRows.get(), getCurrentSheetName(), currentSheetRows.get());
-    }
-
     @Override
     public void close() {
         if (writer != null) {
             try {
+                writer.finish();  // 修复：先调用finish确保数据写入完成
                 writer.close();
-                log.info("增强Excel写入器关闭成功: {}, 总Sheet数: {}, 总写入行数: {}",
+                log.info("Excel写入器关闭成功: {}, 总Sheet数: {}, 总写入行数: {}",
                         filePath, currentSheetIndex, totalRows.get());
             } catch (Exception e) {
-                log.error("关闭增强Excel写入器失败: {}", filePath, e);
+                log.error("关闭Excel写入器失败: {}", filePath, e);
                 throw new ExcelExportException("关闭Excel写入器失败: " + e.getMessage(), e);
             }
         }
     }
-
-    /**
-     * 使用try-with-resources的便捷方法
-     */
-//    public static void writeToFile(String filePath, List<?> data, Class<?> clazz) {
-//        try (EnhancedExcelWriter writer = new EnhancedExcelWriter(filePath)) {
-//            writer.write(data, clazz);
-//        }
-//    }
 }

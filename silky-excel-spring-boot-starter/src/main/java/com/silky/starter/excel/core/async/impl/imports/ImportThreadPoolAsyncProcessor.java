@@ -113,7 +113,7 @@ public class ImportThreadPoolAsyncProcessor implements ImportAsyncProcessor {
         try {
             log.info("开始处理导入任务: {}, 业务类型: {}", task.getTaskId(), task.getRequest().getBusinessType());
             task.markStart();
-            ExcelProcessResult result = importEngine.processImportTask(task);
+            ExcelProcessResult result = importEngine.importSync(task.getRequest());
             processedCount.incrementAndGet();
             log.debug("导入任务处理完成: {}, 总处理时间: {}ms", task.getTaskId(), task.getExecuteTime());
             return result;

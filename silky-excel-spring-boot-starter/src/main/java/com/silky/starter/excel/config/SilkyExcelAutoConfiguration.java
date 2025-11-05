@@ -151,7 +151,9 @@ public class SilkyExcelAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public ExcelExportTemplate excelExportTemplate(AsyncExecutor asyncExecutor) {
-        return new DefaultExcelExportTemplate(asyncExecutor);
+    public ExcelExportTemplate excelExportTemplate(AsyncExecutor asyncExecutor,
+                                                   ExportEngine exportEngine,
+                                                   ImportEngine importEngine) {
+        return new DefaultExcelExportTemplate(asyncExecutor, exportEngine, importEngine);
     }
 }

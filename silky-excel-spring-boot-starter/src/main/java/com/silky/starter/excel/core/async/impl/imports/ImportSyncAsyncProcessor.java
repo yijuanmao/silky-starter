@@ -104,7 +104,8 @@ public class ImportSyncAsyncProcessor implements ImportAsyncProcessor {
             task.markStart();
 
             // 调用导入引擎处理任务
-            ExcelProcessResult result = importEngine.processImportTask(task);
+//            ExcelProcessResult result = importEngine.processImportTask(task);
+            ExcelProcessResult result = importEngine.importSync(task.getRequest());
 
             // 增加处理计数
             processedCount.incrementAndGet();

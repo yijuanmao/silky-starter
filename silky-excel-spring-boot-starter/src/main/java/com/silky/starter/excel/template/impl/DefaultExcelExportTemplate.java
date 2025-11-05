@@ -1,9 +1,10 @@
 package com.silky.starter.excel.template.impl;
 
 import cn.hutool.core.util.IdUtil;
-import cn.hutool.core.util.StrUtil;
 import com.silky.starter.excel.core.async.executor.AsyncExecutor;
 import com.silky.starter.excel.core.async.model.ProcessorStatus;
+import com.silky.starter.excel.core.engine.ExportEngine;
+import com.silky.starter.excel.core.engine.ImportEngine;
 import com.silky.starter.excel.core.model.ExcelProcessResult;
 import com.silky.starter.excel.core.model.export.ExportRequest;
 import com.silky.starter.excel.core.model.export.ExportResult;
@@ -23,10 +24,20 @@ import com.silky.starter.excel.template.ExcelExportTemplate;
  **/
 public class DefaultExcelExportTemplate implements ExcelExportTemplate {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DefaultExcelExportTemplate.class);
+
     private final AsyncExecutor asyncExecutor;
 
-    public DefaultExcelExportTemplate(AsyncExecutor asyncExecutor) {
+    private final ExportEngine exportEngine;
+
+    private final ImportEngine importEngine;
+
+    public DefaultExcelExportTemplate(AsyncExecutor asyncExecutor,
+                                      ExportEngine exportEngine,
+                                      ImportEngine importEngine) {
         this.asyncExecutor = asyncExecutor;
+        this.exportEngine = exportEngine;
+        this.importEngine = importEngine;
     }
 
     /**
@@ -48,7 +59,22 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
      */
     @Override
     public <T> ExportResult exportSync(ExportRequest<T> request) {
-        return this.export(request, AsyncType.SYNC);
+        try {
+            // 直接使用ExportEngine的同步导出
+            ExcelProcessResult processResult = exportEngine.exportSync(request);
+
+            return ExportResult.success(
+                    processResult.getTaskId(),
+                    processResult.getFileUrl(),
+                    processResult.getTotalCount(),
+                    processResult.getFileSize(),
+                    processResult.getCostTime());
+
+        } catch (Exception e) {
+            log.error("同步导出失败", e);
+            return ExportResult.fail("SYNC_" + System.currentTimeMillis(),
+                    "同步导出失败: " + e.getMessage());
+        }
     }
 
     /**
@@ -60,15 +86,23 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
      */
     @Override
     public <T> ExportResult export(ExportRequest<T> request, AsyncType asyncType) {
-        request.setAsyncType(asyncType);
-        ExportTask<T> exportTask = new ExportTask<>();
-        exportTask.setRequest(request);
-        exportTask.setTaskId(buildTaskId());
-        exportTask.setTaskType(TaskType.EXPORT);
-        exportTask.setBusinessType(StrUtil.isBlank(request.getBusinessType()) ? "" : request.getBusinessType());
+        if (AsyncType.SYNC.equals(asyncType)) {
+            return exportSync(request);
+        }
+        // 异步处理
+        try {
+            request.setAsyncType(asyncType);
+            ExportTask<T> exportTask = createExportTask(request);
 
-        ExcelProcessResult result = asyncExecutor.submitExport(exportTask, asyncType);
-        return ExportResult.success(result.getTaskId());
+            ExcelProcessResult result = asyncExecutor.submitExport(exportTask, asyncType);
+
+            return ExportResult.asyncSuccess(result.getTaskId());
+
+        } catch (Exception e) {
+            log.error("异步导出失败", e);
+            return ExportResult.fail("ASYNC_" + System.currentTimeMillis(),
+                    "异步导出失败: " + e.getMessage());
+        }
     }
 
     /**
@@ -79,7 +113,19 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
      */
     @Override
     public <T> ImportResult importSync(ImportRequest<T> request) {
-        return this.imports(request, AsyncType.SYNC);
+        try {
+            // 使用ImportEngine的同步导入
+            ExcelProcessResult processResult = importEngine.importSync(request);
+
+            return ImportResult.success(processResult.getTaskId(),
+                            processResult.getTotalCount(), processResult.getSuccessCount())
+                    .withCostTime(processResult.getCostTime());
+
+        } catch (Exception e) {
+            log.error("同步导入失败", e);
+            return ImportResult.fail("SYNC_IMPORT_" + System.currentTimeMillis(),
+                    "同步导入失败: " + e.getMessage());
+        }
     }
 
     /**
@@ -103,14 +149,21 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
      */
     @Override
     public <T> ImportResult imports(ImportRequest<T> request, AsyncType asyncType) {
-        ImportTask<T> importTask = new ImportTask<>();
-        importTask.setRequest(request);
-        importTask.setTaskId(buildTaskId());
-        importTask.setTaskType(TaskType.IMPORT);
-        importTask.setBusinessType(request.getBusinessType());
+        if (asyncType == AsyncType.SYNC) {
+            return importSync(request);
+        }
+        // 异步处理
+        try {
+            ImportTask<T> importTask = createImportTask(request);
+            ExcelProcessResult result = asyncExecutor.submitImport(importTask, asyncType);
 
-        ExcelProcessResult result = asyncExecutor.submitImport(importTask, asyncType);
-        return ImportResult.success(result.getTaskId(), result.getTotalCount(), result.getSuccessCount());
+            return ImportResult.asyncSuccess(result.getTaskId());
+
+        } catch (Exception e) {
+            log.error("异步导入失败", e);
+            return ImportResult.fail("ASYNC_IMPORT_" + System.currentTimeMillis(),
+                    "异步导入失败: " + e.getMessage());
+        }
     }
 
     /**
@@ -125,9 +178,31 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
     }
 
     /**
+     * 创建导出任务
+     */
+    private <T> ExportTask<T> createExportTask(ExportRequest<T> request) {
+        ExportTask<T> task = new ExportTask<>();
+        task.setRequest(request);
+        task.setTaskId(buildTaskId());
+        task.setTaskType(TaskType.EXPORT);
+        task.setBusinessType(request.getBusinessType());
+        return task;
+    }
+
+    /**
+     * 创建导入任务
+     */
+    private <T> ImportTask<T> createImportTask(ImportRequest<T> request) {
+        ImportTask<T> task = new ImportTask<>();
+        task.setRequest(request);
+        task.setTaskId(buildTaskId());
+        task.setTaskType(TaskType.IMPORT);
+        task.setBusinessType(request.getBusinessType());
+        return task;
+    }
+
+    /**
      * 生成任务ID
-     *
-     * @return 任务ID
      */
     private String buildTaskId() {
         return IdUtil.fastSimpleUUID();
