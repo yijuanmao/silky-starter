@@ -73,7 +73,7 @@ public class ImportThreadPoolAsyncProcessor implements ImportAsyncProcessor<Impo
      */
     @Override
     public String getType() {
-        return AsyncType.ASYNC.name();
+        return AsyncType.THREAD_POOL.name();
     }
 
     /**

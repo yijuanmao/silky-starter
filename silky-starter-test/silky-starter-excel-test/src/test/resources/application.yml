@@ -4,6 +4,7 @@ silky:
     enabled: true
     async:
       enabled: true
+      async-type: custom
     export:
       maxRowsPerSheet: 100000
       batchSize: 1000

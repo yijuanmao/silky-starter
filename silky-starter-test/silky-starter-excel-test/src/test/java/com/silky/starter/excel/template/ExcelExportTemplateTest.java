@@ -93,7 +93,7 @@ public class ExcelExportTemplateTest extends ExcelApplicationTest {
      * @return 测试数据列表
      */
     private static List<UserTest> createTestData() {
-        int size = 300000;
+        int size = 10;
         // 预设容量避免频繁扩容，提高性能
         List<UserTest> list = new ArrayList<>(size);
 

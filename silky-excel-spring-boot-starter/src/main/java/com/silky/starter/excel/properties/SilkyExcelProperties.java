@@ -66,7 +66,7 @@ public class SilkyExcelProperties {
         /**
          * 默认异步类型
          */
-        private AsyncType asyncType = AsyncType.ASYNC;
+        private AsyncType asyncType = AsyncType.THREAD_POOL;
 
         /**
          * 线程池配置

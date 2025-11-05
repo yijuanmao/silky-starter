@@ -17,9 +17,9 @@ public enum AsyncType {
     SYNC("同步执行"),
 
     /**
-     * 异步
+     * 线程异步
      */
-    ASYNC("异步"),
+    THREAD_POOL("线程异步"),
 
     /**
      * 自定义异步执行 - 使用用户自定义的异步处理器

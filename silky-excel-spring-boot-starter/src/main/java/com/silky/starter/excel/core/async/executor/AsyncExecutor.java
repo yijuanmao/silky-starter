@@ -260,15 +260,14 @@ public class AsyncExecutor implements InitializingBean {
     public ProcessorStatus getProcessorStatus(String type) {
         try {
             // 尝试获取导出处理器
-            ExportAsyncProcessor exportProcessor = processorFactory.getExportProcessor(type);
+            ExportAsyncProcessor<ExportResult> exportProcessor = processorFactory.getExportProcessor(type);
             return exportProcessor.getStatus();
         } catch (Exception e) {
             // 忽略，继续尝试其他类型
         }
-
         try {
             // 尝试获取导入处理器
-            ImportAsyncProcessor importProcessor = processorFactory.getImportProcessor(type);
+            ImportAsyncProcessor<ImportResult> importProcessor = processorFactory.getImportProcessor(type);
             return importProcessor.getStatus();
         } catch (Exception e) {
             log.warn("获取处理器状态失败: {}", type, e);
@@ -290,7 +289,6 @@ public class AsyncExecutor implements InitializingBean {
         if (processor == null) {
             throw new IllegalArgumentException("处理器不能为null");
         }
-
         try {
             if (processor instanceof ExportAsyncProcessor) {
                 processorFactory.registerExportProcessor((ExportAsyncProcessor<ExportResult>) processor);

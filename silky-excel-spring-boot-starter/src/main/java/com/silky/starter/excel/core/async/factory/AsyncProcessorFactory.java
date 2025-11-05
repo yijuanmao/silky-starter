@@ -137,19 +137,6 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
             processorMap.put(type, processor);
             log.info("注册导入异步处理器: {} -> {}", type, processor.getClass().getSimpleName());
         });
-
-        // 发现通用处理器（兼容老版本）
-        Map<String, AsyncProcessor> generalProcessors =
-                applicationContext.getBeansOfType(AsyncProcessor.class);
-        generalProcessors.forEach((beanName, processor) -> {
-            // 跳过已经注册的处理器
-            if (!(processor instanceof ExportAsyncProcessor) &&
-                    !(processor instanceof ImportAsyncProcessor)) {
-                String type = processor.getType();
-                processorMap.put(type, processor);
-                log.info("注册通用异步处理器: {} -> {}", type, processor.getClass().getSimpleName());
-            }
-        });
     }
 
     /**

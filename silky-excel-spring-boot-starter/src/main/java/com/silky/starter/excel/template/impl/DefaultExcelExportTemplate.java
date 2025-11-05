@@ -15,8 +15,6 @@ import com.silky.starter.excel.enums.AsyncType;
 import com.silky.starter.excel.enums.TaskType;
 import com.silky.starter.excel.template.ExcelExportTemplate;
 
-import java.util.List;
-
 /**
  * Excel 导出模板默认实现
  *
@@ -45,7 +43,7 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
      */
     @Override
     public <T> ExportResult exportAsync(ExportRequest<T> request) {
-        return this.export(request, AsyncType.ASYNC);
+        return this.export(request, AsyncType.THREAD_POOL);
     }
 
     /**
@@ -112,7 +110,7 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
      */
     @Override
     public <T> ImportResult importAsync(ImportRequest<T> request) {
-        return this.imports(request, AsyncType.ASYNC);
+        return this.imports(request, AsyncType.THREAD_POOL);
     }
 
     /**

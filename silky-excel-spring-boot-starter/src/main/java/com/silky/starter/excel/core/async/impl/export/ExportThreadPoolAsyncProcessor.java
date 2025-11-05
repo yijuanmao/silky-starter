@@ -75,7 +75,7 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor<Expo
      */
     @Override
     public String getType() {
-        return AsyncType.ASYNC.name();
+        return AsyncType.THREAD_POOL.name();
     }
 
     /**
