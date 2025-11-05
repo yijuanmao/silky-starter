@@ -4,9 +4,7 @@ import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.excel.core.async.executor.AsyncExecutor;
 import com.silky.starter.excel.core.async.model.ProcessorStatus;
-import com.silky.starter.excel.core.engine.ExportEngine;
 import com.silky.starter.excel.core.engine.ImportEngine;
-import com.silky.starter.excel.core.model.ExcelProcessResult;
 import com.silky.starter.excel.core.model.export.ExportRequest;
 import com.silky.starter.excel.core.model.export.ExportResult;
 import com.silky.starter.excel.core.model.export.ExportTask;
@@ -78,20 +76,7 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
             request.setAsyncType(asyncType);
             ExportTask<T> exportTask = createExportTask(request);
 
-            ExcelProcessResult result = asyncExecutor.submitExport(exportTask, asyncType);
-            if (AsyncType.SYNC.equals(asyncType)) {
-                // 同步导出，直接返回结果
-                return ExportResult.success(
-                        result.getTaskId(),
-                        result.getFileUrl(),
-                        result.getTotalCount(),
-                        result.getFileSize(),
-                        result.getCostTime());
-
-            } else {
-                return ExportResult.asyncSuccess(result.getTaskId());
-            }
-
+            return asyncExecutor.submitExport(exportTask, asyncType);
         } catch (Exception e) {
             log.error("silky excel 导出失败", e);
             return ExportResult.fail(asyncType.name() + "_" + System.currentTimeMillis(), "silky excel导出失败: " + e.getMessage());
@@ -108,12 +93,7 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
     public <T> ImportResult importSync(ImportRequest<T> request) {
         try {
             // 使用ImportEngine的同步导入
-            ExcelProcessResult processResult = importEngine.importSync(request);
-
-            return ImportResult.success(processResult.getTaskId(),
-                            processResult.getTotalCount(), processResult.getSuccessCount())
-                    .withCostTime(processResult.getCostTime());
-
+            return importEngine.importSync(request);
         } catch (Exception e) {
             log.error("同步导入失败", e);
             return ImportResult.fail("SYNC_IMPORT_" + System.currentTimeMillis(),
@@ -148,14 +128,12 @@ public class DefaultExcelExportTemplate implements ExcelExportTemplate {
         // 异步处理
         try {
             ImportTask<T> importTask = createImportTask(request);
-            ExcelProcessResult result = asyncExecutor.submitImport(importTask, asyncType);
-
-            return ImportResult.asyncSuccess(result.getTaskId());
+            return asyncExecutor.submitImport(importTask, asyncType);
 
         } catch (Exception e) {
-            log.error("异步导入失败", e);
-            return ImportResult.fail("ASYNC_IMPORT_" + System.currentTimeMillis(),
-                    "异步导入失败: " + e.getMessage());
+            log.error("silky excel 异步导入失败", e);
+            return ImportResult.fail(asyncType.name() + "_IMPORT_" + System.currentTimeMillis(),
+                    "导入失败: " + e.getMessage());
         }
     }
 

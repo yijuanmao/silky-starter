@@ -2,7 +2,6 @@ package com.silky.starter.excel.core.engine;
 
 import cn.hutool.core.io.FileUtil;
 import com.silky.starter.excel.core.exception.ExcelExportException;
-import com.silky.starter.excel.core.model.ExcelProcessResult;
 import com.silky.starter.excel.core.model.imports.ImportRequest;
 import com.silky.starter.excel.core.model.imports.ImportResult;
 import com.silky.starter.excel.entity.ImportRecord;
@@ -31,7 +30,7 @@ public class ImportEngine {
     /**
      * 同步导入
      */
-    public <T> ExcelProcessResult importSync(ImportRequest<T> request) {
+    public <T> ImportResult importSync(ImportRequest<T> request) {
         String taskId = generateTaskId(request.getBusinessType());
         long startTime = System.currentTimeMillis();
 
@@ -63,13 +62,12 @@ public class ImportEngine {
             long costTime = System.currentTimeMillis() - startTime;
             log.info("同步导入任务完成: {}, 结果: {}, 耗时: {}ms", taskId, result.getSummary(), costTime);
 
-            return ExcelProcessResult.success(taskId, "导入完成", result.getTotalCount())
-                    .setCostTime(costTime);
+            return result;
 
         } catch (Exception e) {
             log.error("同步导入任务失败: {}", taskId, e);
             recordService.updateFail(taskId, "导入失败: " + e.getMessage());
-            return ExcelProcessResult.fail(taskId, "导入失败: " + e.getMessage());
+            return ImportResult.fail(taskId, "导入失败: " + e.getMessage());
         } finally {
             cleanupTempFile(tempFile);
         }

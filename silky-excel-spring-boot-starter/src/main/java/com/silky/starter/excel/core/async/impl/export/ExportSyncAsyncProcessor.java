@@ -5,7 +5,7 @@ import com.silky.starter.excel.core.async.ExportAsyncProcessor;
 import com.silky.starter.excel.core.async.model.ProcessorStatus;
 import com.silky.starter.excel.core.engine.ExportEngine;
 import com.silky.starter.excel.core.exception.ExcelExportException;
-import com.silky.starter.excel.core.model.ExcelProcessResult;
+import com.silky.starter.excel.core.model.export.ExportResult;
 import com.silky.starter.excel.core.model.export.ExportTask;
 import com.silky.starter.excel.enums.AsyncType;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @date 2025-10-24 14:49
  **/
 @Slf4j
-public class ExportSyncAsyncProcessor implements ExportAsyncProcessor {
+public class ExportSyncAsyncProcessor implements ExportAsyncProcessor<ExportResult> {
 
     /**
      * 已处理任务计数器
@@ -65,20 +65,17 @@ public class ExportSyncAsyncProcessor implements ExportAsyncProcessor {
      * @param task 要处理的导出任务
      */
     @Override
-    public ExcelProcessResult submit(ExportTask<?> task) throws ExcelExportException {
+    public ExportResult submit(ExportTask<?> task) throws ExcelExportException {
         // 检查处理器状态
         if (!isAvailable()) {
             throw new IllegalStateException("同步处理器当前不可用，无法处理任务");
         }
         log.debug("开始同步执行导出任务: {}", task.getTaskId());
         try {
-            // 直接调用process方法执行任务
-            ExcelProcessResult result = this.process(task);
-            log.debug("同步导出任务执行完成: {}", task.getTaskId());
-            return result;
+            return this.process(task);
         } catch (Exception e) {
             log.error("同步导出任务执行失败: {}", task.getTaskId(), e);
-            return ExcelProcessResult.fail(task.getTaskId(), "同步导出任务执行失败: " + e.getMessage());
+            return ExportResult.fail(task.getTaskId(), "同步导出任务执行失败: " + e.getMessage());
         }
     }
 
@@ -89,7 +86,7 @@ public class ExportSyncAsyncProcessor implements ExportAsyncProcessor {
      * @param task 要处理的导出任务
      */
     @Override
-    public ExcelProcessResult process(ExportTask<?> task) throws ExcelExportException {
+    public ExportResult process(ExportTask<?> task) throws ExcelExportException {
         // 更新最后活跃时间
         lastActiveTime = System.currentTimeMillis();
 
@@ -100,7 +97,7 @@ public class ExportSyncAsyncProcessor implements ExportAsyncProcessor {
             task.markStart();
 
             // 调用导出引擎处理任务
-            ExcelProcessResult result = exportEngine.exportSync(task.getRequest(), task.getTaskId());
+            ExportResult result = exportEngine.exportSync(task.getRequest(), task.getTaskId());
 
             // 增加处理计数
             processedCount.incrementAndGet();
@@ -109,7 +106,7 @@ public class ExportSyncAsyncProcessor implements ExportAsyncProcessor {
             return result;
         } catch (Exception e) {
             log.error("同步导出任务处理失败: {}", task.getTaskId(), e);
-            return ExcelProcessResult.fail(task.getTaskId(), "同步任务处理失败: " + e.getMessage());
+            return ExportResult.fail(task.getTaskId(), "同步任务处理失败: " + e.getMessage());
         } finally {
             // 标记任务完成
             task.markFinish();

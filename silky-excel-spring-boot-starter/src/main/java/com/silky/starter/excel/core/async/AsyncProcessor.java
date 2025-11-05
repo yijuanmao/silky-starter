@@ -31,7 +31,6 @@ public interface AsyncProcessor {
      * 在处理器从工厂注销时调用，用于释放资源
      */
     default void destroy() throws ExcelExportException {
-        // 默认空实现
     }
 
     /**

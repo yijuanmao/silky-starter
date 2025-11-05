@@ -2,17 +2,20 @@ package com.silky.starter.excel.core.async;
 
 import cn.hutool.core.collection.CollectionUtil;
 import com.silky.starter.excel.core.exception.ExcelExportException;
-import com.silky.starter.excel.core.model.ExcelProcessResult;
 import com.silky.starter.excel.core.model.export.ExportTask;
 import lombok.Getter;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * 导出异步处理器接口
  *
+ * @param <R> 导出结果类型
  * @author zy
  * @date 2025-10-27 17:50
  **/
-public interface ExportAsyncProcessor extends AsyncProcessor {
+public interface ExportAsyncProcessor<R> extends AsyncProcessor {
 
     /**
      * 提交导出任务
@@ -21,7 +24,7 @@ public interface ExportAsyncProcessor extends AsyncProcessor {
      *
      * @param task 要处理的导出任务，包含任务ID、请求参数和记录信息
      */
-    ExcelProcessResult submit(ExportTask<?> task) throws ExcelExportException;
+    R submit(ExportTask<?> task) throws ExcelExportException;
 
     /**
      * 处理导出任务
@@ -30,7 +33,7 @@ public interface ExportAsyncProcessor extends AsyncProcessor {
      *
      * @param task 要处理的导出任务
      */
-    ExcelProcessResult process(ExportTask<?> task) throws ExcelExportException;
+    R process(ExportTask<?> task) throws ExcelExportException;
 
     /**
      * 批量提交导出任务
@@ -72,7 +75,7 @@ public interface ExportAsyncProcessor extends AsyncProcessor {
      * @return 如果任务正在处理中返回true，否则返回false
      */
     default boolean isTaskProcessing(String taskId) {
-        return false; // 默认实现，子类应该重写此方法
+        return false;
     }
 
     /**
@@ -83,7 +86,7 @@ public interface ExportAsyncProcessor extends AsyncProcessor {
      * @return 如果成功取消返回true，如果任务不存在或无法取消返回false
      */
     default boolean cancelTask(String taskId) {
-        return false; // 默认实现，子类应该重写此方法
+        return false;
     }
 
     /**
@@ -94,7 +97,7 @@ public interface ExportAsyncProcessor extends AsyncProcessor {
      * @return 任务状态信息，如果任务不存在返回null
      */
     default TaskExecutionStatus getTaskStatus(String taskId) {
-        return null; // 默认实现，子类应该重写此方法
+        return null;
     }
 
     /**
@@ -103,8 +106,8 @@ public interface ExportAsyncProcessor extends AsyncProcessor {
      *
      * @return 正在处理的任务ID列表
      */
-    default java.util.List<String> getProcessingTasks() {
-        return java.util.Collections.emptyList(); // 默认实现
+    default List<String> getProcessingTasks() {
+        return Collections.emptyList(); // 默认实现
     }
 
     /**
@@ -114,7 +117,7 @@ public interface ExportAsyncProcessor extends AsyncProcessor {
      * @return 队列中的任务数量
      */
     default int getQueueSize() {
-        return 0; // 默认实现
+        return 0;
     }
 
     /**
@@ -125,28 +128,6 @@ public interface ExportAsyncProcessor extends AsyncProcessor {
      */
     default ProcessorCapacity getCapacity() {
         return ProcessorCapacity.unknown();
-    }
-
-    /**
-     * 验证导出任务
-     * 在执行前验证任务的合法性
-     *
-     * @param task 要验证的导出任务
-     * @throws IllegalArgumentException 当任务不合法时抛出
-     */
-    default void validateTask(ExportTask<?> task) throws IllegalArgumentException {
-        if (task == null) {
-            throw new IllegalArgumentException("导出任务不能为null");
-        }
-        if (task.getTaskId() == null || task.getTaskId().trim().isEmpty()) {
-            throw new IllegalArgumentException("导出任务ID不能为空");
-        }
-        if (task.getRequest() == null) {
-            throw new IllegalArgumentException("导出请求不能为null");
-        }
-        if (task.getRecord() == null) {
-            throw new IllegalArgumentException("导出记录不能为null");
-        }
     }
 
     /**

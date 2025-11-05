@@ -5,7 +5,7 @@ import com.silky.starter.excel.core.async.ImportAsyncProcessor;
 import com.silky.starter.excel.core.async.model.ProcessorStatus;
 import com.silky.starter.excel.core.engine.ImportEngine;
 import com.silky.starter.excel.core.exception.ExcelExportException;
-import com.silky.starter.excel.core.model.ExcelProcessResult;
+import com.silky.starter.excel.core.model.imports.ImportResult;
 import com.silky.starter.excel.core.model.imports.ImportTask;
 import com.silky.starter.excel.enums.AsyncType;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @date 2025-10-28 15:26
  **/
 @Slf4j
-public class ImportThreadPoolAsyncProcessor implements ImportAsyncProcessor {
+public class ImportThreadPoolAsyncProcessor implements ImportAsyncProcessor<ImportResult> {
 
     /**
      * 已处理任务计数器
@@ -82,7 +82,7 @@ public class ImportThreadPoolAsyncProcessor implements ImportAsyncProcessor {
      * @param task 要处理的导入任务，包含任务ID、请求参数和记录信息，注意：此方法应该是非阻塞的，提交后立即返回
      */
     @Override
-    public ExcelProcessResult submit(ImportTask<?> task) throws ExcelExportException {
+    public ImportResult submit(ImportTask<?> task) throws ExcelExportException {
         // 检查处理器状态
         if (!isAvailable()) {
             throw new ExcelExportException("线程池处理器当前不可用，无法接收新任务");
@@ -94,7 +94,7 @@ public class ImportThreadPoolAsyncProcessor implements ImportAsyncProcessor {
         try {
             taskExecutor.execute(() -> process(task));
             log.debug("任务已成功提交到Spring线程池: {}", task.getTaskId());
-            return ExcelProcessResult.success(task.getTaskId(), "导入任务已提交到线程池", processedCount.get());
+            return ImportResult.asyncSuccess(task.getTaskId());
         } catch (Exception e) {
             log.error("Spring线程池提交任务失败: {}", task.getTaskId(), e);
             throw new ExcelExportException("提交任务到线程池失败: " + e.getMessage(), e);
@@ -107,19 +107,19 @@ public class ImportThreadPoolAsyncProcessor implements ImportAsyncProcessor {
      * @param task 要处理的导入任务
      */
     @Override
-    public ExcelProcessResult process(ImportTask<?> task) throws ExcelExportException {
+    public ImportResult process(ImportTask<?> task) throws ExcelExportException {
         lastActiveTime.set(System.currentTimeMillis());
 
         try {
             log.info("开始处理导入任务: {}, 业务类型: {}", task.getTaskId(), task.getRequest().getBusinessType());
             task.markStart();
-            ExcelProcessResult result = importEngine.importSync(task.getRequest());
+            ImportResult result = importEngine.importSync(task.getRequest());
             processedCount.incrementAndGet();
             log.debug("导入任务处理完成: {}, 总处理时间: {}ms", task.getTaskId(), task.getExecuteTime());
             return result;
         } catch (Exception e) {
             log.error("导入任务处理失败: {}", task.getTaskId(), e);
-            return ExcelProcessResult.fail(task.getTaskId(), "导入任务处理失败: " + e.getMessage());
+            return ImportResult.fail(task.getTaskId(), "导入任务处理失败: " + e.getMessage());
         } finally {
             task.markFinish();
         }
@@ -131,10 +131,6 @@ public class ImportThreadPoolAsyncProcessor implements ImportAsyncProcessor {
      */
     @Override
     public void init() throws ExcelExportException {
-
-        // 初始化线程池
-//        taskExecutor.initialize();
-
         // 获取底层ThreadPoolExecutor用于状态监控
         this.threadPoolExecutor = taskExecutor.getThreadPoolExecutor();
 

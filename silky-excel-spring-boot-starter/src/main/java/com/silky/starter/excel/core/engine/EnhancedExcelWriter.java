@@ -27,25 +27,35 @@ public class EnhancedExcelWriter implements Closeable {
 
     private final String filePath;
 
+    /**
+     * 每个Sheet最大行数
+     */
     private final long maxRowsPerSheet;
 
+    /**
+     * 总写入行数
+     */
     private final AtomicLong totalRows = new AtomicLong(0);
 
+    /**
+     * 当前Sheet总行数
+     */
     private final AtomicLong currentSheetRows = new AtomicLong(0);
 
+    /**
+     * 当前Sheet索引
+     */
     private int currentSheetIndex = 0;
 
+    /**
+     * 当前WriteSheet
+     */
     private WriteSheet currentWriteSheet;
 
     private List<String> currentHeaders;
 
-    private static final int DEFAULT_MAX_ROWS_PER_SHEET = 200000;
-
     private static final String DEFAULT_SHEET_NAME = "数据";
 
-    public EnhancedExcelWriter(String filePath) {
-        this(filePath, DEFAULT_MAX_ROWS_PER_SHEET);
-    }
 
     public EnhancedExcelWriter(String filePath, long maxRowsPerSheet) {
         this.filePath = filePath;
@@ -162,7 +172,7 @@ public class EnhancedExcelWriter implements Closeable {
      * @param headerMapping 表头映射
      */
     public <T> void write(List<T> data, Class<T> clazz, Map<String, String> headerMapping) {
-        write(data, clazz, DEFAULT_SHEET_NAME, headerMapping);
+        this.write(data, clazz, DEFAULT_SHEET_NAME, headerMapping);
     }
 
     /**

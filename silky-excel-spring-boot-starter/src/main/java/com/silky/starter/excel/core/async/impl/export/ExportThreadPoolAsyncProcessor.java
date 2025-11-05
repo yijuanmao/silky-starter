@@ -5,7 +5,7 @@ import com.silky.starter.excel.core.async.ExportAsyncProcessor;
 import com.silky.starter.excel.core.async.model.ProcessorStatus;
 import com.silky.starter.excel.core.engine.ExportEngine;
 import com.silky.starter.excel.core.exception.ExcelExportException;
-import com.silky.starter.excel.core.model.ExcelProcessResult;
+import com.silky.starter.excel.core.model.export.ExportResult;
 import com.silky.starter.excel.core.model.export.ExportTask;
 import com.silky.starter.excel.enums.AsyncType;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @date 2025-10-24 14:33
  **/
 @Slf4j
-public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
+public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor<ExportResult> {
 
     /**
      * 已处理任务计数器
@@ -81,7 +81,7 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
      * @param task 要处理的导出任务，包含任务ID、请求参数和记录信息，注意：此方法应该是非阻塞的，提交后立即返回
      */
     @Override
-    public ExcelProcessResult submit(ExportTask<?> task) throws ExcelExportException {
+    public ExportResult submit(ExportTask<?> task) throws ExcelExportException {
         // 检查处理器状态
         if (!isAvailable()) {
             throw new ExcelExportException("Spring线程池处理器当前不可用，无法接收新任务");
@@ -97,10 +97,10 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
             });
             log.debug("任务已成功提交到Spring线程池: {}", task.getTaskId());
 
-            return ExcelProcessResult.success(task.getTaskId(), "任务已提交到Spring线程池", processedCount.get());
+            return ExportResult.asyncSuccess(task.getTaskId());
         } catch (Exception e) {
             log.error("Spring线程池提交任务失败: {}", task.getTaskId(), e);
-            return ExcelProcessResult.fail(task.getTaskId(), "提交任务到Spring线程池失败: " + e.getMessage());
+            return ExportResult.fail(task.getTaskId(), "提交任务到Spring线程池失败: " + e.getMessage());
         }
     }
 
@@ -110,7 +110,7 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
      * @param task 要处理的导出任务
      */
     @Override
-    public ExcelProcessResult process(ExportTask<?> task) throws ExcelExportException {
+    public ExportResult process(ExportTask<?> task) throws ExcelExportException {
         // 更新最后活跃时间
         lastActiveTime = System.currentTimeMillis();
 
@@ -121,7 +121,7 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
             task.markStart();
 
             // 调用导出引擎处理任务
-            ExcelProcessResult result = exportEngine.exportSync(task.getRequest(), task.getTaskId());
+            ExportResult result = exportEngine.exportSync(task.getRequest(), task.getTaskId());
 
             // 增加处理计数
             processedCount.incrementAndGet();
@@ -130,7 +130,7 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor {
             return result;
         } catch (Exception e) {
             log.error("导出任务处理失败: {}", task.getTaskId(), e);
-            return ExcelProcessResult.fail(task.getTaskId(), "导出任务处理失败: " + e.getMessage());
+            return ExportResult.fail(task.getTaskId(), "导出任务处理失败: " + e.getMessage());
         } finally {
             // 标记任务完成
             task.markFinish();

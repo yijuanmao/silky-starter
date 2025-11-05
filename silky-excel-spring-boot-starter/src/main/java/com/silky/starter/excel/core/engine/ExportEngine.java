@@ -4,7 +4,6 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.excel.core.exception.ExcelExportException;
-import com.silky.starter.excel.core.model.ExcelProcessResult;
 import com.silky.starter.excel.core.model.export.ExportDataProcessor;
 import com.silky.starter.excel.core.model.export.ExportPageData;
 import com.silky.starter.excel.core.model.export.ExportRequest;
@@ -66,7 +65,7 @@ public class ExportEngine {
     /**
      * 同步导出
      */
-    public <T> ExcelProcessResult exportSync(ExportRequest<T> request, String taskId) {
+    public <T> ExportResult exportSync(ExportRequest<T> request, String taskId) {
         long startTime = System.currentTimeMillis();
 
         log.info("开始同步导出任务: {}, 业务类型: {}", taskId, request.getBusinessType());
@@ -98,24 +97,12 @@ public class ExportEngine {
             long costTime = System.currentTimeMillis() - startTime;
             log.info("同步导出任务完成: {}, 文件URL: {}, 耗时: {}ms", taskId, fileUrl, costTime);
 
-            totalProcessedTasks.incrementAndGet();
-            successTasks.incrementAndGet();
-
-            return ExcelProcessResult.exportSuccess(taskId,
-                            fileUrl,
-                            exportResult.getTotalCount(),
-                            tempFile.length())
-                    .setCostTime(costTime)
-                    .setSheetCount(exportResult.getSheetCount())
-                    .setTotalCount(exportResult.getTotalCount())
-                    .setSuccessCount(exportResult.getSuccessCount())
-                    .setFailedCount(exportResult.getFailedCount());
+            return exportResult;
 
         } catch (Exception e) {
-            failedTasks.incrementAndGet();
             log.error("同步导出任务失败: {}", taskId, e);
             recordService.updateFailed(taskId, "导出失败: " + e.getMessage());
-            return ExcelProcessResult.fail(taskId, "导出失败: " + e.getMessage())
+            return ExportResult.fail(taskId, "导出失败: " + e.getMessage())
                     .setFailedCount(failedTasks.get());
         } finally {
             cleanupExportData(request);
@@ -178,6 +165,7 @@ public class ExportEngine {
             }
         } catch (Exception e) {
             log.error("导出执行失败: {}", taskId, e);
+            failedTasks.incrementAndGet();
             throw new ExcelExportException("导出执行失败: " + e.getMessage(), e);
         }
     }

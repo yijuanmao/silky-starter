@@ -31,12 +31,15 @@ public class ExcelExportTemplateTest extends ExcelApplicationTest {
         ExportRequest<UserTest> request = new ExportRequest<>();
         request.setDataClass(UserTest.class);
         request.setFileName("test.xls");
-        request.setPageSize(2);
+        request.setPageSize(10);
         request.setDataSupplier((pageNum, pageSize, params) -> {
             //这里模拟数据库分页查询
             List<UserTest> userTests = this.findByCondition(pageNum, pageSize);
             return new ExportPageData<>(userTests, true);
         });
+
+        // 设置每个Sheet的最大行数为1，测试多Sheet导出
+//        request.setMaxRowsPerSheet(1);
         ExportResult result = excelExportTemplate.exportSync(request);
         log.info("导出结果: {}", result);
     }
