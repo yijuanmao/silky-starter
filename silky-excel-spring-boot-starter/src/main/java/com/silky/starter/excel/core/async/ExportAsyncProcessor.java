@@ -2,6 +2,7 @@ package com.silky.starter.excel.core.async;
 
 import cn.hutool.core.collection.CollectionUtil;
 import com.silky.starter.excel.core.exception.ExcelExportException;
+import com.silky.starter.excel.core.model.export.ExportResult;
 import com.silky.starter.excel.core.model.export.ExportTask;
 import lombok.Getter;
 

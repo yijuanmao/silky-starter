@@ -1,6 +1,7 @@
 package com.silky.starter.excel.core.storage.impl;
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.IdUtil;
 import com.silky.starter.excel.core.exception.ExcelExportException;
 import com.silky.starter.excel.core.storage.StorageStrategy;
 import com.silky.starter.excel.enums.StorageType;
@@ -29,7 +30,6 @@ public class LocalStorageStrategy implements StorageStrategy {
     public LocalStorageStrategy(SilkyExcelProperties properties) {
         this.properties = properties;
     }
-
 
     /**
      * 存储文件
@@ -142,9 +142,8 @@ public class LocalStorageStrategy implements StorageStrategy {
      * @return 文件唯一标识
      */
     private String generateFileKey(String fileName) {
-        String timestamp = String.valueOf(System.currentTimeMillis());
-        String random = String.valueOf((int) ((Math.random() * 9 + 1) * 1000));
-        return timestamp + "_" + random + "_" + fileName;
+        String uuid = IdUtil.fastSimpleUUID();
+        return uuid + "_" + fileName;
     }
 
     /**

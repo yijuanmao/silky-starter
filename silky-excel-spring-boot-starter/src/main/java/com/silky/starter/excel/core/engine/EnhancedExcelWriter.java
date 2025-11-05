@@ -6,6 +6,8 @@ import cn.idev.excel.ExcelWriter;
 import cn.idev.excel.write.metadata.WriteSheet;
 import com.silky.starter.excel.core.exception.ExcelExportException;
 import lombok.Getter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.util.List;
@@ -21,7 +23,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @Getter
 public class EnhancedExcelWriter implements Closeable {
 
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(EnhancedExcelWriter.class);
+    private static final Logger log = LoggerFactory.getLogger(EnhancedExcelWriter.class);
 
     private final ExcelWriter writer;
 
@@ -55,7 +57,6 @@ public class EnhancedExcelWriter implements Closeable {
     private List<String> currentHeaders;
 
     private static final String DEFAULT_SHEET_NAME = "数据";
-
 
     public EnhancedExcelWriter(String filePath, long maxRowsPerSheet) {
         this.filePath = filePath;
@@ -118,7 +119,6 @@ public class EnhancedExcelWriter implements Closeable {
      */
     private <T> void writeBatchData(List<T> data) {
         try {
-            // 修复：确保使用正确的WriteSheet
             if (currentWriteSheet == null) {
                 throw new ExcelExportException("WriteSheet未初始化");
             }

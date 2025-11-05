@@ -13,7 +13,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.concurrent.ListenableFuture;
 
 import javax.annotation.PreDestroy;
-import java.util.concurrent.Future;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -48,7 +48,7 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor<Expo
     /**
      * 最后活跃时间
      */
-    private volatile long lastActiveTime = System.currentTimeMillis();
+    private final AtomicLong lastActiveTime = new AtomicLong(System.currentTimeMillis());
 
     /**
      * 底层ThreadPoolExecutor引用
@@ -62,6 +62,9 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor<Expo
 
     public ExportThreadPoolAsyncProcessor(ExportEngine exportEngine,
                                           ThreadPoolTaskExecutor taskExecutor) {
+        if (exportEngine == null || taskExecutor == null) {
+            throw new IllegalArgumentException("exportEngine and taskExecutor must not be null");
+        }
         this.exportEngine = exportEngine;
         this.taskExecutor = taskExecutor;
     }
@@ -87,20 +90,38 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor<Expo
             throw new ExcelExportException("Spring线程池处理器当前不可用，无法接收新任务");
         }
         // 检查线程池状态
-        if (taskExecutor == null || threadPoolExecutor.isShutdown() || threadPoolExecutor.isTerminated()) {
+        if (threadPoolExecutor.isShutdown() || threadPoolExecutor.isTerminated()) {
             throw new IllegalStateException("Spring线程池未初始化或已关闭");
         }
         try {
             // 使用Spring线程池提交任务
-            taskExecutor.execute(() -> {
-                process(task);
-            });
-            log.debug("任务已成功提交到Spring线程池: {}", task.getTaskId());
-
+            taskExecutor.execute(() -> process(task));
             return ExportResult.asyncSuccess(task.getTaskId());
         } catch (Exception e) {
-            log.error("Spring线程池提交任务失败: {}", task.getTaskId(), e);
-            return ExportResult.fail(task.getTaskId(), "提交任务到Spring线程池失败: " + e.getMessage());
+            throw new ExcelExportException( e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 提交任务并返回Future（扩展方法）
+     * 允许调用方获取任务执行结果
+     *
+     * @param task 导出任务
+     * @return Future对象，可以用于获取任务执行状态和结果
+     */
+    public ExportResult submitWithFuture(ExportTask<?> task) {
+        if (!isAvailable()) {
+            throw new ExcelExportException("Spring线程池处理器当前不可用");
+        }
+        try {
+            return taskExecutor.submit(() -> process(task)).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("任务执行被中断: {}", task.getTaskId(), e);
+            return ExportResult.fail(task.getTaskId(), "任务执行被中断");
+        } catch (ExecutionException e) {
+            log.error("任务执行异常: {}", task.getTaskId(), e.getCause());
+            return ExportResult.fail(task.getTaskId(), e.getCause().getMessage());
         }
     }
 
@@ -112,7 +133,7 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor<Expo
     @Override
     public ExportResult process(ExportTask<?> task) throws ExcelExportException {
         // 更新最后活跃时间
-        lastActiveTime = System.currentTimeMillis();
+        lastActiveTime.set(System.currentTimeMillis());
 
         try {
             log.info("开始处理导出任务: {}, 业务类型: {}", task.getTaskId(), task.getRequest().getBusinessType());
@@ -130,7 +151,7 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor<Expo
             return result;
         } catch (Exception e) {
             log.error("导出任务处理失败: {}", task.getTaskId(), e);
-            return ExportResult.fail(task.getTaskId(), "导出任务处理失败: " + e.getMessage());
+            throw new ExcelExportException(e.getMessage(), e);
         } finally {
             // 标记任务完成
             task.markFinish();
@@ -143,9 +164,6 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor<Expo
      */
     @Override
     public void init() throws ExcelExportException {
-
-        // 初始化线程池
-//        taskExecutor.initialize();
 
         // 获取底层ThreadPoolExecutor用于状态监控
         this.threadPoolExecutor = taskExecutor.getThreadPoolExecutor();
@@ -164,11 +182,9 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor<Expo
         log.info("开始关闭Spring线程池异步处理器...");
         available = false;
 
-        if (taskExecutor != null) {
-            // Spring的ThreadPoolTaskExecutor会自动处理优雅关闭
-            taskExecutor.shutdown();
-            log.info("Spring线程池已发送关闭信号，等待任务完成...");
-        }
+        // Spring的ThreadPoolTaskExecutor会自动处理优雅关闭
+        taskExecutor.shutdown();
+        log.info("Spring线程池已发送关闭信号，等待任务完成...");
         log.info("Spring线程池异步处理器关闭完成，总共处理任务数量：{}", processedCount.get());
     }
 
@@ -206,7 +222,7 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor<Expo
                 .processedCount(processedCount.get())
                 .queueSize(queueSize)
                 .startTime(LocalDateTimeUtil.ofUTC(startTime))
-                .lastActiveTime(LocalDateTimeUtil.ofUTC(lastActiveTime))
+                .lastActiveTime(LocalDateTimeUtil.ofUTC(lastActiveTime.get()))
                 .build();
     }
 
@@ -218,23 +234,6 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor<Expo
     @Override
     public String getDescription() {
         return "Async Processor: " + getType();
-    }
-
-    /**
-     * 提交任务并返回Future（扩展方法）
-     * 允许调用方获取任务执行结果
-     *
-     * @param task 导出任务
-     * @return Future对象，可以用于获取任务执行状态和结果
-     */
-    public Future<?> submitWithFuture(ExportTask<?> task) {
-        if (!isAvailable()) {
-            throw new ExcelExportException("Spring线程池处理器当前不可用");
-        }
-        return taskExecutor.submit(() -> {
-            process(task);
-            return task.getTaskId();
-        });
     }
 
     /**

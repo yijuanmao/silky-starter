@@ -39,11 +39,6 @@ public class ExportEngine {
     private static final String TEMP_FILE_PREFIX = "silky_export_";
 
     /**
-     * 已处理任务总数
-     */
-    private final AtomicLong totalProcessedTasks = new AtomicLong(0);
-
-    /**
      * 成功任务数
      */
     private final AtomicLong successTasks = new AtomicLong(0);
@@ -97,13 +92,14 @@ public class ExportEngine {
             long costTime = System.currentTimeMillis() - startTime;
             log.info("同步导出任务完成: {}, 文件URL: {}, 耗时: {}ms", taskId, fileUrl, costTime);
 
-            return exportResult;
+            return exportResult.setFileUrl(fileUrl)
+                    .setFileSize(tempFile.length())
+                    .setCostTime(costTime);
 
         } catch (Exception e) {
             log.error("同步导出任务失败: {}", taskId, e);
             recordService.updateFailed(taskId, "导出失败: " + e.getMessage());
-            return ExportResult.fail(taskId, "导出失败: " + e.getMessage())
-                    .setFailedCount(failedTasks.get());
+            throw new ExcelExportException(e.getMessage(), e);
         } finally {
             cleanupExportData(request);
             cleanupTempFile(tempFile);
@@ -151,6 +147,8 @@ public class ExportEngine {
 
                 log.debug("第{}页处理完成, 数据量: {}", pageNum, processedData.size());
 
+                successTasks.getAndAdd(processedData.size());
+
                 hasNext = pageData.isHasNext();
                 pageNum++;
             }
@@ -158,7 +156,7 @@ public class ExportEngine {
                 return ExportResult.asyncSuccess(taskId);
             } else {
                 return ExportResult.success(taskId)
-                        .setTotalCount(totalProcessedTasks.get())
+                        .setTotalCount(writer.getTotalRows().get())
                         .setSuccessCount(successTasks.get())
                         .setFailedCount(failedTasks.get())
                         .setSheetCount(writer.getCurrentSheetIndex());
@@ -234,13 +232,10 @@ public class ExportEngine {
             if (parentDir != null && !parentDir.exists()) {
                 Files.createDirectories(parentDir.toPath());
             }
-
             if (!file.createNewFile()) {
                 throw new ExcelExportException("创建临时文件失败: " + filePath);
             }
-
             return file;
-
         } catch (IOException e) {
             throw new ExcelExportException("创建临时文件异常", e);
         }
