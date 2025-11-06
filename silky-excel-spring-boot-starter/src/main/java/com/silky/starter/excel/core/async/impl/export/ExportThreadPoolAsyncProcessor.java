@@ -98,30 +98,7 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor<Expo
             taskExecutor.execute(() -> process(task));
             return ExportResult.asyncSuccess(task.getTaskId());
         } catch (Exception e) {
-            throw new ExcelExportException( e.getMessage(), e);
-        }
-    }
-
-    /**
-     * 提交任务并返回Future（扩展方法）
-     * 允许调用方获取任务执行结果
-     *
-     * @param task 导出任务
-     * @return Future对象，可以用于获取任务执行状态和结果
-     */
-    public ExportResult submitWithFuture(ExportTask<?> task) {
-        if (!isAvailable()) {
-            throw new ExcelExportException("Spring线程池处理器当前不可用");
-        }
-        try {
-            return taskExecutor.submit(() -> process(task)).get();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.error("任务执行被中断: {}", task.getTaskId(), e);
-            return ExportResult.fail(task.getTaskId(), "任务执行被中断");
-        } catch (ExecutionException e) {
-            log.error("任务执行异常: {}", task.getTaskId(), e.getCause());
-            return ExportResult.fail(task.getTaskId(), e.getCause().getMessage());
+            throw new ExcelExportException(e.getMessage(), e);
         }
     }
 
@@ -142,7 +119,7 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor<Expo
             task.markStart();
 
             // 调用导出引擎处理任务
-            ExportResult result = exportEngine.exportSync(task.getRequest(), task.getTaskId());
+            ExportResult result = exportEngine.exportSync(task);
 
             // 增加处理计数
             processedCount.incrementAndGet();
@@ -235,6 +212,41 @@ public class ExportThreadPoolAsyncProcessor implements ExportAsyncProcessor<Expo
     public String getDescription() {
         return "Async Processor: " + getType();
     }
+
+    /**
+     * 设置处理器可用状态,可以用于临时禁用处理器
+     *
+     * @param available 是否可用
+     */
+    @Override
+    public void setAvailable(boolean available) {
+        this.available = available;
+        log.info("异步线程导入处理器可用状态设置为: {}", available);
+    }
+
+    /**
+     * 提交任务并返回Future（扩展方法）
+     * 允许调用方获取任务执行结果
+     *
+     * @param task 导出任务
+     * @return Future对象，可以用于获取任务执行状态和结果
+     */
+    public ExportResult submitWithFuture(ExportTask<?> task) {
+        if (!isAvailable()) {
+            throw new ExcelExportException("Spring线程池处理器当前不可用");
+        }
+        try {
+            return taskExecutor.submit(() -> process(task)).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("任务执行被中断: {}", task.getTaskId(), e);
+            return ExportResult.fail(task.getTaskId(), "任务执行被中断");
+        } catch (ExecutionException e) {
+            log.error("任务执行异常: {}", task.getTaskId(), e.getCause());
+            return ExportResult.fail(task.getTaskId(), e.getCause().getMessage());
+        }
+    }
+
 
     /**
      * 提交任务并返回ListenableFuture（扩展方法）

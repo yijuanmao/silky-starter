@@ -22,6 +22,11 @@ public enum AsyncType {
     THREAD_POOL("线程异步"),
 
     /**
+     * mq异步
+     */
+    MQ("mq异步"),
+
+    /**
      * 自定义异步执行 - 使用用户自定义的异步处理器
      */
     CUSTOM("自定义异步");

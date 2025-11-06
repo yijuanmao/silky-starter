@@ -18,13 +18,13 @@ import java.util.List;
  * @author zy
  * @date 2025-10-31 16:53
  **/
-public class ExcelExportTemplateTest extends ExcelApplicationTest {
+public class ExcelTemplateTest extends ExcelApplicationTest {
 
     // 提取测试数据为静态变量，提高复用率并降低内存消耗
     private static final List<UserTest> TEST_DATA = createTestData();
 
     @Autowired
-    private ExcelExportTemplate excelExportTemplate;
+    private ExcelTemplate excelTemplate;
 
     /**
      * 测试同步导出
@@ -44,7 +44,7 @@ public class ExcelExportTemplateTest extends ExcelApplicationTest {
 
         // 设置每个Sheet的最大行数为1，测试多Sheet导出
 //        request.setMaxRowsPerSheet(1);
-        ExportResult result = excelExportTemplate.exportSync(request);
+        ExportResult result = excelTemplate.exportSync(request);
         log.info("导出结果: {}", result);
     }
 
@@ -57,7 +57,7 @@ public class ExcelExportTemplateTest extends ExcelApplicationTest {
         // 创建导出请求
         ExportRequest<UserTest> request = new ExportRequest<>();
         request.setDataClass(UserTest.class);
-        request.setFileName("test_async.xlsx");
+        request.setFileName("test_async.xls");
         request.setPageSize(10);
         request.setDataSupplier((pageNum, pageSize, params) -> {
             //这里模拟数据库分页查询
@@ -65,7 +65,7 @@ public class ExcelExportTemplateTest extends ExcelApplicationTest {
             //hasNext 用于是否有下一页数据,如果查询findByCondition方法使用分页插件，就可以从分页插件中获取是否有下一页；·
             return new ExportPageData<>(userTests, hasNext);
         });
-        ExportResult result = excelExportTemplate.exportAsync(request);
+        ExportResult result = excelTemplate.exportAsync(request);
         log.info("导出结果: {}", result);
     }
 
@@ -93,7 +93,7 @@ public class ExcelExportTemplateTest extends ExcelApplicationTest {
      * @return 测试数据列表
      */
     private static List<UserTest> createTestData() {
-        int size = 10;
+        int size = 20000;
         // 预设容量避免频繁扩容，提高性能
         List<UserTest> list = new ArrayList<>(size);
 

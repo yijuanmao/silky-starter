@@ -41,7 +41,6 @@ public class ExportSyncProcessor implements ExportAsyncProcessor<ExportResult> {
      */
     private volatile long lastActiveTime = System.currentTimeMillis();
 
-
     private final ExportEngine exportEngine;
 
     public ExportSyncProcessor(ExportEngine exportEngine) {
@@ -97,7 +96,7 @@ public class ExportSyncProcessor implements ExportAsyncProcessor<ExportResult> {
             task.markStart();
 
             // 调用导出引擎处理任务
-            ExportResult result = exportEngine.exportSync(task.getRequest(), task.getTaskId());
+            ExportResult result = exportEngine.exportSync(task);
 
             // 增加处理计数
             processedCount.incrementAndGet();
@@ -153,14 +152,14 @@ public class ExportSyncProcessor implements ExportAsyncProcessor<ExportResult> {
     }
 
     /**
-     * 设置处理器可用状态
-     * 可以用于临时禁用处理器
+     * 设置处理器可用状态,可以用于临时禁用处理器
      *
      * @param available 是否可用
      */
+    @Override
     public void setAvailable(boolean available) {
         this.available = available;
-        log.info("同步处理器可用状态设置为: {}", available);
+        log.info("同步处理器导入可用状态设置为: {}", available);
     }
 
     /**

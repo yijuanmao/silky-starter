@@ -56,6 +56,15 @@ public interface AsyncProcessor {
     }
 
     /**
+     * 设置处理器可用状态
+     * 可以用于临时禁用处理器
+     *
+     * @param available 是否可用
+     */
+    default void setAvailable(boolean available) {
+    }
+
+    /**
      * 获取处理器描述信息
      *
      * @return 处理器描述信息

@@ -61,13 +61,6 @@ public class ExportRequest<T> {
     private StorageType storageType;
 
     /**
-     * 异步处理类型
-     * 指定任务执行的方式（同步或异步）
-     * 默认值：THREAD_POOL
-     */
-    private AsyncType asyncType;
-
-    /**
      * 分页大小
      * 每次从数据供应器获取的数据条数
      * 默认值：2000
@@ -96,13 +89,6 @@ public class ExportRequest<T> {
     private String createUser;
 
     /**
-     * 表头映射
-     * 自定义Excel表头，key为字段名，value为显示名称
-     * 默认值：空Map
-     */
-    private Map<String, String> headerMapping;
-
-    /**
      * 是否启用进度跟踪
      * 启用后会实时更新导出进度
      * 默认值：true
@@ -121,5 +107,5 @@ public class ExportRequest<T> {
      * 超过该行数会自动创建新Sheet
      * 默认值：200000
      */
-    private long maxRowsPerSheet = 200000;
+    private Long maxRowsPerSheet;
 }

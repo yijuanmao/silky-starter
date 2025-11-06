@@ -237,10 +237,8 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
 
         ExportAsyncProcessor<ExportResult> processor = exportProcessorMap.get(type);
         if (processor == null) {
-            throw new IllegalArgumentException("不支持的导出处理器类型: " + type +
-                    "，可用类型: " + getAvailableExportTypes());
+            throw new IllegalArgumentException("不支持的导出处理器类型: " + type + "，可用类型: " + getAvailableExportTypes());
         }
-
         return processor;
     }
 

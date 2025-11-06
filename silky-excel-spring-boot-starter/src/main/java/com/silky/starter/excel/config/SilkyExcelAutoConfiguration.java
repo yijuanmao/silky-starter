@@ -1,6 +1,5 @@
 package com.silky.starter.excel.config;
 
-import com.silky.starter.excel.core.async.executor.AsyncExecutor;
 import com.silky.starter.excel.core.async.factory.AsyncProcessorFactory;
 import com.silky.starter.excel.core.async.impl.export.ExportSyncProcessor;
 import com.silky.starter.excel.core.async.impl.export.ExportThreadPoolAsyncProcessor;
@@ -18,8 +17,8 @@ import com.silky.starter.excel.service.imports.ImportRecordService;
 import com.silky.starter.excel.service.imports.impl.InMemoryImportRecordService;
 import com.silky.starter.excel.service.storage.StorageService;
 import com.silky.starter.excel.service.storage.impl.DefaultStorageService;
-import com.silky.starter.excel.template.ExcelExportTemplate;
-import com.silky.starter.excel.template.impl.DefaultExcelExportTemplate;
+import com.silky.starter.excel.template.ExcelTemplate;
+import com.silky.starter.excel.template.impl.DefaultExcelTemplate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -101,13 +100,6 @@ public class SilkyExcelAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public AsyncExecutor asyncExecutor(AsyncProcessorFactory asyncProcessorFactory, SilkyExcelProperties properties) {
-        return new AsyncExecutor(asyncProcessorFactory, properties);
-    }
-
-
-    @Bean
-    @ConditionalOnMissingBean
     public StorageStrategy localStorageStrategy(SilkyExcelProperties properties) {
         return new LocalStorageStrategy(properties);
     }
@@ -133,8 +125,9 @@ public class SilkyExcelAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public ExportEngine exportEngine(StorageService storageService,
-                                     ExportRecordService recordService) {
-        return new ExportEngine(storageService, recordService);
+                                     ExportRecordService recordService,
+                                     SilkyExcelProperties properties) {
+        return new ExportEngine(storageService, recordService, properties);
     }
 
     @Bean
@@ -151,8 +144,8 @@ public class SilkyExcelAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public ExcelExportTemplate excelExportTemplate(AsyncExecutor asyncExecutor,
-                                                   ImportEngine importEngine) {
-        return new DefaultExcelExportTemplate(asyncExecutor, importEngine);
+    public ExcelTemplate excelTemplate(AsyncProcessorFactory processorFactory,
+                                       SilkyExcelProperties properties) {
+        return new DefaultExcelTemplate(processorFactory, properties);
     }
 }

@@ -1,8 +1,10 @@
 package com.silky.starter.excel.core.model.export;
 
+import cn.hutool.core.date.LocalDateTimeUtil;
 import com.silky.starter.excel.core.async.BaseAsyncTask;
-import com.silky.starter.excel.entity.ExportRecord;
 import lombok.*;
+
+import java.time.LocalDateTime;
 
 /**
  * 导出任务
@@ -24,28 +26,20 @@ public class ExportTask<T> extends BaseAsyncTask {
     private ExportRequest<T> request;
 
     /**
-     * 导出记录
-     * 任务执行的状态和结果信息
-     */
-    private ExportRecord record;
-
-    /**
      * 任务创建时间戳
      * 用于计算任务执行时间
      */
     private Long createTime;
 
     /**
-     * 任务开始执行时间戳
-     * 用于计算实际处理时间
+     * 任务开始执行
      */
-    private Long startTime;
+    private LocalDateTime startTime;
 
     /**
-     * 任务完成时间戳
-     * 用于计算总执行时间
+     * 任务完成
      */
-    private Long finishTime;
+    private LocalDateTime finishTime;
 
     /**
      * 任务执行线程
@@ -60,31 +54,11 @@ public class ExportTask<T> extends BaseAsyncTask {
     private transient Object context;
 
     /**
-     * 创建默认的导出任务
-     *
-     * @param taskId  任务ID
-     * @param request 导出请求
-     * @param record  导出记录
-     * @param <T>     数据类型
-     * @return 导出任务实例
-     */
-    public static <T> ExportTask<T> create(String taskId, ExportRequest<T> request, ExportRecord record) {
-        long now = System.currentTimeMillis();
-        ExportTask<T> build = ExportTask.<T>builder()
-                .request(request)
-                .record(record)
-                .createTime(now)
-                .build();
-        build.setTaskId(taskId);
-        return build;
-    }
-
-    /**
      * 标记任务开始执行
      * 设置开始时间并记录执行线程
      */
     public void markStart() {
-        this.startTime = System.currentTimeMillis();
+        this.startTime = LocalDateTime.now();
         this.executeThread = Thread.currentThread();
     }
 
@@ -93,7 +67,7 @@ public class ExportTask<T> extends BaseAsyncTask {
      * 设置完成时间
      */
     public void markFinish() {
-        this.finishTime = System.currentTimeMillis();
+        this.finishTime = LocalDateTime.now();
     }
 
     /**
@@ -115,21 +89,18 @@ public class ExportTask<T> extends BaseAsyncTask {
         if (startTime == null) {
             return 0;
         }
-        long endTime = finishTime != null ? finishTime : System.currentTimeMillis();
-        return endTime - startTime;
+        LocalDateTime endTime = finishTime == null ? LocalDateTime.now() : finishTime;
+        return LocalDateTimeUtil.toEpochMilli(endTime) - LocalDateTimeUtil.toEpochMilli(startTime);
     }
 
     /**
      * 检查任务是否超时
      *
-     * @param taskTimeoutMinutes 任务超时时间（分钟）
+     * @param timeoutMinutes 任务超时时间（分钟）
      * @return 如果超时返回true，否则返回false
      */
-    public boolean isTimeout(int taskTimeoutMinutes) {
-        if (request.getTimeout() == null) {
-            return false;
-        }
-        return getElapsedTime() > request.getTimeout();
+    public boolean isTimeout(long timeoutMinutes) {
+        return startTime != null && LocalDateTime.now().isAfter(startTime.plusMinutes(timeoutMinutes));
     }
 
     /**
@@ -150,24 +121,4 @@ public class ExportTask<T> extends BaseAsyncTask {
         return finishTime != null;
     }
 
-    /**
-     * 校验任务参数
-     *
-     * @param task 导出任务
-     * @throws IllegalArgumentException 如果任务参数不合法
-     */
-    public static void validateTaExportTask(ExportTask<?> task) {
-        if (task == null) {
-            throw new IllegalArgumentException("导出任务不能为null");
-        }
-        if (task.getTaskId() == null || task.getTaskId().trim().isEmpty()) {
-            throw new IllegalArgumentException("任务ID不能为空");
-        }
-        if (task.getRequest() == null) {
-            throw new IllegalArgumentException("导出请求不能为null");
-        }
-        if (task.getRecord() == null) {
-            throw new IllegalArgumentException("导出记录不能为null");
-        }
-    }
 }

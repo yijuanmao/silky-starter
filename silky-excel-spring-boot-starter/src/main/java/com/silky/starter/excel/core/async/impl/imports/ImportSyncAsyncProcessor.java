@@ -70,18 +70,15 @@ public class ImportSyncAsyncProcessor implements ImportAsyncProcessor<ImportResu
         if (!isAvailable()) {
             throw new IllegalStateException("同步处理器当前不可用，无法处理任务");
         }
-
         log.debug("开始同步执行导入任务: {}", task.getTaskId());
-
         try {
             // 直接调用process方法执行任务
-            ImportResult result = process(task);
+            ImportResult result = this.process(task);
             log.debug("同步导入任务执行完成: {}", task.getTaskId());
             return result;
         } catch (Exception e) {
             log.error("同步导入任务执行失败: {}", task.getTaskId(), e);
-//            throw new ExcelExportException("同步执行任务失败: " + e.getMessage(), e);
-            return ImportResult.fail(task.getTaskId(), "同步导入任务执行失败: " + e.getMessage());
+            throw new ExcelExportException("同步执行任务失败: " + e.getMessage(), e);
         }
     }
 
@@ -160,14 +157,14 @@ public class ImportSyncAsyncProcessor implements ImportAsyncProcessor<ImportResu
     }
 
     /**
-     * 设置处理器可用状态
-     * 可以用于临时禁用处理器
+     * 设置处理器可用状态,可以用于临时禁用处理器
      *
      * @param available 是否可用
      */
+    @Override
     public void setAvailable(boolean available) {
         this.available = available;
-        log.info("同步处理器可用状态设置为: {}", available);
+        log.info("同步导出处理器可用状态设置为: {}", available);
     }
 
     /**

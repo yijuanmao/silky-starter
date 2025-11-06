@@ -12,7 +12,7 @@ import java.util.Map;
  * @author zy
  * @date 2025-10-27 15:12
  **/
-public interface DataImporter<T> {
+public interface DataImporterSupplier<T> {
 
     /**
      * 导入数据

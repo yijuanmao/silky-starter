@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -54,8 +55,6 @@ public class EnhancedExcelWriter implements Closeable {
      */
     private WriteSheet currentWriteSheet;
 
-    private List<String> currentHeaders;
-
     private static final String DEFAULT_SHEET_NAME = "数据";
 
     public EnhancedExcelWriter(String filePath, long maxRowsPerSheet) {
@@ -80,10 +79,8 @@ public class EnhancedExcelWriter implements Closeable {
      * @param data          数据列表
      * @param clazz         数据类
      * @param sheetName     Sheet名称
-     * @param headerMapping 表头映射
      */
-    public <T> void write(List<T> data, Class<T> clazz, String sheetName,
-                          Map<String, String> headerMapping) {
+    public <T> void write(List<T> data, Class<T> clazz, String sheetName) {
         if (CollectionUtil.isEmpty(data)) {
             log.debug("数据为空，跳过写入");
             return;
@@ -122,7 +119,6 @@ public class EnhancedExcelWriter implements Closeable {
             if (currentWriteSheet == null) {
                 throw new ExcelExportException("WriteSheet未初始化");
             }
-
             writer.write(data, currentWriteSheet);
 
             int batchSize = data.size();
@@ -169,20 +165,9 @@ public class EnhancedExcelWriter implements Closeable {
      *
      * @param data          数据列表
      * @param clazz         数据类
-     * @param headerMapping 表头映射
-     */
-    public <T> void write(List<T> data, Class<T> clazz, Map<String, String> headerMapping) {
-        this.write(data, clazz, DEFAULT_SHEET_NAME, headerMapping);
-    }
-
-    /**
-     * 写入数据
-     *
-     * @param data  数据列表
-     * @param clazz 数据类
      */
     public <T> void write(List<T> data, Class<T> clazz) {
-        write(data, clazz, DEFAULT_SHEET_NAME, null);
+        this.write(data, clazz, DEFAULT_SHEET_NAME);
     }
 
     private boolean needNewSheet() {

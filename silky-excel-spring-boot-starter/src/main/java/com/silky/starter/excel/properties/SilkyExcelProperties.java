@@ -33,9 +33,11 @@ public class SilkyExcelProperties {
     /**
      * 导入配置
      */
-    private Import importConfig = new Import();
+    private Import imports = new Import();
 
-
+    /**
+     * 存储配置
+     */
     private Storage storage = new Storage();
 
 
@@ -104,7 +106,7 @@ public class SilkyExcelProperties {
         /**
          * 每个Sheet的最大行数
          */
-        private int maxRowsPerSheet = 200000;
+        private long maxRowsPerSheet = 200000;
 
         /**
          * 批处理大小

@@ -7,15 +7,13 @@ import com.silky.starter.excel.core.model.imports.ImportRequest;
 import com.silky.starter.excel.core.model.imports.ImportResult;
 import com.silky.starter.excel.enums.AsyncType;
 
-import java.util.List;
-
 /**
  * Excel 导出模板接口
  *
  * @author zy
  * @date 2025-10-24 16:44
  **/
-public interface ExcelExportTemplate {
+public interface ExcelTemplate {
 
     /**
      * 导出数据（使用默认异步方式）
@@ -79,4 +77,12 @@ public interface ExcelExportTemplate {
      * @return 处理器状态
      */
     ProcessorStatus getProcessorStatus(String asyncType);
+
+    /**
+     * 设置处理器可用状态
+     *
+     * @param asyncType 处理器类型
+     * @param available 是否可用
+     */
+    void setAvailable(String asyncType, boolean available);
 }

@@ -1,7 +1,7 @@
 package com.silky.starter.excel.template.processor;
 
 import com.silky.starter.excel.core.async.ExportAsyncProcessor;
-import com.silky.starter.excel.core.async.executor.AsyncExecutor;
+import com.silky.starter.excel.core.async.factory.AsyncProcessorFactory;
 import com.silky.starter.excel.core.exception.ExcelExportException;
 import com.silky.starter.excel.core.model.export.ExportResult;
 import com.silky.starter.excel.core.model.export.ExportTask;
@@ -22,7 +22,7 @@ import javax.annotation.PostConstruct;
 @Component
 public class ExportRabbitMQProcessor implements ExportAsyncProcessor<ExportResult> {
     @Autowired
-    private AsyncExecutor asyncExecutor;
+    private AsyncProcessorFactory processorFactory;
 
     @PostConstruct
     public void init() {
@@ -35,7 +35,7 @@ public class ExportRabbitMQProcessor implements ExportAsyncProcessor<ExportResul
      */
     @Override
     public String getType() {
-        return AsyncType.CUSTOM.name();
+        return AsyncType.MQ.name();
     }
 
     /**
@@ -61,6 +61,7 @@ public class ExportRabbitMQProcessor implements ExportAsyncProcessor<ExportResul
      */
     @Override
     public ExportResult process(ExportTask<?> task) throws ExcelExportException {
-        return asyncExecutor.submitExport(task, AsyncType.CUSTOM);
+        ExportAsyncProcessor<ExportResult> processor = processorFactory.getExportProcessor(AsyncType.MQ.name());
+        return processor.process(task);
     }
 }

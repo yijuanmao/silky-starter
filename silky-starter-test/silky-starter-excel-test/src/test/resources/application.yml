@@ -4,14 +4,15 @@ silky:
     enabled: true
     async:
       enabled: true
-      async-type: custom
+      async-type: mq
     export:
       maxRowsPerSheet: 100000
       batchSize: 1000
-    import:
-      pageSize: 1000
+    imports:
+      page-size: 1000
     storage:
       storageType: LOCAL
       local:
-        basePath: F:\\tmp\\
-        autoClean: false
+        base-path: F:\\tmp\\
+        autoClean: true
+

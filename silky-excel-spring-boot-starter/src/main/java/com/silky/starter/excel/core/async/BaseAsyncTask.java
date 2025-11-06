@@ -1,5 +1,6 @@
 package com.silky.starter.excel.core.async;
 
+import com.silky.starter.excel.enums.AsyncType;
 import com.silky.starter.excel.enums.TaskType;
 import lombok.Data;
 import org.springframework.util.StringUtils;
@@ -24,6 +25,11 @@ public abstract class BaseAsyncTask implements AsyncTask {
     protected TaskType taskType;
 
     /**
+     * 异步处理类型
+     */
+    private AsyncType asyncType;
+
+    /**
      * 业务类型
      */
     protected String businessType;
@@ -38,6 +44,9 @@ public abstract class BaseAsyncTask implements AsyncTask {
         }
         if (taskType == null) {
             throw new IllegalArgumentException("任务类型不能为空");
+        }
+        if (asyncType == null) {
+            throw new IllegalArgumentException("异步处理类型不能为空");
         }
     }
 

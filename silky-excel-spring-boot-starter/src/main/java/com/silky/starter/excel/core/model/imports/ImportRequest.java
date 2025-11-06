@@ -38,6 +38,15 @@ public class ImportRequest<T> {
     private String fileUrl;
 
     /**
+     * 数据导入器
+     * 负责将处理后的数据持久化到目标系统
+     */
+    private DataImporterSupplier<T> dataImporterSupplier;
+
+
+    // 以下参数可以为空
+
+    /**
      * 存储类型，指定文件所在的存储系统
      */
     private StorageType storageType;
@@ -61,12 +70,6 @@ public class ImportRequest<T> {
      * 数据处理器列表，对导入的数据进行校验、转换、过滤等处理
      */
     private List<ExportDataProcessor<T>> processors;
-
-    /**
-     * 数据导入器
-     * 负责将处理后的数据持久化到目标系统
-     */
-    private DataImporter<T> dataImporter;
 
     /**
      * 分页大小

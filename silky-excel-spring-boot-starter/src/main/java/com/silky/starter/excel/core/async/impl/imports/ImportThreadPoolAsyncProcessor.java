@@ -204,6 +204,18 @@ public class ImportThreadPoolAsyncProcessor implements ImportAsyncProcessor<Impo
         return description;
     }
 
+
+    /**
+     * 设置处理器可用状态,可以用于临时禁用处理器
+     *
+     * @param available 是否可用
+     */
+    @Override
+    public void setAvailable(boolean available) {
+        this.available = available;
+        log.info("异步线程导出处理器可用状态设置为: {}", available);
+    }
+
     /**
      * 提交任务并返回Future（扩展方法）
      * 允许调用方获取任务执行结果
