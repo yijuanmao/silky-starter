@@ -103,7 +103,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         request.setDataSupplier((pageNum, pageSize, params) -> {
             //这里模拟数据库分页查询
             List<UserTest> userTests = this.findByCondition(pageNum, pageSize);
-            //hasNext 用于是否有下一页数据,如果查询findByCondition方法使用分页插件，就可以从分页插件中获取是否有下一页；·
+            //PageInfo<User> page = userService.findByCondition(pageNum, pageSize, queryParams);
+            //return new PageData<>(page.getList(), page.isHasNextPage());
+            //hasNext 用于是否有下一页数据,如果查询findByCondition方法使用分页插件，就可以从分页插件中获取是否有下一页；,参照上述伪代码·
             return new ExportPageData<>(userTests, hasNext);
         });
         ExportResult result = excelTemplate.export(request, AsyncType.MQ);
