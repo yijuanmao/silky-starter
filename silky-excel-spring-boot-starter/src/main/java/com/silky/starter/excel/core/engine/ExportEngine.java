@@ -9,6 +9,7 @@ import com.silky.starter.excel.core.model.export.*;
 import com.silky.starter.excel.entity.ExportRecord;
 import com.silky.starter.excel.enums.AsyncType;
 import com.silky.starter.excel.enums.ExportStatus;
+import com.silky.starter.excel.enums.StorageType;
 import com.silky.starter.excel.properties.SilkyExcelProperties;
 import com.silky.starter.excel.service.export.ExportRecordService;
 import com.silky.starter.excel.service.storage.StorageService;
@@ -68,6 +69,10 @@ public class ExportEngine {
 
     private final ScheduledExecutorService cleanupExecutor;
 
+    private final StorageType defaultStorageType;
+
+    private final AsyncType defaultAsyncType;
+
     public ExportEngine(StorageService storageService,
                         ExportRecordService recordService,
                         SilkyExcelProperties properties) {
@@ -77,6 +82,9 @@ public class ExportEngine {
         this.cleanupExecutor = Executors.newSingleThreadScheduledExecutor(
                 r -> new Thread(r, "export-engine-cleanup")
         );
+
+        defaultStorageType = properties.getStorage().getStorageType();
+        defaultAsyncType = properties.getAsync().getAsyncType();
     }
 
     /**
@@ -322,8 +330,11 @@ public class ExportEngine {
         if (request.getDataSupplier() == null) {
             throw new IllegalArgumentException("数据供应器不能为null");
         }
-        if (request.getPageSize() == null || request.getPageSize() <= 0) {
-            throw new IllegalArgumentException("分页大小必须大于0");
+        if (Objects.isNull(request.getPageSize())) {
+            request.setPageSize(properties.getExport().getPageSize());
+        }
+        if (Objects.isNull(request.getTimeout())) {
+            request.setTimeout(properties.getExport().getTimeoutMinutes());
         }
     }
 
@@ -339,8 +350,8 @@ public class ExportEngine {
                 .taskId(taskId)
                 .businessType(request.getBusinessType())
                 .fileName(request.getFileName())
-                .storageType(request.getStorageType())
-                .asyncType(task.getAsyncType())
+                .storageType(Objects.isNull(request.getStorageType()) ? defaultStorageType : request.getStorageType())
+                .asyncType(Objects.isNull(task.getAsyncType()) ? defaultAsyncType : task.getAsyncType())
                 .createUser(request.getCreateUser())
                 .status(ExportStatus.PROCESSING)
                 .createTime(LocalDateTime.now())

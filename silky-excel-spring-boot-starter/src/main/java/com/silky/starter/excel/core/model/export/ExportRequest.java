@@ -1,6 +1,5 @@
 package com.silky.starter.excel.core.model.export;
 
-import com.silky.starter.excel.enums.AsyncType;
 import com.silky.starter.excel.enums.StorageType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -86,7 +85,7 @@ public class ExportRequest<T> {
      * 发起导出任务的用户标识
      * 默认值："system"
      */
-    private String createUser;
+    private String createUser = "system";
 
     /**
      * 是否启用进度跟踪
@@ -96,9 +95,9 @@ public class ExportRequest<T> {
     private Boolean enableProgress;
 
     /**
-     * 超时时间（毫秒）
+     * 超时时间（分钟）
      * 导出任务的最大执行时间，超时后任务会被取消
-     * 默认值：3600000（1小时）
+     * 默认值：60（1小时）
      */
     private Long timeout;
 

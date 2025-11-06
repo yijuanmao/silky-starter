@@ -28,10 +28,27 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
     private ExcelTemplate excelTemplate;
 
     /**
-     * 测试同步导出
+     * 测试同步导出-非分页模式，适合小批量数据模式
      */
     @Test
     public void testExportSync() {
+        ExportResult result = excelTemplate.export(ExportRequest.<UserTest>builder()
+                .dataClass(UserTest.class)
+                .fileName("test.xls")
+                .dataSupplier((pageNum, pageSize, params) -> {
+                    //这里一次性获取所有数据
+                    List<UserTest> users = TEST_DATA;
+                    return new ExportPageData<>(users, false);
+                })
+                .build(), AsyncType.SYNC);
+        log.info("导出结果: {}", result);
+    }
+
+    /**
+     * 测试同步导出-分页模式
+     */
+    @Test
+    public void testPageExportSync() {
         // 创建导出请求
         ExportRequest<UserTest> request = new ExportRequest<>();
         request.setDataClass(UserTest.class);
@@ -50,10 +67,10 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
     }
 
     /**
-     * 测试异步导出
+     * 测试异步导出-分页模式-使用线程池导出
      */
     @Test
-    public void testExportAsync() {
+    public void testPageExportAsync() {
         boolean hasNext = true;
         // 创建导出请求
         ExportRequest<UserTest> request = new ExportRequest<>();
@@ -72,10 +89,10 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
     }
 
     /**
-     * 使用自定义分页查询测试异步导出
+     * 使用自定义分页查询测试异步导出-分页模式-使用MQ或者自定义异步方式
      */
     @Test
-    public void testExportAsyncCustom() {
+    public void testPageExportAsyncCustom() {
         boolean hasNext = true;
         // 创建导出请求
         ExportRequest<UserTest> request = new ExportRequest<>();

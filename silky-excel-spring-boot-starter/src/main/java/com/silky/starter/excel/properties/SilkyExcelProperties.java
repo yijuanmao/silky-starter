@@ -132,6 +132,11 @@ public class SilkyExcelProperties {
          * 默认模板类型
          */
         private String defaultTemplateType;
+
+        /**
+         * 分页大小
+         */
+        private int pageSize = 2000;
     }
 
     @Data
