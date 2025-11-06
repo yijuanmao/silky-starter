@@ -2,7 +2,7 @@ package com.silky.starter.excel.config;
 
 import com.silky.starter.excel.core.async.executor.AsyncExecutor;
 import com.silky.starter.excel.core.async.factory.AsyncProcessorFactory;
-import com.silky.starter.excel.core.async.impl.export.ExportSyncAsyncProcessor;
+import com.silky.starter.excel.core.async.impl.export.ExportSyncProcessor;
 import com.silky.starter.excel.core.async.impl.export.ExportThreadPoolAsyncProcessor;
 import com.silky.starter.excel.core.async.impl.imports.ImportSyncAsyncProcessor;
 import com.silky.starter.excel.core.async.impl.imports.ImportThreadPoolAsyncProcessor;
@@ -21,11 +21,11 @@ import com.silky.starter.excel.service.storage.impl.DefaultStorageService;
 import com.silky.starter.excel.template.ExcelExportTemplate;
 import com.silky.starter.excel.template.impl.DefaultExcelExportTemplate;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.List;
@@ -38,7 +38,7 @@ import java.util.concurrent.ThreadPoolExecutor;
  * @date 2025-10-24 11:14
  **/
 @Slf4j
-@Configuration
+@AutoConfiguration
 @EnableConfigurationProperties(SilkyExcelProperties.class)
 @ConditionalOnProperty(prefix = "silky.excel", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class SilkyExcelAutoConfiguration {
@@ -67,8 +67,8 @@ public class SilkyExcelAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public ExportSyncAsyncProcessor exportSyncAsyncProcessor(ExportEngine exportEngine) {
-        return new ExportSyncAsyncProcessor(exportEngine);
+    public ExportSyncProcessor exportSyncProcessor(ExportEngine exportEngine) {
+        return new ExportSyncProcessor(exportEngine);
     }
 
     @Bean

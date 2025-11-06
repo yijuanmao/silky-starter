@@ -122,6 +122,7 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
 
         // 发现导出处理器
         Map<String, ExportAsyncProcessor> exportProcessors = applicationContext.getBeansOfType(ExportAsyncProcessor.class);
+        log.info("ExportAsyncProcessor beans: {}", exportProcessors.keySet());
         exportProcessors.forEach((beanName, processor) -> {
             String type = processor.getType();
             exportProcessorMap.put(type, processor);

@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
+
 /**
  * RabbitMQ导出异步处理器
  *
@@ -21,6 +23,11 @@ import org.springframework.stereotype.Component;
 public class ExportRabbitMQProcessor implements ExportAsyncProcessor<ExportResult> {
     @Autowired
     private AsyncExecutor asyncExecutor;
+
+    @PostConstruct
+    public void init() {
+        log.info("ExportRabbitMQProcessor bean created");
+    }
 
     /**
      * 获取处理器类型，类型应该与AsyncType枚举值对应，用于在工厂中标识处理器
