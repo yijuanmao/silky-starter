@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @date 2025-10-28 15:26
  **/
 @Slf4j
-public class ImportThreadPoolAsyncProcessor implements ImportAsyncProcessor<ImportResult> {
+public class ImportThreadPoolAsyncProcessor implements ImportAsyncProcessor {
 
     /**
      * 已处理任务计数器

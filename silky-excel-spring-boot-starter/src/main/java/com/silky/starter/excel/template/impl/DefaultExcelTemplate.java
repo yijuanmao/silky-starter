@@ -77,10 +77,10 @@ public class DefaultExcelTemplate implements ExcelTemplate, InitializingBean {
         this.validateExportRequest(request, asyncType);
         ExportTask<T> task = createExportTask(request, asyncType);
         try {
-            ExportAsyncProcessor<ExportResult> processor = processorFactory.getExportProcessor(asyncType);
+            ExportAsyncProcessor processor = processorFactory.getExportProcessor(asyncType);
             if (!processor.isAvailable() || !properties.getAsync().isEnabled()) {
                 log.debug("异步导出被禁用，使用同步方式执行任务: {}", task.getTaskId());
-                ExportAsyncProcessor<ExportResult> syncProcessor = processorFactory.getExportProcessor(AsyncType.SYNC);
+                ExportAsyncProcessor syncProcessor = processorFactory.getExportProcessor(AsyncType.SYNC);
                 return syncProcessor.process(task);
             }
             ExportResult result = processor.submit(task);
@@ -130,10 +130,10 @@ public class DefaultExcelTemplate implements ExcelTemplate, InitializingBean {
         this.validateImportRequest(request, asyncType);
         try {
             ImportTask<T> task = createImportTask(request);
-            ImportAsyncProcessor<ImportResult> processor = processorFactory.getImportProcessor(asyncType);
+            ImportAsyncProcessor processor = processorFactory.getImportProcessor(asyncType);
             if (!processor.isAvailable() || !properties.getAsync().isEnabled()) {
                 log.debug("异步导入处理器不可用，使用同步方式执行任务: {}", task.getTaskId());
-                ImportAsyncProcessor<ImportResult> syncProcessor = processorFactory.getImportProcessor(AsyncType.SYNC);
+                ImportAsyncProcessor syncProcessor = processorFactory.getImportProcessor(AsyncType.SYNC);
                 return syncProcessor.process(task);
             }
             ImportResult result = processor.submit(task);
@@ -161,12 +161,12 @@ public class DefaultExcelTemplate implements ExcelTemplate, InitializingBean {
             return null;
         }
         try {
-            ExportAsyncProcessor<ExportResult> exportProcessor = processorFactory.getExportProcessor(asyncType);
+            ExportAsyncProcessor exportProcessor = processorFactory.getExportProcessor(asyncType);
             return exportProcessor.getStatus();
         } catch (Exception ignored) {
         }
         try {
-            ImportAsyncProcessor<ImportResult> importProcessor = processorFactory.getImportProcessor(asyncType);
+            ImportAsyncProcessor importProcessor = processorFactory.getImportProcessor(asyncType);
             return importProcessor.getStatus();
         } catch (Exception e) {
             log.warn("获取处理器状态失败: {}", asyncType, e);
@@ -187,14 +187,14 @@ public class DefaultExcelTemplate implements ExcelTemplate, InitializingBean {
             return;
         }
         try {
-            ExportAsyncProcessor<ExportResult> exportProcessor = processorFactory.getExportProcessor(asyncType);
+            ExportAsyncProcessor exportProcessor = processorFactory.getExportProcessor(asyncType);
             exportProcessor.setAvailable(available);
             log.info("设置导出处理器可用状态成功: {}, {}", asyncType, available);
             return;
         } catch (Exception ignored) {
         }
         try {
-            ImportAsyncProcessor<ImportResult> importProcessor = processorFactory.getImportProcessor(asyncType);
+            ImportAsyncProcessor importProcessor = processorFactory.getImportProcessor(asyncType);
             importProcessor.setAvailable(available);
             log.info("设置导入处理器可用状态成功: {}, {}", asyncType, available);
         } catch (Exception e) {

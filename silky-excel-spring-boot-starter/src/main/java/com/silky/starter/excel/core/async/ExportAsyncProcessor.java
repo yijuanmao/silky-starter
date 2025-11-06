@@ -1,6 +1,7 @@
 package com.silky.starter.excel.core.async;
 
 import com.silky.starter.excel.core.exception.ExcelExportException;
+import com.silky.starter.excel.core.model.export.ExportResult;
 import com.silky.starter.excel.core.model.export.ExportTask;
 import lombok.Getter;
 
@@ -10,11 +11,10 @@ import java.util.List;
 /**
  * 导出异步处理器接口
  *
- * @param <R> 导出结果类型
  * @author zy
  * @date 2025-10-27 17:50
  **/
-public interface ExportAsyncProcessor<R> extends AsyncProcessor {
+public interface ExportAsyncProcessor extends AsyncProcessor {
 
     /**
      * 提交导出任务
@@ -23,7 +23,7 @@ public interface ExportAsyncProcessor<R> extends AsyncProcessor {
      *
      * @param task 要处理的导出任务，包含任务ID、请求参数和记录信息
      */
-    R submit(ExportTask<?> task) throws ExcelExportException;
+    ExportResult submit(ExportTask<?> task) throws ExcelExportException;
 
     /**
      * 处理导出任务
@@ -32,7 +32,7 @@ public interface ExportAsyncProcessor<R> extends AsyncProcessor {
      *
      * @param task 要处理的导出任务
      */
-    R process(ExportTask<?> task) throws ExcelExportException;
+    ExportResult process(ExportTask<?> task) throws ExcelExportException;
 
     /**
      * 检查任务是否正在处理中

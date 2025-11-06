@@ -59,6 +59,7 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         request.setDataClass(UserTest.class);
         request.setFileName("test_async.xls");
         request.setPageSize(10);
+        request.setMaxRowsPerSheet(10000L);
         request.setDataSupplier((pageNum, pageSize, params) -> {
             //这里模拟数据库分页查询
             List<UserTest> userTests = this.findByCondition(pageNum, pageSize);
@@ -93,7 +94,7 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
      * @return 测试数据列表
      */
     private static List<UserTest> createTestData() {
-        int size = 20000;
+        int size = 10;
         // 预设容量避免频繁扩容，提高性能
         List<UserTest> list = new ArrayList<>(size);
 

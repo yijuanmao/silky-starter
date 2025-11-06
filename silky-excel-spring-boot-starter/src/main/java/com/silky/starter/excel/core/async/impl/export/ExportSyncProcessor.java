@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @date 2025-10-24 14:49
  **/
 @Slf4j
-public class ExportSyncProcessor implements ExportAsyncProcessor<ExportResult> {
+public class ExportSyncProcessor implements ExportAsyncProcessor {
 
     /**
      * 已处理任务计数器

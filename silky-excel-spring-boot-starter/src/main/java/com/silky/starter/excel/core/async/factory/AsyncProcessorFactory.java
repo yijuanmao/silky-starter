@@ -6,8 +6,6 @@ import com.silky.starter.excel.core.async.ExportAsyncProcessor;
 import com.silky.starter.excel.core.async.ImportAsyncProcessor;
 import com.silky.starter.excel.core.async.model.ProcessorStatus;
 import com.silky.starter.excel.core.exception.ExcelExportException;
-import com.silky.starter.excel.core.model.export.ExportResult;
-import com.silky.starter.excel.core.model.imports.ImportResult;
 import com.silky.starter.excel.enums.AsyncType;
 import com.silky.starter.excel.properties.SilkyExcelProperties;
 import lombok.Getter;
@@ -36,12 +34,12 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
     /**
      * 导出处理器映射表
      */
-    private final Map<String, ExportAsyncProcessor<ExportResult>> exportProcessorMap = new ConcurrentHashMap<>();
+    private final Map<String, ExportAsyncProcessor> exportProcessorMap = new ConcurrentHashMap<>();
 
     /**
      * 导入处理器映射表
      */
-    private final Map<String, ImportAsyncProcessor<ImportResult>> importProcessorMap = new ConcurrentHashMap<>();
+    private final Map<String, ImportAsyncProcessor> importProcessorMap = new ConcurrentHashMap<>();
 
     /**
      * 通用处理器映射表
@@ -51,12 +49,12 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
     /**
      * AsyncType枚举到导出处理器的映射
      */
-    private final Map<AsyncType, ExportAsyncProcessor<ExportResult>> exportTypeProcessorMap = new ConcurrentHashMap<>();
+    private final Map<AsyncType, ExportAsyncProcessor> exportTypeProcessorMap = new ConcurrentHashMap<>();
 
     /**
      * AsyncType枚举到导入处理器的映射
      */
-    private final Map<AsyncType, ImportAsyncProcessor<ImportResult>> importTypeProcessorMap = new ConcurrentHashMap<>();
+    private final Map<AsyncType, ImportAsyncProcessor> importTypeProcessorMap = new ConcurrentHashMap<>();
 
     /**
      * 工厂初始化状态
@@ -116,13 +114,11 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
     /**
      * 自动发现并注册所有处理器
      */
-    @SuppressWarnings("all")
     private void autoDiscoverProcessors() {
         log.info("开始自动发现异步处理器...");
 
         // 发现导出处理器
         Map<String, ExportAsyncProcessor> exportProcessors = applicationContext.getBeansOfType(ExportAsyncProcessor.class);
-        log.info("ExportAsyncProcessor beans: {}", exportProcessors.keySet());
         exportProcessors.forEach((beanName, processor) -> {
             String type = processor.getType();
             exportProcessorMap.put(type, processor);
@@ -146,9 +142,9 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
     private void buildTypeMapping() {
 
         // 建立导出处理器类型映射
-        for (Map.Entry<String, ExportAsyncProcessor<ExportResult>> entry : exportProcessorMap.entrySet()) {
+        for (Map.Entry<String, ExportAsyncProcessor> entry : exportProcessorMap.entrySet()) {
             String type = entry.getKey();
-            ExportAsyncProcessor<ExportResult> processor = entry.getValue();
+            ExportAsyncProcessor processor = entry.getValue();
 
             try {
                 AsyncType asyncType = AsyncType.valueOf(type);
@@ -160,9 +156,9 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
         }
 
         // 建立导入处理器类型映射
-        for (Map.Entry<String, ImportAsyncProcessor<ImportResult>> entry : importProcessorMap.entrySet()) {
+        for (Map.Entry<String, ImportAsyncProcessor> entry : importProcessorMap.entrySet()) {
             String type = entry.getKey();
-            ImportAsyncProcessor<ImportResult> processor = entry.getValue();
+            ImportAsyncProcessor processor = entry.getValue();
 
             try {
                 AsyncType asyncType = AsyncType.valueOf(type);
@@ -183,7 +179,7 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
     private void initializeAllProcessors() {
 
         // 初始化导出处理器
-        for (ExportAsyncProcessor<ExportResult> processor : exportProcessorMap.values()) {
+        for (ExportAsyncProcessor processor : exportProcessorMap.values()) {
             try {
                 processor.init();
                 log.debug("导出处理器初始化成功: {}", processor.getType());
@@ -193,7 +189,7 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
         }
 
         // 初始化导入处理器
-        for (ImportAsyncProcessor<ImportResult> processor : importProcessorMap.values()) {
+        for (ImportAsyncProcessor processor : importProcessorMap.values()) {
             try {
                 processor.init();
                 log.debug("导入处理器初始化成功: {}", processor.getType());
@@ -231,11 +227,11 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
     /**
      * 根据处理器类型获取导出处理器
      */
-    public ExportAsyncProcessor<ExportResult> getExportProcessor(String type) {
+    public ExportAsyncProcessor getExportProcessor(String type) {
         validateInitialized();
         validateType(type);
 
-        ExportAsyncProcessor<ExportResult> processor = exportProcessorMap.get(type);
+        ExportAsyncProcessor processor = exportProcessorMap.get(type);
         if (processor == null) {
             throw new IllegalArgumentException("不支持的导出处理器类型: " + type + "，可用类型: " + getAvailableExportTypes());
         }
@@ -245,11 +241,11 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
     /**
      * 根据AsyncType枚举获取导出处理器
      */
-    public ExportAsyncProcessor<ExportResult> getExportProcessor(AsyncType asyncType) {
+    public ExportAsyncProcessor getExportProcessor(AsyncType asyncType) {
         validateInitialized();
         validateAsyncType(asyncType);
 
-        ExportAsyncProcessor<ExportResult> processor = exportTypeProcessorMap.get(asyncType);
+        ExportAsyncProcessor processor = exportTypeProcessorMap.get(asyncType);
         if (processor == null) {
             throw new IllegalArgumentException("不支持的导出异步类型: " + asyncType +
                     "，可用类型: " + exportTypeProcessorMap.keySet());
@@ -260,11 +256,11 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
     /**
      * 根据处理器类型获取导入处理器
      */
-    public ImportAsyncProcessor<ImportResult> getImportProcessor(String type) {
+    public ImportAsyncProcessor getImportProcessor(String type) {
         validateInitialized();
         validateType(type);
 
-        ImportAsyncProcessor<ImportResult> processor = importProcessorMap.get(type);
+        ImportAsyncProcessor processor = importProcessorMap.get(type);
         if (processor == null) {
             throw new IllegalArgumentException("不支持的导入处理器类型: " + type +
                     "，可用类型: " + getAvailableImportTypes());
@@ -276,11 +272,11 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
     /**
      * 根据AsyncType枚举获取导入处理器
      */
-    public ImportAsyncProcessor<ImportResult> getImportProcessor(AsyncType asyncType) {
+    public ImportAsyncProcessor getImportProcessor(AsyncType asyncType) {
         validateInitialized();
         validateAsyncType(asyncType);
 
-        ImportAsyncProcessor<ImportResult> processor = importTypeProcessorMap.get(asyncType);
+        ImportAsyncProcessor processor = importTypeProcessorMap.get(asyncType);
         if (processor == null) {
             throw new IllegalArgumentException("不支持的导入异步类型: " + asyncType +
                     "，可用类型: " + importTypeProcessorMap.keySet());
@@ -291,14 +287,14 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
     /**
      * 注册自定义导出处理器
      */
-    public void registerExportProcessor(ExportAsyncProcessor<ExportResult> processor) {
+    public void registerExportProcessor(ExportAsyncProcessor processor) {
         registerCustomProcessor(processor, exportProcessorMap, exportTypeProcessorMap, "导出");
     }
 
     /**
      * 注册自定义导入处理器
      */
-    public void registerImportProcessor(ImportAsyncProcessor<ImportResult> processor) {
+    public void registerImportProcessor(ImportAsyncProcessor processor) {
         registerCustomProcessor(processor, importProcessorMap, importTypeProcessorMap, "导入");
     }
 
@@ -408,8 +404,8 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
         boolean unregistered = false;
 
         // 尝试从各个映射表中移除
-        ExportAsyncProcessor<ExportResult> exportProcessor = exportProcessorMap.remove(type);
-        ImportAsyncProcessor<ImportResult> importProcessor = importProcessorMap.remove(type);
+        ExportAsyncProcessor exportProcessor = exportProcessorMap.remove(type);
+        ImportAsyncProcessor importProcessor = importProcessorMap.remove(type);
         AsyncProcessor generalProcessor = processorMap.remove(type);
 
         if (exportProcessor != null) {
@@ -465,12 +461,12 @@ public class AsyncProcessorFactory implements ApplicationContextAware, Initializ
     private void destroyAllProcessors() {
 
         // 销毁导出处理器
-        for (ExportAsyncProcessor<ExportResult> processor : exportProcessorMap.values()) {
+        for (ExportAsyncProcessor processor : exportProcessorMap.values()) {
             destroyProcessor(processor, processor.getType());
         }
 
         // 销毁导入处理器
-        for (ImportAsyncProcessor<ImportResult> processor : importProcessorMap.values()) {
+        for (ImportAsyncProcessor processor : importProcessorMap.values()) {
             destroyProcessor(processor, processor.getType());
         }
 

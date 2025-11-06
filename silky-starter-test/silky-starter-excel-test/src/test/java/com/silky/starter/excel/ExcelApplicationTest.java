@@ -9,15 +9,15 @@ import org.springframework.context.annotation.ComponentScan;
 /**
  * OSS应用测试类
  */
-//@SpringBootApplication
+@SpringBootApplication
 @SpringBootTest(classes = ExcelApplicationTest.class)
 @ComponentScan({"com.silky","com.silky.**", "com.silky.starter.excel.template.processor"})
 public class ExcelApplicationTest {
 
     protected final Logger log = org.slf4j.LoggerFactory.getLogger(this.getClass());
 
-//    public static void main(String[] args) {
-//        SpringApplication.run(ExcelApplicationTest.class, args);
-//    }
+    public static void main(String[] args) {
+        SpringApplication.run(ExcelApplicationTest.class, args);
+    }
 
 }

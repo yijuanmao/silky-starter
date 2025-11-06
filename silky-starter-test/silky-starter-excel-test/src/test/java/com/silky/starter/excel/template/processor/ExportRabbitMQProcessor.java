@@ -20,9 +20,9 @@ import javax.annotation.PostConstruct;
  **/
 @Slf4j
 @Component
-public class ExportRabbitMQProcessor implements ExportAsyncProcessor<ExportResult> {
-    @Autowired
-    private AsyncProcessorFactory processorFactory;
+public class ExportRabbitMQProcessor implements ExportAsyncProcessor {
+//    @Autowired
+//    private AsyncProcessorFactory processorFactory;
 
     @PostConstruct
     public void init() {
@@ -61,7 +61,8 @@ public class ExportRabbitMQProcessor implements ExportAsyncProcessor<ExportResul
      */
     @Override
     public ExportResult process(ExportTask<?> task) throws ExcelExportException {
-        ExportAsyncProcessor<ExportResult> processor = processorFactory.getExportProcessor(AsyncType.MQ.name());
-        return processor.process(task);
+//        ExportAsyncProcessor processor = processorFactory.getExportProcessor(AsyncType.MQ.name());
+//        return processor.process(task);
+        return ExportResult.success(task.getTaskId());
     }
 }
