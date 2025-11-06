@@ -73,6 +73,8 @@ public class ExportEngine {
 
     private final AsyncType defaultAsyncType;
 
+    private final long defaultTimeout;
+
     public ExportEngine(StorageService storageService,
                         ExportRecordService recordService,
                         SilkyExcelProperties properties) {
@@ -85,6 +87,7 @@ public class ExportEngine {
 
         defaultStorageType = properties.getStorage().getStorageType();
         defaultAsyncType = properties.getAsync().getAsyncType();
+        defaultTimeout = properties.getExport().getTimeoutMinutes();
     }
 
     /**
@@ -171,7 +174,7 @@ public class ExportEngine {
             while (context.isHasNext()) {
 
                 // 检查任务是否超时
-                this.checkTaskTimeout(taskId);
+                this.checkTaskTimeout(taskId, request.getTimeout());
 
                 // 获取分页数据
                 ExportPageData<T> pageData = this.fetchPageData(request, context.getCurrentPage());
@@ -182,9 +185,11 @@ public class ExportEngine {
                 List<T> processedData = processPageData(pageData.getData(), request.getProcessors(), context.getCurrentPage());
                 // 写入数据
                 writePageData(writer, processedData, request, context.getCurrentPage());
-                // 更新进度
-                this.updateExportProgress(context, processedData.size(), pageData.isHasNext());
 
+                if (request.isEnableProgress()) {
+                    // 更新进度
+                    this.updateExportProgress(context, processedData.size(), pageData.isHasNext());
+                }
                 successTasks.getAndAdd(processedData.size());
             }
             if (asyncType.isAsync()) {
@@ -330,12 +335,6 @@ public class ExportEngine {
         if (request.getDataSupplier() == null) {
             throw new IllegalArgumentException("数据供应器不能为null");
         }
-        if (Objects.isNull(request.getPageSize())) {
-            request.setPageSize(properties.getExport().getPageSize());
-        }
-        if (Objects.isNull(request.getTimeout())) {
-            request.setTimeout(properties.getExport().getTimeoutMinutes());
-        }
     }
 
     /**
@@ -374,11 +373,12 @@ public class ExportEngine {
     /**
      * 检查任务是否超时
      *
-     * @param taskId 任务ID
+     * @param taskId  任务ID
+     * @param timeout 超时时间（分钟）
      */
-    private void checkTaskTimeout(String taskId) {
+    private void checkTaskTimeout(String taskId, Long timeout) {
         ExportTask<?> task = taskCache.get(taskId);
-        if (task != null && task.isTimeout(properties.getExport().getTimeoutMinutes())) {
+        if (task != null && task.isTimeout(Objects.isNull(timeout) ? defaultTimeout : timeout)) {
             throw new ExcelExportException("任务执行超时，已中断");
         }
     }

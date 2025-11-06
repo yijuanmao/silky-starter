@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -64,14 +65,16 @@ public class ExportRequest<T> {
      * 每次从数据供应器获取的数据条数
      * 默认值：2000
      */
-    private Integer pageSize;
+    @Builder.Default
+    private int pageSize = 2000;
 
     /**
      * 查询参数
      * 传递给数据供应器的额外参数
      * 默认值：空Map
      */
-    private Map<String, Object> params;
+    @Builder.Default
+    private Map<String, Object> params = new HashMap<>();
 
     /**
      * 数据处理器列表
@@ -85,6 +88,7 @@ public class ExportRequest<T> {
      * 发起导出任务的用户标识
      * 默认值："system"
      */
+    @Builder.Default
     private String createUser = "system";
 
     /**
@@ -92,7 +96,8 @@ public class ExportRequest<T> {
      * 启用后会实时更新导出进度
      * 默认值：true
      */
-    private Boolean enableProgress;
+    @Builder.Default
+    private boolean enableProgress = true;
 
     /**
      * 超时时间（分钟）

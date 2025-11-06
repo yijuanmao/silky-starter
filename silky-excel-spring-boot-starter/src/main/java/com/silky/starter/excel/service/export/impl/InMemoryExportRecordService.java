@@ -105,9 +105,7 @@ public class InMemoryExportRecordService implements ExportRecordService {
             if (record.getTotalCount() == null || record.getTotalCount() == 0) {
                 record.setTotalCount(processedCount);
             }
-
-            log.debug("更新任务进度: {} -> {}/{}",
-                    taskId, processedCount, record.getTotalCount());
+            log.debug("更新任务进度: {} -> {}/{}", taskId, processedCount, record.getTotalCount());
         });
     }
 
