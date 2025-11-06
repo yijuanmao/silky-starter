@@ -1,7 +1,7 @@
 package com.silky.starter.excel.template.processor;
 
 import com.silky.starter.excel.core.async.ExportAsyncProcessor;
-import com.silky.starter.excel.core.async.factory.AsyncProcessorFactory;
+import com.silky.starter.excel.core.engine.ExportEngine;
 import com.silky.starter.excel.core.exception.ExcelExportException;
 import com.silky.starter.excel.core.model.export.ExportResult;
 import com.silky.starter.excel.core.model.export.ExportTask;
@@ -21,8 +21,8 @@ import javax.annotation.PostConstruct;
 @Slf4j
 @Component
 public class ExportRabbitMQProcessor implements ExportAsyncProcessor {
-//    @Autowired
-//    private AsyncProcessorFactory processorFactory;
+    @Autowired
+    private ExportEngine exportEngine;
 
     @PostConstruct
     public void init() {
@@ -61,8 +61,7 @@ public class ExportRabbitMQProcessor implements ExportAsyncProcessor {
      */
     @Override
     public ExportResult process(ExportTask<?> task) throws ExcelExportException {
-//        ExportAsyncProcessor processor = processorFactory.getExportProcessor(AsyncType.MQ.name());
-//        return processor.process(task);
-        return ExportResult.success(task.getTaskId());
+        //实际业务中，这里是发送mq消息，在mq监听方法中调用exportEngine.exportSync(task)
+        return exportEngine.exportSync(task);
     }
 }

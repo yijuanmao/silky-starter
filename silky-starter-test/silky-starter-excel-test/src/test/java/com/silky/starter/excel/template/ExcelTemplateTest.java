@@ -4,6 +4,7 @@ import com.silky.starter.excel.ExcelApplicationTest;
 import com.silky.starter.excel.core.model.export.ExportPageData;
 import com.silky.starter.excel.core.model.export.ExportRequest;
 import com.silky.starter.excel.core.model.export.ExportResult;
+import com.silky.starter.excel.enums.AsyncType;
 import com.silky.starter.excel.template.entity.UserTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,6 +68,28 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
             return new ExportPageData<>(userTests, hasNext);
         });
         ExportResult result = excelTemplate.exportAsync(request);
+        log.info("导出结果: {}", result);
+    }
+
+    /**
+     * 使用自定义分页查询测试异步导出
+     */
+    @Test
+    public void testExportAsyncCustom() {
+        boolean hasNext = true;
+        // 创建导出请求
+        ExportRequest<UserTest> request = new ExportRequest<>();
+        request.setDataClass(UserTest.class);
+        request.setFileName("test_async.xls");
+        request.setPageSize(10);
+        request.setMaxRowsPerSheet(10000L);
+        request.setDataSupplier((pageNum, pageSize, params) -> {
+            //这里模拟数据库分页查询
+            List<UserTest> userTests = this.findByCondition(pageNum, pageSize);
+            //hasNext 用于是否有下一页数据,如果查询findByCondition方法使用分页插件，就可以从分页插件中获取是否有下一页；·
+            return new ExportPageData<>(userTests, hasNext);
+        });
+        ExportResult result = excelTemplate.export(request, AsyncType.MQ);
         log.info("导出结果: {}", result);
     }
 

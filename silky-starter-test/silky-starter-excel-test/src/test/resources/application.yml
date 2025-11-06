@@ -3,8 +3,16 @@ silky:
   excel:
     enabled: true
     async:
+      # 异步导出 开启，关闭默认使用同步导出
       enabled: true
+      # 异步导出方式：SYNC：同步方式； mq: MQ 消息队列方式; THREAD_POOL: 线程池方式； CUSTOM: 自定义异步
       async-type: mq
+      #线程池配置，不配，使用默认配置
+      thread-pool:
+        core-pool-size: 5
+        max-pool-size: 10
+        keep-alive-seconds: 60
+        queue-capacity: 1000
     export:
       maxRowsPerSheet: 100000
       batchSize: 1000
