@@ -2,10 +2,8 @@ package com.silky.starter.excel.template.impl;
 
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
-import com.silky.starter.excel.core.async.ExportAsyncProcessor;
-import com.silky.starter.excel.core.async.ImportAsyncProcessor;
-import com.silky.starter.excel.core.async.factory.AsyncProcessorFactory;
-import com.silky.starter.excel.core.async.model.ProcessorStatus;
+import com.silky.starter.excel.core.engine.ExportEngine;
+import com.silky.starter.excel.core.engine.ImportEngine;
 import com.silky.starter.excel.core.model.export.ExportRequest;
 import com.silky.starter.excel.core.model.export.ExportResult;
 import com.silky.starter.excel.core.model.export.ExportTask;
@@ -17,6 +15,10 @@ import com.silky.starter.excel.enums.TaskType;
 import com.silky.starter.excel.properties.SilkyExcelProperties;
 import com.silky.starter.excel.template.ExcelTemplate;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 /**
  * Excel导出模板默认实现
@@ -28,177 +30,391 @@ public class DefaultExcelTemplate implements ExcelTemplate, InitializingBean {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DefaultExcelTemplate.class);
 
-    private final AsyncProcessorFactory processorFactory;
+    private final ExportEngine exportEngine;
+
+    private final ImportEngine importEngine;
 
     private final SilkyExcelProperties properties;
 
-    private final AsyncType defaultAsyncType;
+    private final ThreadPoolTaskExecutor silkyExcelTaskExecutor;
 
-    public DefaultExcelTemplate(AsyncProcessorFactory processorFactory,
-                                SilkyExcelProperties properties) {
-
-        this.processorFactory = processorFactory;
+    public DefaultExcelTemplate(ExportEngine exportEngine,
+                                ImportEngine importEngine,
+                                SilkyExcelProperties properties,
+                                ThreadPoolTaskExecutor silkyExcelTaskExecutor) {
+        this.exportEngine = exportEngine;
+        this.importEngine = importEngine;
         this.properties = properties;
-        this.defaultAsyncType = properties.getAsync().getAsyncType();
+        this.silkyExcelTaskExecutor = silkyExcelTaskExecutor;
+
+        log.info("DefaultExcelTemplate initialized with exportEngine: {}, importEngine: {}",
+                exportEngine.getClass().getSimpleName(),
+                importEngine.getClass().getSimpleName());
     }
 
     /**
-     * 导出数据（使用默认异步方式）
+     * 异步导出数据（使用默认异步方式）
      *
      * @param request 导出请求
-     * @return 导出结果
      */
     @Override
     public <T> ExportResult exportAsync(ExportRequest<T> request) {
-        return this.export(request, AsyncType.THREAD_POOL);
+        return exportInternal(request, AsyncType.THREAD_POOL, null);
     }
 
     /**
-     * 同步导出数据（适合小数据量）
+     * 同步导出数据（使用默认异步方式）
      *
      * @param request 导出请求
-     * @return 导出结果
      */
     @Override
     public <T> ExportResult exportSync(ExportRequest<T> request) {
-        return this.export(request, AsyncType.SYNC);
+        return exportInternal(request, AsyncType.SYNC, null);
     }
 
     /**
-     * 导出数据
+     * 异步导出数据（使用指定异步方式）
      *
      * @param request   导出请求
-     * @param asyncType 异步类型
-     * @return 导出结果
+     * @param asyncType 异步方式
      */
     @Override
     public <T> ExportResult export(ExportRequest<T> request, AsyncType asyncType) {
-        //校验参数
-        this.validateExportRequest(request, asyncType);
-        ExportTask<T> task = createExportTask(request, asyncType);
-        try {
-            ExportAsyncProcessor processor = processorFactory.getExportProcessor(asyncType);
-            if (!processor.isAvailable() || !properties.getAsync().isEnabled()) {
-                log.debug("异步导出被禁用，使用同步方式执行任务: {}", task.getTaskId());
-                ExportAsyncProcessor syncProcessor = processorFactory.getExportProcessor(AsyncType.SYNC);
-                return syncProcessor.process(task);
-            }
-            ExportResult result = processor.submit(task);
-            log.debug("导出任务提交成功: {}, 处理器: {}", task.getTaskId(), asyncType);
-            return result;
-        } catch (IllegalArgumentException e) {
-            log.warn("导出参数校验失败: {}", e.getMessage());
-            return ExportResult.fail(asyncType.name() + "_" + System.currentTimeMillis(), "参数校验失败");
-        } catch (Exception e) {
-            log.error("导出数据异常，异步类型: {}", asyncType, e);
-            return ExportResult.fail(asyncType.name() + "_" + System.currentTimeMillis(), "silky excel导出失败: " + e.getMessage());
-        }
+        return exportInternal(request, asyncType, null);
+    }
+
+    /**
+     * 异步导出数据（使用指定异步方式）
+     *
+     * @param request        导出请求
+     * @param asyncType      异步方式
+     * @param taskConfigurer 任务配置器
+     */
+    @Override
+    public <T> ExportResult export(ExportRequest<T> request, AsyncType asyncType,
+                                   Consumer<ExportTask<T>> taskConfigurer) {
+        return exportInternal(request, asyncType, taskConfigurer);
+    }
+
+    /**
+     * 异步导出数据（使用默认异步方式）
+     *
+     * @param request 导出请求
+     */
+    @Override
+    public <T> CompletableFuture<ExportResult> exportFuture(ExportRequest<T> request) {
+        return CompletableFuture.supplyAsync(() -> exportSync(request), silkyExcelTaskExecutor);
+    }
+
+    /**
+     * 异步导出数据（使用默认异步方式）
+     *
+     * @param request 导出请求
+     */
+    @Override
+    public <T> ExportResult exportLargeFile(ExportRequest<T> request, int batchSize) {
+        return exportLargeFileInternal(request, batchSize, null);
+    }
+
+    /**
+     * 大文件导出（支持自定义配置）
+     *
+     * @param request        导出请求
+     * @param batchSize      批量大小
+     * @param taskConfigurer 任务配置器
+     */
+    @Override
+    public <T> ExportResult exportLargeFile(ExportRequest<T> request, int batchSize,
+                                            Consumer<ExportTask<T>> taskConfigurer) {
+        return exportLargeFileInternal(request, batchSize, taskConfigurer);
     }
 
     /**
      * 同步导入数据（适合小数据量）
      *
-     * @param request 导出请求
-     * @return 导入结果
+     * @param request 导入请求
      */
     @Override
     public <T> ImportResult importSync(ImportRequest<T> request) {
-        return this.imports(request, AsyncType.SYNC);
+        return importInternal(request, AsyncType.SYNC, null);
     }
 
     /**
-     * 导入数据,异步方法
+     * 异步导入数据
      *
-     * @param request 导出请求
-     * @param <T>     数据类型
-     * @return 导入结果
+     * @param request 导入请求
      */
     @Override
     public <T> ImportResult importAsync(ImportRequest<T> request) {
-        return this.imports(request, AsyncType.THREAD_POOL);
+        return importInternal(request, AsyncType.THREAD_POOL, null);
     }
 
     /**
-     * 导入数据
+     * 导入数据（指定异步类型）
      *
-     * @param request   导出请求
+     * @param request   导入请求
      * @param asyncType 异步类型
-     * @return 导入结果
      */
     @Override
     public <T> ImportResult imports(ImportRequest<T> request, AsyncType asyncType) {
-        this.validateImportRequest(request, asyncType);
+        return importInternal(request, asyncType, null);
+    }
+
+    /**
+     * 导入数据（支持自定义任务配置）
+     *
+     * @param request        导入请求
+     * @param asyncType      异步类型
+     * @param taskConfigurer 任务配置器
+     */
+    @Override
+    public <T> ImportResult imports(ImportRequest<T> request, AsyncType asyncType,
+                                    Consumer<ImportTask<T>> taskConfigurer) {
+        return importInternal(request, asyncType, taskConfigurer);
+    }
+
+    /**
+     * 异步导入（返回CompletableFuture）
+     *
+     * @param request 导入请求
+     */
+    @Override
+    public <T> CompletableFuture<ImportResult> importFuture(ImportRequest<T> request) {
+        return CompletableFuture.supplyAsync(() -> importSync(request), silkyExcelTaskExecutor);
+    }
+
+    /**
+     * 大文件导入
+     *
+     * @param request   导入请求
+     * @param batchSize 批量大小
+     */
+    @Override
+    public <T> ImportResult importLargeFile(ImportRequest<T> request, int batchSize) {
+        return importLargeFileInternal(request, batchSize, null);
+    }
+
+    /**
+     * 大文件导入（支持自定义配置）
+     *
+     * @param request        导入请求
+     * @param batchSize      批量大小
+     * @param taskConfigurer 任务配置器
+     */
+    @Override
+    public <T> ImportResult importLargeFile(ImportRequest<T> request, int batchSize,
+                                            Consumer<ImportTask<T>> taskConfigurer) {
+        return importLargeFileInternal(request, batchSize, taskConfigurer);
+    }
+
+    /**
+     * 获取导出引擎状态
+     */
+    @Override
+    public ExportEngine.EngineStatus getExportEngineStatus() {
         try {
-            ImportTask<T> task = createImportTask(request);
-            ImportAsyncProcessor processor = processorFactory.getImportProcessor(asyncType);
-            if (!processor.isAvailable() || !properties.getAsync().isEnabled()) {
-                log.debug("异步导入处理器不可用，使用同步方式执行任务: {}", task.getTaskId());
-                ImportAsyncProcessor syncProcessor = processorFactory.getImportProcessor(AsyncType.SYNC);
-                return syncProcessor.process(task);
+            return exportEngine.getEngineStatus();
+        } catch (Exception e) {
+            log.error("获取导出引擎状态失败", e);
+            return ExportEngine.EngineStatus.builder()
+                    .totalProcessedTasks(0L)
+                    .successTasks(0L)
+                    .failedTasks(0L)
+                    .cachedTasks(0)
+                    .batchTasks(0)
+                    .uptime(0L)
+                    .build();
+        }
+    }
+
+    /**
+     * 获取导入引擎状态
+     */
+    @Override
+    public ImportEngine.ImportEngineStatus getImportEngineStatus() {
+        try {
+            return importEngine.getEngineStatus();
+        } catch (Exception e) {
+            log.error("获取导入引擎状态失败", e);
+            return ImportEngine.ImportEngineStatus.builder()
+                    .totalProcessedTasks(0L)
+                    .successTasks(0L)
+                    .failedTasks(0L)
+                    .cachedTasks(0)
+                    .batchTasks(0)
+                    .uptime(0L)
+                    .build();
+        }
+    }
+
+    /**
+     * 关闭Excel模板
+     */
+    @Override
+    public void shutdown() {
+        log.info("开始关闭Excel模板...");
+        try {
+            exportEngine.shutdown();
+            log.info("导出引擎已关闭");
+        } catch (Exception e) {
+            log.error("关闭导出引擎失败", e);
+        }
+
+        try {
+            importEngine.shutdown();
+            log.info("导入引擎已关闭");
+        } catch (Exception e) {
+            log.error("关闭导入引擎失败", e);
+        }
+        log.info("Excel模板关闭完成");
+    }
+
+
+    /**
+     * 内部导出方法
+     */
+    private <T> ExportResult exportInternal(ExportRequest<T> request, AsyncType asyncType,
+                                            Consumer<ExportTask<T>> taskConfigurer) {
+        log.debug("开始处理导出请求，业务类型: {}, 异步类型: {}",
+                request.getBusinessType(), asyncType);
+
+        validateExportRequest(request);
+
+        ExportTask<T> task = createExportTask(request, asyncType);
+        if (taskConfigurer != null) {
+            try {
+                taskConfigurer.accept(task);
+                log.debug("任务配置器执行完成");
+            } catch (Exception e) {
+                log.warn("任务配置器执行异常", e);
             }
-            ImportResult result = processor.submit(task);
-            log.debug("导入任务提交成功: {}, 处理器: {}", task.getTaskId(), asyncType);
+        }
+        try {
+            ExportResult result;
+            switch (asyncType) {
+                case SYNC:
+                    result = exportEngine.exportSync(task);
+                    break;
+                case THREAD_POOL:
+                    result = exportEngine.exportAsync(task);
+                    break;
+                default:
+                    log.warn("不支持的异步类型: {}, 使用同步方式", asyncType);
+                    result = exportEngine.exportSync(task);
+            }
+
+            log.debug("导出处理完成，任务ID: {}, 结果: {}", task.getTaskId(), result.isSuccess());
             return result;
-        } catch (IllegalArgumentException e) {
-            log.warn("导入参数校验失败: {}", e.getMessage());
-            return ImportResult.fail(asyncType.name() + "_IMPORT_" + System.currentTimeMillis(), "参数校验失败");
+
         } catch (Exception e) {
-            log.error("导入数据异常，异步类型: {}", asyncType, e);
-            return ImportResult.fail(asyncType.name() + "_IMPORT_" + System.currentTimeMillis(), "导入失败，请稍后重试");
+            log.error("导出数据异常，业务类型: {}", request.getBusinessType(), e);
+            return ExportResult.fail(task.getTaskId(), "导出失败: " + e.getMessage());
         }
     }
 
     /**
-     * 获取处理器状态
-     *
-     * @param asyncType 处理器类型
-     * @return 处理器状态
+     * 内部大文件导出方法
      */
-    @Override
-    public ProcessorStatus getProcessorStatus(String asyncType) {
-        if (StrUtil.isBlank(asyncType)) {
-            log.warn("处理器类型不能为空");
-            return null;
+    private <T> ExportResult exportLargeFileInternal(ExportRequest<T> request, int batchSize,
+                                                     Consumer<ExportTask<T>> taskConfigurer) {
+        log.info("开始大文件导出，业务类型: {}, 批次大小: {}", request.getBusinessType(), batchSize);
+
+        validateExportRequest(request);
+
+        if (batchSize <= 0) {
+            throw new IllegalArgumentException("批次大小必须大于0");
+        }
+
+        ExportTask<T> task = createExportTask(request, AsyncType.SYNC);
+        if (taskConfigurer != null) {
+            try {
+                taskConfigurer.accept(task);
+            } catch (Exception e) {
+                log.warn("大文件导出任务配置器执行异常", e);
+            }
         }
         try {
-            ExportAsyncProcessor exportProcessor = processorFactory.getExportProcessor(asyncType);
-            return exportProcessor.getStatus();
-        } catch (Exception ignored) {
-        }
-        try {
-            ImportAsyncProcessor importProcessor = processorFactory.getImportProcessor(asyncType);
-            return importProcessor.getStatus();
+            ExportResult result = exportEngine.exportLargeFile(task, batchSize);
+            log.info("大文件导出完成，任务ID: {}, 文件: {}", task.getTaskId(), result.getFileUrl());
+            return result;
         } catch (Exception e) {
-            log.warn("获取处理器状态失败: {}", asyncType, e);
-            return null;
+            log.error("大文件导出异常，业务类型: {}", request.getBusinessType(), e);
+            return ExportResult.fail(task.getTaskId(), "大文件导出失败: " + e.getMessage());
         }
     }
 
     /**
-     * 设置处理器可用状态
-     *
-     * @param asyncType 处理器类型
-     * @param available 是否可用
+     * 内部导入方法
      */
-    @Override
-    public void setAvailable(String asyncType, boolean available) {
-        if (StrUtil.isBlank(asyncType)) {
-            log.warn("处理器类型不能为空");
-            return;
+    private <T> ImportResult importInternal(ImportRequest<T> request, AsyncType asyncType,
+                                            Consumer<ImportTask<T>> taskConfigurer) {
+        log.debug("开始处理导入请求，业务类型: {}, 异步类型: {}",
+                request.getBusinessType(), asyncType);
+
+        validateImportRequest(request);
+
+        ImportTask<T> task = createImportTask(request);
+        if (taskConfigurer != null) {
+            try {
+                taskConfigurer.accept(task);
+                log.debug("导入任务配置器执行完成");
+            } catch (Exception e) {
+                log.warn("导入任务配置器执行异常", e);
+            }
         }
+
         try {
-            ExportAsyncProcessor exportProcessor = processorFactory.getExportProcessor(asyncType);
-            exportProcessor.setAvailable(available);
-            log.info("设置导出处理器可用状态成功: {}, {}", asyncType, available);
-            return;
-        } catch (Exception ignored) {
-        }
-        try {
-            ImportAsyncProcessor importProcessor = processorFactory.getImportProcessor(asyncType);
-            importProcessor.setAvailable(available);
-            log.info("设置导入处理器可用状态成功: {}, {}", asyncType, available);
+            ImportResult result;
+            switch (asyncType) {
+                case SYNC:
+                    result = importEngine.importSync(request);
+                    break;
+                case THREAD_POOL:
+                    result = importEngine.importAsync(task);
+                    break;
+                default:
+                    log.warn("不支持的异步类型: {}, 使用同步方式", asyncType);
+                    result = importEngine.importSync(request);
+            }
+
+            log.debug("导入处理完成，任务ID: {}, 结果: {}", task.getTaskId(), result.isSuccess());
+            return result;
+
         } catch (Exception e) {
-            log.warn("设置处理器可用状态失败: {}, {}", asyncType, available, e);
+            log.error("导入数据异常，业务类型: {}", request.getBusinessType(), e);
+            return ImportResult.fail(task.getTaskId(), "导入失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 内部大文件导入方法
+     */
+    private <T> ImportResult importLargeFileInternal(ImportRequest<T> request, int batchSize,
+                                                     Consumer<ImportTask<T>> taskConfigurer) {
+        log.info("开始大文件导入，业务类型: {}, 批次大小: {}", request.getBusinessType(), batchSize);
+
+        validateImportRequest(request);
+
+        if (batchSize <= 0) {
+            throw new IllegalArgumentException("批次大小必须大于0");
+        }
+
+        ImportTask<T> task = createImportTask(request);
+        if (taskConfigurer != null) {
+            try {
+                taskConfigurer.accept(task);
+            } catch (Exception e) {
+                log.warn("大文件导入任务配置器执行异常", e);
+            }
+        }
+
+        try {
+            ImportResult result = importEngine.importLargeFile(task, batchSize);
+            log.info("大文件导入完成，任务ID: {}, 处理结果: {}", task.getTaskId(), result.getSummary());
+            return result;
+        } catch (Exception e) {
+            log.error("大文件导入异常，业务类型: {}", request.getBusinessType(), e);
+            return ImportResult.fail(task.getTaskId(), "大文件导入失败: " + e.getMessage());
         }
     }
 
@@ -208,10 +424,13 @@ public class DefaultExcelTemplate implements ExcelTemplate, InitializingBean {
     private <T> ExportTask<T> createExportTask(ExportRequest<T> request, AsyncType asyncType) {
         ExportTask<T> task = new ExportTask<>();
         task.setRequest(request);
-        task.setTaskId(generateTaskId(request.getBusinessType()));
+        task.setTaskId(generateTaskId(request.getBusinessType(), "EXPORT"));
         task.setTaskType(TaskType.EXPORT);
         task.setBusinessType(request.getBusinessType());
         task.setAsyncType(asyncType);
+        task.setCreateTime(System.currentTimeMillis());
+
+        log.debug("创建导出任务: {}, 业务类型: {}", task.getTaskId(), request.getBusinessType());
         return task;
     }
 
@@ -221,30 +440,36 @@ public class DefaultExcelTemplate implements ExcelTemplate, InitializingBean {
     private <T> ImportTask<T> createImportTask(ImportRequest<T> request) {
         ImportTask<T> task = new ImportTask<>();
         task.setRequest(request);
-        task.setTaskId(generateTaskId(request.getBusinessType()));
+        task.setTaskId(generateTaskId(request.getBusinessType(), "IMPORT"));
         task.setTaskType(TaskType.IMPORT);
         task.setBusinessType(request.getBusinessType());
+        task.setCreateTime(System.currentTimeMillis());
+
+        log.debug("创建导入任务: {}, 业务类型: {}", task.getTaskId(), request.getBusinessType());
         return task;
     }
 
     /**
      * 生成任务ID
      */
-    private String generateTaskId(String businessType) {
-        String prefix = StrUtil.isNotBlank(businessType) ?
-                businessType.replaceAll("[^a-zA-Z0-9]", "_") : "TASK";
-        return prefix + "_" + IdUtil.fastSimpleUUID();
+    private String generateTaskId(String businessType, String prefix) {
+        String safeBusinessType = StrUtil.isNotBlank(businessType) ?
+                businessType.replaceAll("[^a-zA-Z0-9]", "_") : "UNKNOWN";
+        String taskPrefix = StrUtil.isNotBlank(prefix) ? prefix : "TASK";
+
+        return String.format("%s_%s_%s_%s",
+                taskPrefix,
+                safeBusinessType,
+                System.currentTimeMillis(),
+                IdUtil.fastSimpleUUID());
     }
 
     /**
-     * 验证导出任务
+     * 验证导出请求
      */
-    private <T> void validateExportRequest(ExportRequest<T> request, AsyncType asyncType) {
+    private <T> void validateExportRequest(ExportRequest<T> request) {
         if (request == null) {
             throw new IllegalArgumentException("导出请求参数不能为null");
-        }
-        if (asyncType == null) {
-            throw new IllegalArgumentException("导出异步类型不能为空");
         }
         if (StrUtil.isBlank(request.getFileName())) {
             throw new IllegalArgumentException("导出文件名不能为空");
@@ -252,65 +477,76 @@ public class DefaultExcelTemplate implements ExcelTemplate, InitializingBean {
         if (request.getDataSupplier() == null) {
             throw new IllegalArgumentException("导出数据提供者不能为空");
         }
+        if (request.getDataClass() == null) {
+            throw new IllegalArgumentException("数据类类型不能为null");
+        }
+        if (request.getPageSize() <= 0) {
+            throw new IllegalArgumentException("分页大小必须大于0");
+        }
+
+        log.debug("导出请求验证通过，业务类型: {}", request.getBusinessType());
     }
 
     /**
-     * 验证导入请求参数
+     * 验证导入请求
      */
-    private <T> void validateImportRequest(ImportRequest<T> request, AsyncType asyncType) {
+    private <T> void validateImportRequest(ImportRequest<T> request) {
         if (request == null) {
             throw new IllegalArgumentException("导入请求参数不能为null");
         }
-        if (asyncType == null) {
-            throw new IllegalArgumentException("导入异步类型不能为空");
-        }
         if (StrUtil.isBlank(request.getFileName())) {
-            throw new IllegalArgumentException("导出文件名不能为空");
+            throw new IllegalArgumentException("导入文件名不能为空");
         }
         if (StrUtil.isBlank(request.getFileUrl())) {
-            throw new IllegalArgumentException("导出文件URL不能为空");
+            throw new IllegalArgumentException("导入文件URL不能为空");
         }
         if (request.getDataImporterSupplier() == null) {
             throw new IllegalArgumentException("导入数据提供者不能为空");
         }
+        if (request.getDataClass() == null) {
+            throw new IllegalArgumentException("数据类类型不能为null");
+        }
+        if (request.getPageSize() <= 0) {
+            throw new IllegalArgumentException("分页大小必须大于0");
+        }
+
+        log.debug("导入请求验证通过，业务类型: {}", request.getBusinessType());
     }
 
     @Override
     public void afterPropertiesSet() {
-        this.init();
+        init();
     }
 
     /**
      * 初始化方法
      */
     private void init() {
-        log.info("开始初始化异步执行器...");
+        log.info("开始初始化Excel模板...");
 
-        if (!processorFactory.isInitialized()) {
-            log.warn("异步处理器工厂未初始化，异步执行器可能无法正常工作");
-        }
-
-        boolean defaultAvailable = checkDefaultProcessorAvailable(defaultAsyncType);
-        if (!defaultAvailable) {
-            log.warn("默认异步处理器不可用: {}, 将使用降级策略", defaultAsyncType);
-        }
-        log.info("异步执行器初始化完成，默认异步类型: {}, 可用状态: {}", defaultAsyncType, defaultAvailable);
-    }
-
-    /**
-     * 检查默认处理器是否可用
-     */
-    private boolean checkDefaultProcessorAvailable(AsyncType defaultType) {
+        // 检查引擎状态
         try {
-            processorFactory.getExportProcessor(defaultType);
-            return true;
-        } catch (Exception ignored) {
+            ExportEngine.EngineStatus exportStatus = exportEngine.getEngineStatus();
+            log.info("导出引擎状态: 运行时间={}ms, 处理任务={}",
+                    exportStatus.getUptime(), exportStatus.getTotalProcessedTasks());
+        } catch (Exception e) {
+            log.warn("获取导出引擎状态失败", e);
         }
+
         try {
-            processorFactory.getImportProcessor(defaultType);
-            return true;
-        } catch (Exception ignored) {
+            ImportEngine.ImportEngineStatus importStatus = importEngine.getEngineStatus();
+            log.info("导入引擎状态: 运行时间={}ms, 处理任务={}",
+                    importStatus.getUptime(), importStatus.getTotalProcessedTasks());
+        } catch (Exception e) {
+            log.warn("获取导入引擎状态失败", e);
         }
-        return false;
+
+        // 注册关闭钩子
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            log.info("接收到JVM关闭信号，开始清理Excel模板资源...");
+            shutdown();
+        }));
+
+        log.info("Excel模板初始化完成");
     }
 }

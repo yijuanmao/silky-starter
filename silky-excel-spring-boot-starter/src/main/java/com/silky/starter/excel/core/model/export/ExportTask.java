@@ -2,9 +2,13 @@ package com.silky.starter.excel.core.model.export;
 
 import cn.hutool.core.date.LocalDateTimeUtil;
 import com.silky.starter.excel.core.async.BaseAsyncTask;
+import com.silky.starter.excel.enums.AsyncType;
+import com.silky.starter.excel.enums.TaskType;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 导出任务
@@ -20,105 +24,121 @@ import java.time.LocalDateTime;
 public class ExportTask<T> extends BaseAsyncTask {
 
     /**
-     * 导出请求配置
-     * 包含导出操作的所有参数
+     * 任务ID
+     */
+    private String taskId;
+
+    /**
+     * 任务类型
+     */
+    private TaskType taskType;
+
+    /**
+     * 业务类型
+     */
+    private String businessType;
+
+    /**
+     * 异步类型
+     */
+    private AsyncType asyncType;
+
+    /**
+     * 导出请求
      */
     private ExportRequest<T> request;
 
     /**
-     * 任务创建时间戳
-     * 用于计算任务执行时间
+     * 任务创建时间
      */
     private Long createTime;
 
     /**
-     * 任务开始执行
+     * 任务开始时间
      */
-    private LocalDateTime startTime;
+    private Long startTime;
 
     /**
-     * 任务完成
+     * 任务完成时间
      */
-    private LocalDateTime finishTime;
+    private Long finishTime;
 
     /**
-     * 任务执行线程
-     * 记录执行任务的线程信息（用于监控和调试）
+     * 任务超时时间（毫秒）
      */
-    private transient Thread executeThread;
+    private Long timeout;
 
     /**
-     * 任务执行上下文
-     * 用于在任务执行过程中传递额外信息
+     * 任务优先级
      */
-    private transient Object context;
+    private Integer priority = 5;
 
     /**
-     * 标记任务开始执行
-     * 设置开始时间并记录执行线程
+     * 扩展属性
      */
-    public void markStart() {
-        this.startTime = LocalDateTime.now();
-        this.executeThread = Thread.currentThread();
-    }
+    private Map<String, Object> attributes = new ConcurrentHashMap<>();
 
     /**
-     * 标记任务完成
-     * 设置完成时间
+     * 检查任务是否超时
      */
-    public void markFinish() {
-        this.finishTime = LocalDateTime.now();
-    }
-
-    /**
-     * 获取任务创建到当前的时间
-     *
-     * @return 耗时（毫秒）
-     */
-    public long getElapsedTime() {
-        long now = System.currentTimeMillis();
-        return now - createTime;
-    }
-
-    /**
-     * 获取任务执行时间
-     *
-     * @return 执行时间（毫秒），如果任务未开始返回0
-     */
-    public long getExecuteTime() {
-        if (startTime == null) {
-            return 0;
-        }
-        LocalDateTime endTime = finishTime == null ? LocalDateTime.now() : finishTime;
-        return LocalDateTimeUtil.toEpochMilli(endTime) - LocalDateTimeUtil.toEpochMilli(startTime);
+    public boolean isTimeout() {
+        return isTimeout(this.timeout);
     }
 
     /**
      * 检查任务是否超时
-     *
-     * @param timeoutMinutes 任务超时时间（分钟）
-     * @return 如果超时返回true，否则返回false
      */
-    public boolean isTimeout(long timeoutMinutes) {
-        return startTime != null && LocalDateTime.now().isAfter(startTime.plusMinutes(timeoutMinutes));
+    public boolean isTimeout(Long customTimeout) {
+        if (startTime == null || customTimeout == null || customTimeout <= 0) {
+            return false;
+        }
+        return System.currentTimeMillis() - startTime > customTimeout;
     }
 
     /**
-     * 检查任务是否正在执行
-     *
-     * @return 如果正在执行返回true，否则返回false
+     * 开始任务
      */
-    public boolean isRunning() {
-        return startTime != null && finishTime == null;
+    public void start() {
+        this.startTime = System.currentTimeMillis();
     }
 
     /**
-     * 检查任务是否已完成
-     *
-     * @return 如果已完成返回true，否则返回false
+     * 完成任务
      */
-    public boolean isFinished() {
-        return finishTime != null;
+    public void finish() {
+        this.finishTime = System.currentTimeMillis();
+    }
+
+    /**
+     * 获取任务执行时间
+     */
+    public Long getExecutionTime() {
+        if (startTime == null) {
+            return null;
+        }
+        Long endTime = finishTime != null ? finishTime : System.currentTimeMillis();
+        return endTime - startTime;
+    }
+
+    /**
+     * 设置扩展属性
+     */
+    public void setAttribute(String key, Object value) {
+        attributes.put(key, value);
+    }
+
+    /**
+     * 获取扩展属性
+     */
+    public Object getAttribute(String key) {
+        return attributes.get(key);
+    }
+
+    /**
+     * 获取扩展属性（带默认值）
+     */
+    public Object getAttribute(String key, Object defaultValue) {
+        return attributes.getOrDefault(key, defaultValue);
     }
 
 }

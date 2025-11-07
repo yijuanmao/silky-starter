@@ -42,8 +42,10 @@ public interface ExportRecordService {
      *
      * @param taskId         任务ID
      * @param processedCount 已处理数据量
+     * @param successCount   成功数据量
+     * @param failedCount    失败数据量
      */
-    void updateProgress(String taskId, long processedCount);
+    void updateProgress(String taskId, long processedCount, long successCount, long failedCount);
 
     /**
      * 更新导出成功

@@ -1,5 +1,6 @@
 package com.silky.starter.excel.entity;
 
+import com.silky.starter.excel.enums.CompressionType;
 import com.silky.starter.excel.enums.ImportStatus;
 import com.silky.starter.excel.enums.StorageType;
 import lombok.*;
@@ -83,4 +84,14 @@ public class ImportRecord implements Serializable {
      * 失败数据量
      */
     private Long failCount;
+
+    /**
+     * 压缩类型
+     */
+    private CompressionType compressionType;
+
+    /**
+     * 压缩开关
+     */
+    private Boolean compressionEnabled;
 }

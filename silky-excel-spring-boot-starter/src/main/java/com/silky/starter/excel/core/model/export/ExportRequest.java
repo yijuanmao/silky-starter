@@ -1,6 +1,7 @@
 package com.silky.starter.excel.core.model.export;
 
 import com.silky.starter.excel.core.model.DataProcessor;
+import com.silky.starter.excel.enums.CompressionType;
 import com.silky.starter.excel.enums.StorageType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -112,4 +113,30 @@ public class ExportRequest<T> {
      * 默认值：200000
      */
     private Long maxRowsPerSheet;
+
+    /**
+     * 是否启用压缩
+     */
+    private boolean compressionEnabled;
+
+    /**
+     * 压缩类型
+     */
+    private CompressionType compressionType;
+
+    /**
+     * 压缩级别 0-9
+     */
+    private int compressionLevel;
+
+    /**
+     * 是否分割大文件
+     */
+    private boolean splitLargeFiles;
+
+    /**
+     * 分割大小（字节）
+     */
+    private long splitSize;
+
 }

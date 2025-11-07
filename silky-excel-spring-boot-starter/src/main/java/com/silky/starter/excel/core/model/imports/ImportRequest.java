@@ -1,6 +1,7 @@
 package com.silky.starter.excel.core.model.imports;
 
 import com.silky.starter.excel.core.model.DataProcessor;
+import com.silky.starter.excel.enums.CompressionType;
 import com.silky.starter.excel.enums.StorageType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -100,4 +101,29 @@ public class ImportRequest<T> {
      * 最大错误数量，超过此数量时停止导入
      */
     private Integer maxErrorCount;
+
+    /**
+     * 压缩类型
+     */
+    private CompressionType compressionType;
+
+    /**
+     * 压缩开关
+     */
+    private boolean compressionEnabled = false;
+
+    /**
+     * 压缩级别
+     */
+    private int compressionLevel = 6;
+
+    /**
+     * 分割大文件开关
+     */
+    private boolean splitLargeFiles = false;
+
+    /**
+     * 分割大小
+     */
+    private long splitSize = 100 * 1024 * 1024;
 }

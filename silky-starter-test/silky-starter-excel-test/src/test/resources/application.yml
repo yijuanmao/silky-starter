@@ -1,26 +1,31 @@
-# 修正后的 application.yml 配置
+# application.yml
 silky:
   excel:
-    enabled: true
     async:
-      # 异步导出 开启，关闭默认使用同步导出
+      # 默认使用线程池
       enabled: true
-      # 异步导出方式：SYNC：同步方式； mq: MQ 消息队列方式; THREAD_POOL: 线程池方式； CUSTOM: 自定义异步
-      async-type: mq
-      #线程池配置，不配，使用默认配置
+      async-type: THREAD_POOL
+      # 线程池配置
       thread-pool:
-        core-pool-size: 5
-        max-pool-size: 10
-        keep-alive-seconds: 60
+        core-pool-size: 10
+        max-pool-size: 50
         queue-capacity: 1000
+        keep-alive-seconds: 60
+    #导出超时配置
     export:
-      maxRowsPerSheet: 100000
-      batchSize: 1000
-    imports:
-      page-size: 1000
+      #30分钟超时
+      timeout-minutes: 30
+       #单个sheet最大行数配置
+      max-rows-per-sheet: 100000
+      #是否启用进度条
+      enable-progress: true
     storage:
-      storageType: LOCAL
+      storage-type: LOCAL
       local:
-        base-path: F:\\tmp\\
-        autoClean: true
-
+        base-path: /tmp/excel-exports
+    #压缩配置
+    compression:
+      enabled: true
+      type: ZIP
+      split-large-files: true
+      split-size: 104857600  # 100MB

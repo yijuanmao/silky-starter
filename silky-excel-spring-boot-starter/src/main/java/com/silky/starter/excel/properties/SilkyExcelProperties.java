@@ -1,7 +1,9 @@
 package com.silky.starter.excel.properties;
 
 import com.silky.starter.excel.enums.AsyncType;
+import com.silky.starter.excel.enums.CompressionType;
 import com.silky.starter.excel.enums.StorageType;
+import lombok.Builder;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -40,6 +42,10 @@ public class SilkyExcelProperties {
      */
     private Storage storage = new Storage();
 
+    /**
+     * 压缩配置
+     */
+    private CompressionConfig compression = CompressionConfig.defaultConfig();
 
     @Data
     public static class Storage {
@@ -124,19 +130,9 @@ public class SilkyExcelProperties {
         private long timeoutMinutes = 30;
 
         /**
-         * 是否启用压缩
+         * 是否启用导出进度记录
          */
-        private boolean enableCompression = false;
-
-        /**
-         * 默认模板类型
-         */
-        private String defaultTemplateType;
-
-        /**
-         * 分页大小
-         */
-        private int pageSize = 2000;
+        private boolean enableProgress;
     }
 
     @Data
@@ -200,5 +196,46 @@ public class SilkyExcelProperties {
          * 默认值：7
          */
         private int retentionDays = 7;
+    }
+
+    @Data
+    @Builder
+    public static class CompressionConfig {
+
+        /**
+         * 是否启用压缩
+         */
+        private boolean enabled;
+
+        /**
+         * 压缩类型
+         */
+        private CompressionType type;
+
+        /**
+         * 压缩级别 0-9
+         */
+        private int compressionLevel;
+
+        /**
+         * 是否分割大文件
+         */
+        private boolean splitLargeFiles;
+
+        /**
+         * 分割大小（字节）
+         */
+        private long splitSize;
+
+
+        public static CompressionConfig defaultConfig() {
+            return CompressionConfig.builder()
+                    .enabled(false)
+                    .type(CompressionType.ZIP)
+                    .compressionLevel(6)
+                    .splitLargeFiles(false)
+                    .splitSize(100 * 1024 * 1024)
+                    .build();
+        }
     }
 }

@@ -1,17 +1,13 @@
 package com.silky.starter.excel.config;
 
-import com.silky.starter.excel.core.async.ExportAsyncProcessor;
-import com.silky.starter.excel.core.async.factory.AsyncProcessorFactory;
-import com.silky.starter.excel.core.async.impl.export.ExportSyncProcessor;
-import com.silky.starter.excel.core.async.impl.export.ExportThreadPoolAsyncProcessor;
-import com.silky.starter.excel.core.async.impl.imports.ImportSyncAsyncProcessor;
-import com.silky.starter.excel.core.async.impl.imports.ImportThreadPoolAsyncProcessor;
 import com.silky.starter.excel.core.engine.ExportEngine;
 import com.silky.starter.excel.core.engine.ImportEngine;
 import com.silky.starter.excel.core.storage.StorageStrategy;
 import com.silky.starter.excel.core.storage.factory.StorageStrategyFactory;
 import com.silky.starter.excel.core.storage.impl.LocalStorageStrategy;
 import com.silky.starter.excel.properties.SilkyExcelProperties;
+import com.silky.starter.excel.service.compression.CompressionService;
+import com.silky.starter.excel.service.compression.impl.CompressionServiceImpl;
 import com.silky.starter.excel.service.export.ExportRecordService;
 import com.silky.starter.excel.service.export.impl.InMemoryExportRecordService;
 import com.silky.starter.excel.service.imports.ImportRecordService;
@@ -67,40 +63,6 @@ public class SilkyExcelAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public ExportSyncProcessor exportSyncProcessor(ExportEngine exportEngine) {
-        return new ExportSyncProcessor(exportEngine);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public ExportThreadPoolAsyncProcessor exportThreadPoolAsyncProcessor(
-            ExportEngine exportEngine,
-            ThreadPoolTaskExecutor silkyExcelTaskExecutor) {
-        return new ExportThreadPoolAsyncProcessor(exportEngine, silkyExcelTaskExecutor);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public ImportSyncAsyncProcessor importSyncAsyncProcessor(ImportEngine importEngine) {
-        return new ImportSyncAsyncProcessor(importEngine);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public ImportThreadPoolAsyncProcessor importThreadPoolAsyncProcessor(
-            ImportEngine importEngine,
-            ThreadPoolTaskExecutor silkyExcelTaskExecutor) {
-        return new ImportThreadPoolAsyncProcessor(importEngine, silkyExcelTaskExecutor);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public AsyncProcessorFactory asyncProcessorFactory(SilkyExcelProperties properties) {
-        return new AsyncProcessorFactory(properties);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
     public StorageStrategy localStorageStrategy(SilkyExcelProperties properties) {
         return new LocalStorageStrategy(properties);
     }
@@ -127,8 +89,10 @@ public class SilkyExcelAutoConfiguration {
     @ConditionalOnMissingBean
     public ExportEngine exportEngine(StorageService storageService,
                                      ExportRecordService recordService,
-                                     SilkyExcelProperties properties) {
-        return new ExportEngine(storageService, recordService, properties);
+                                     SilkyExcelProperties properties,
+                                     ThreadPoolTaskExecutor silkyExcelTaskExecutor,
+                                     CompressionService compressionService) {
+        return new ExportEngine(storageService, recordService, properties, silkyExcelTaskExecutor, compressionService);
     }
 
     @Bean
@@ -139,15 +103,24 @@ public class SilkyExcelAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public ImportEngine importEngine(ImportRecordService importRecordService,
-                                     ThreadPoolTaskExecutor silkyExcelTaskExecutor) {
-        return new ImportEngine(importRecordService, silkyExcelTaskExecutor);
+    public ImportEngine importEngine(ImportRecordService recordService,
+                                     ThreadPoolTaskExecutor silkyExcelTaskExecutor,
+                                     CompressionService compressionService) {
+        return new ImportEngine(recordService, silkyExcelTaskExecutor, compressionService);
     }
 
     @Bean
     @ConditionalOnMissingBean
-    public ExcelTemplate excelTemplate(AsyncProcessorFactory processorFactory,
-                                       SilkyExcelProperties properties) {
-        return new DefaultExcelTemplate(processorFactory, properties);
+    public CompressionService compressionService(SilkyExcelProperties properties) {
+        return new CompressionServiceImpl(properties);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public ExcelTemplate excelTemplate(ExportEngine exportEngine,
+                                       ImportEngine importEngine,
+                                       SilkyExcelProperties properties,
+                                       ThreadPoolTaskExecutor silkyExcelTaskExecutor) {
+        return new DefaultExcelTemplate(exportEngine, importEngine, properties, silkyExcelTaskExecutor);
     }
 }

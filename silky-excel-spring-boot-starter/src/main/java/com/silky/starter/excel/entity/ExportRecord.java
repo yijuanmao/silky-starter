@@ -2,6 +2,7 @@ package com.silky.starter.excel.entity;
 
 import cn.hutool.core.date.LocalDateTimeUtil;
 import com.silky.starter.excel.enums.AsyncType;
+import com.silky.starter.excel.enums.CompressionType;
 import com.silky.starter.excel.enums.ExportStatus;
 import com.silky.starter.excel.enums.StorageType;
 import lombok.*;
@@ -101,6 +102,16 @@ public class ExportRecord implements Serializable {
     private Long processedCount;
 
     /**
+     * 是否启用压缩
+     */
+    private Boolean compressionEnabled;
+
+    /**
+     * 压缩类型
+     */
+    private CompressionType compressionType;
+
+    /**
      * 错误信息
      */
     private String errorMsg;
@@ -147,7 +158,7 @@ public class ExportRecord implements Serializable {
             return 0L;
         }
         LocalDateTime endTime = finishTime == null ? LocalDateTime.now() : finishTime;
-        return LocalDateTimeUtil.toEpochMilli(endTime) -  LocalDateTimeUtil.toEpochMilli(startTime);
+        return LocalDateTimeUtil.toEpochMilli(endTime) - LocalDateTimeUtil.toEpochMilli(startTime);
     }
 
     /**
