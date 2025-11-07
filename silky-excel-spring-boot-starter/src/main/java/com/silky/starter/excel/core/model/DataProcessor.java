@@ -1,4 +1,4 @@
-package com.silky.starter.excel.core.model.export;
+package com.silky.starter.excel.core.model;
 
 import com.silky.starter.excel.core.exception.ExcelExportException;
 
@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
  * @date 2025-10-24 11:25
  **/
 @FunctionalInterface
-public interface ExportDataProcessor<T> {
+public interface DataProcessor<T> {
 
     /**
      * 处理数据方法
@@ -50,7 +50,7 @@ public interface ExportDataProcessor<T> {
      * @param <T>             数据类型
      * @return 数据脱敏处理器实例
      */
-    static <T> ExportDataProcessor<T> masking(Function<T, T> maskingFunction) {
+    static <T> DataProcessor<T> masking(Function<T, T> maskingFunction) {
         return (data, pageNum) -> data.stream()
                 .map(maskingFunction)
                 .collect(Collectors.toList());
@@ -64,7 +64,7 @@ public interface ExportDataProcessor<T> {
      * @param <T>    数据类型
      * @return 数据过滤处理器实例
      */
-    static <T> ExportDataProcessor<T> filtering(Predicate<T> filter) {
+    static <T> DataProcessor<T> filtering(Predicate<T> filter) {
         return (data, pageNum) -> data.stream()
                 .filter(filter)
                 .collect(Collectors.toList());
@@ -78,7 +78,7 @@ public interface ExportDataProcessor<T> {
      * @param <R>       目标数据类型
      * @return 数据转换处理器实例
      */
-    static <T, R> ExportDataProcessor<T> converting(Function<T, R> converter) {
+    static <T, R> DataProcessor<T> converting(Function<T, R> converter) {
         return (data, pageNum) -> data.stream()
                 .map(converter)
                 .map(item -> (T) item) // 类型擦除，实际使用中需要确保类型安全
@@ -92,7 +92,7 @@ public interface ExportDataProcessor<T> {
      * @param <T>        数据类型
      * @return 数据排序处理器实例
      */
-    static <T> ExportDataProcessor<T> sorting(java.util.Comparator<T> comparator) {
+    static <T> DataProcessor<T> sorting(java.util.Comparator<T> comparator) {
         return (data, pageNum) -> data.stream()
                 .sorted(comparator)
                 .collect(Collectors.toList());
@@ -104,7 +104,7 @@ public interface ExportDataProcessor<T> {
      * @param <T> 数据类型
      * @return 数据统计处理器实例
      */
-    static <T> ExportDataProcessor<T> statistics() {
+    static <T> DataProcessor<T> statistics() {
         return (data, pageNum) -> {
             // 记录每页数据的统计信息
             return data;

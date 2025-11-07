@@ -1,12 +1,12 @@
 package com.silky.starter.excel.core.model.export;
 
+import com.silky.starter.excel.core.model.DataProcessor;
 import com.silky.starter.excel.enums.StorageType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -49,9 +49,10 @@ public class ExportRequest<T> {
     /**
      * 业务类型
      * 用于区分不同的导出业务，便于统计和管理
-     * 默认值："DEFAULT_EXPORT"
+     * 默认值："default_export"
      */
-    private String businessType;
+    @Builder.Default
+    private String businessType = "default_export";
 
     /**
      * 存储类型
@@ -73,15 +74,14 @@ public class ExportRequest<T> {
      * 传递给数据供应器的额外参数
      * 默认值：空Map
      */
-    @Builder.Default
-    private Map<String, Object> params = new HashMap<>();
+    private Map<String, Object> params;
 
     /**
      * 数据处理器列表
      * 对数据进行转换、过滤、脱敏等处理
      * 默认值：空列表
      */
-    private List<ExportDataProcessor<T>> processors;
+    private List<DataProcessor<T>> processors;
 
     /**
      * 创建用户

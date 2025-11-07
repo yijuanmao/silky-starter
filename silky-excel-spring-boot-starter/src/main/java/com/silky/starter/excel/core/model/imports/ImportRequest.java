@@ -1,6 +1,6 @@
 package com.silky.starter.excel.core.model.imports;
 
-import com.silky.starter.excel.core.model.export.ExportDataProcessor;
+import com.silky.starter.excel.core.model.DataProcessor;
 import com.silky.starter.excel.enums.StorageType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -54,12 +54,14 @@ public class ImportRequest<T> {
     /**
      * 业务类型，用于区分不同的导入业务场景
      */
-    private String businessType;
+    @Builder.Default
+    private String businessType = "default_import";
 
     /**
      * 创建用户，发起导入任务的用户标识
      */
-    private String createUser;
+    @Builder.Default
+    private String createUser = "system";
 
     /**
      * 查询参数，传递给数据处理器的额外参数
@@ -69,7 +71,7 @@ public class ImportRequest<T> {
     /**
      * 数据处理器列表，对导入的数据进行校验、转换、过滤等处理
      */
-    private List<ExportDataProcessor<T>> processors;
+    private List<DataProcessor<T>> processors;
 
     /**
      * 分页大小
@@ -80,12 +82,14 @@ public class ImportRequest<T> {
     /**
      * 是否启用事务， 默认false，导入失败时回滚已处理数据
      */
-    private boolean enableTransaction;
+    @Builder.Default
+    private boolean enableTransaction = false;
 
     /**
      * 是否跳过表头，默认false，跳过Excel的第一行（表头）
      */
-    private boolean skipHeader;
+    @Builder.Default
+    private boolean skipHeader = true;
 
     /**
      * 超时时间（毫秒），导入任务的最大执行时间

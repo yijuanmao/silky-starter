@@ -5,6 +5,7 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.excel.core.exception.ExcelExportException;
+import com.silky.starter.excel.core.model.DataProcessor;
 import com.silky.starter.excel.core.model.export.*;
 import com.silky.starter.excel.entity.ExportRecord;
 import com.silky.starter.excel.enums.AsyncType;
@@ -211,13 +212,13 @@ public class ExportEngine {
     /**
      * 处理分页数据
      */
-    private <T> List<T> processPageData(List<T> data, List<ExportDataProcessor<T>> processors, int pageNum) {
+    private <T> List<T> processPageData(List<T> data, List<DataProcessor<T>> processors, int pageNum) {
         if (CollUtil.isEmpty(processors)) {
             return data;
         }
 
         List<T> processedData = data;
-        for (ExportDataProcessor<T> processor : processors) {
+        for (DataProcessor<T> processor : processors) {
             processedData = processor.process(processedData, pageNum);
         }
         return processedData;
@@ -231,7 +232,7 @@ public class ExportEngine {
                 .ifPresent(supplier -> supplier.prepare(request.getParams()));
 
         Optional.ofNullable(request.getProcessors())
-                .ifPresent(processors -> processors.forEach(ExportDataProcessor::prepare));
+                .ifPresent(processors -> processors.forEach(DataProcessor::prepare));
     }
 
     /**
@@ -505,49 +506,4 @@ public class ExportEngine {
 
     }
 
-    @Data
-    @Builder
-    public static class EngineStatus {
-        /**
-         * 引擎启动时间
-         */
-        private LocalDateTime engineStartTime;
-
-        /**
-         * 总处理任务数
-         */
-        private long totalProcessedTasks;
-
-        /**
-         * 成功处理任务数
-         */
-        private long successTasks;
-
-        /**
-         * 失败处理任务数
-         */
-        private long failedTasks;
-
-        /**
-         * 缓存中的任务数
-         */
-        private int cachedTasks;
-
-        /**
-         * 运行时间（毫秒）
-         */
-        private long uptime;
-
-        public double getSuccessRate() {
-            return totalProcessedTasks > 0 ? (double) successTasks / totalProcessedTasks : 0.0;
-        }
-
-        public double getFailureRate() {
-            return totalProcessedTasks > 0 ? (double) failedTasks / totalProcessedTasks : 0.0;
-        }
-
-        public long getAverageProcessTime() {
-            return totalProcessedTasks > 0 ? uptime / totalProcessedTasks : 0;
-        }
-    }
 }

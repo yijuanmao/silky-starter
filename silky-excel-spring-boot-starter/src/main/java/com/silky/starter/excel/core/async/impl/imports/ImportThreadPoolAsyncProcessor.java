@@ -92,9 +92,7 @@ public class ImportThreadPoolAsyncProcessor implements ImportAsyncProcessor {
             throw new IllegalStateException("线程池未初始化或已关闭");
         }
         try {
-            taskExecutor.execute(() -> process(task));
-            log.debug("任务已成功提交到Spring线程池: {}", task.getTaskId());
-            return ImportResult.asyncSuccess(task.getTaskId());
+            return process(task);
         } catch (Exception e) {
             log.error("Spring线程池提交任务失败: {}", task.getTaskId(), e);
             throw new ExcelExportException("提交任务到线程池失败: " + e.getMessage(), e);
@@ -113,7 +111,7 @@ public class ImportThreadPoolAsyncProcessor implements ImportAsyncProcessor {
         try {
             log.info("开始处理导入任务: {}, 业务类型: {}", task.getTaskId(), task.getRequest().getBusinessType());
             task.markStart();
-            ImportResult result = importEngine.importSync(task.getRequest());
+            ImportResult result = importEngine.importAsync(task);
             processedCount.incrementAndGet();
             log.debug("导入任务处理完成: {}, 总处理时间: {}ms", task.getTaskId(), task.getExecuteTime());
             return result;

@@ -146,9 +146,6 @@ public interface ImportAsyncProcessor extends AsyncProcessor {
         if (task.getRequest() == null) {
             throw new IllegalArgumentException("导入请求不能为null");
         }
-        if (task.getRecord() == null) {
-            throw new IllegalArgumentException("导入记录不能为null");
-        }
         // 验证导入请求的必要字段
         if (task.getRequest().getFileUrl() == null || task.getRequest().getFileUrl().trim().isEmpty()) {
             throw new IllegalArgumentException("导入文件URL不能为空");

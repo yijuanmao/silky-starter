@@ -139,8 +139,9 @@ public class SilkyExcelAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public ImportEngine importEngine(ImportRecordService importRecordService) {
-        return new ImportEngine(importRecordService);
+    public ImportEngine importEngine(ImportRecordService importRecordService,
+                                     ThreadPoolTaskExecutor silkyExcelTaskExecutor) {
+        return new ImportEngine(importRecordService, silkyExcelTaskExecutor);
     }
 
     @Bean

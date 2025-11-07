@@ -2,7 +2,6 @@ package com.silky.starter.excel.core.model.imports;
 
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.excel.core.async.BaseAsyncTask;
-import com.silky.starter.excel.entity.ImportRecord;
 import lombok.*;
 
 /**
@@ -23,12 +22,6 @@ public class ImportTask<T> extends BaseAsyncTask {
      * 包含导出操作的所有参数
      */
     private ImportRequest<T> request;
-
-    /**
-     * 导入记录
-     * 任务执行的状态和结果信息
-     */
-    private ImportRecord record;
 
     /**
      * 任务创建时间戳
@@ -59,26 +52,6 @@ public class ImportTask<T> extends BaseAsyncTask {
      * 用于在任务执行过程中传递额外信息
      */
     private transient Object context;
-
-    /**
-     * 创建默认的导出任务
-     *
-     * @param taskId  任务ID
-     * @param request 导出请求
-     * @param record  导入记录
-     * @param <T>     数据类型
-     * @return 导出任务实例
-     */
-    public static <T> ImportTask<T> create(String taskId, ImportRequest<T> request, ImportRecord record) {
-        long now = System.currentTimeMillis();
-        ImportTask<T> importTask = ImportTask.<T>builder()
-                .request(request)
-                .record(record)
-                .createTime(now)
-                .build();
-        importTask.setTaskId(taskId);
-        return importTask;
-    }
 
     /**
      * 标记任务开始执行
@@ -167,8 +140,6 @@ public class ImportTask<T> extends BaseAsyncTask {
         if (task.getRequest() == null) {
             throw new IllegalArgumentException("导入请求不能为null");
         }
-        if (task.getRecord() == null) {
-            throw new IllegalArgumentException("导入记录不能为null");
-        }
+
     }
 }
