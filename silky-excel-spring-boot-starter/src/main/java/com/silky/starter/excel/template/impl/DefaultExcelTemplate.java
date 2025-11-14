@@ -276,7 +276,8 @@ public class DefaultExcelTemplate implements ExcelTemplate, InitializingBean {
 
         validateImportRequest(request);
 
-        ImportTask<T> task = createImportTask(request);
+
+        ImportTask<T> task = createImportTask(request, asyncType);
         if (taskConfigurer != null) {
             try {
                 taskConfigurer.accept(task);
@@ -329,13 +330,14 @@ public class DefaultExcelTemplate implements ExcelTemplate, InitializingBean {
     /**
      * 创建导入任务
      */
-    private <T> ImportTask<T> createImportTask(ImportRequest<T> request) {
+    private <T> ImportTask<T> createImportTask(ImportRequest<T> request, AsyncType asyncType) {
         ImportTask<T> task = new ImportTask<>();
         task.setRequest(request);
         task.setTaskId(generateTaskId(request.getBusinessType(), "IMPORT"));
         task.setTaskType(TaskType.IMPORT);
         task.setBusinessType(request.getBusinessType());
         task.setCreateTime(System.currentTimeMillis());
+        task.setAsyncType(asyncType);
 
         log.debug("创建导入任务: {}, 业务类型: {}", task.getTaskId(), request.getBusinessType());
         return task;

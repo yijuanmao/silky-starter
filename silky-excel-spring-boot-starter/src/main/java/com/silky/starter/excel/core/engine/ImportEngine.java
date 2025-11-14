@@ -13,6 +13,7 @@ import com.silky.starter.excel.core.model.imports.ImportResult;
 import com.silky.starter.excel.core.model.imports.ImportTask;
 import com.silky.starter.excel.core.storage.StorageStrategy;
 import com.silky.starter.excel.entity.ImportRecord;
+import com.silky.starter.excel.enums.AsyncType;
 import com.silky.starter.excel.enums.ImportStatus;
 import com.silky.starter.excel.properties.SilkyExcelProperties;
 import com.silky.starter.excel.service.compression.CompressionService;
@@ -148,7 +149,7 @@ public class ImportEngine {
             decompressedFile = processDecompression(downloadedFile, request, taskId);
             prepareDataImporter(request);
 
-            ImportResult result = doImport(request, taskId, decompressedFile);
+            ImportResult result = doImport(request, taskId, decompressedFile, task.getAsyncType());
             long costTime = System.currentTimeMillis() - startTime;
 
             log.info("导入任务完成: {}, 结果: {}, 总耗时: {}ms", taskId, result.getSummary(), costTime);
@@ -215,13 +216,14 @@ public class ImportEngine {
     /**
      * 执行导入
      *
-     * @param request  导入请求
-     * @param taskId   任务ID
-     * @param tempFile 临时文件
+     * @param request   导入请求
+     * @param taskId    任务ID
+     * @param tempFile  临时文件
+     * @param asyncType 异步类型
      * @param <T>
      * @return ImportResult
      */
-    private <T> ImportResult doImport(ImportRequest<T> request, String taskId, File tempFile) {
+    private <T> ImportResult doImport(ImportRequest<T> request, String taskId, File tempFile, AsyncType asyncType) {
         long skippedCount = 0;
 
         AnalysisListenersContext<T> context = AnalysisListenersContext.<T>builder()
@@ -234,9 +236,7 @@ public class ImportEngine {
                 .build();
 
         try (ExcelReaderWrapper<T> reader = new ExcelReaderWrapper<>(tempFile.getAbsolutePath(), request.isSkipHeader(), context)) {
-
             long startImportTime = System.currentTimeMillis();
-
             // 开始事务（如果启用）
             if (request.isEnableTransaction()) {
                 request.getDataImporterSupplier().beginTransaction();
@@ -248,9 +248,11 @@ public class ImportEngine {
                 throw new ExcelExportException("任务执行超时，已中断");
             }
 
-            // 分页读取数据
-            reader.doReadAll();
-
+            if (AsyncType.THREAD_POOL.equals(asyncType)) {
+                reader.doReadAll();
+            } else {
+                reader.doRead();
+            }
             long successCount = reader.getSuccessRowCount();
             long failedCount = reader.getFailRowCount();
             long totalCount = reader.getAllCount();

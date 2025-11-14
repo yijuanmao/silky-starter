@@ -67,12 +67,19 @@ public class ExcelReaderWrapper<T> implements Closeable {
     }
 
     /**
-     * 读取所有数据
+     * 按Sheet读取数据
      */
-    public void doReadAll() {
+    public void doRead() {
         for (ReadSheet sheet : this.sheets) {
             reader.read(sheet);
         }
+    }
+
+    /**
+     * 读取所有数据
+     */
+    public void doReadAll() {
+        reader.readAll();
     }
 
     /**
