@@ -421,7 +421,7 @@ public class ImportEngine {
                 .businessType(request.getBusinessType())
                 .fileName(request.getFileName())
                 .fileUrl(request.getFileUrl())
-                .storageType(request.getStorageType())
+                .storageType(Objects.isNull(request.getStorageType()) ? defaultStorageType : request.getStorageType())
                 .createUser(request.getCreateUser())
                 .status(ImportStatus.PENDING)
                 .createTime(LocalDateTime.now())

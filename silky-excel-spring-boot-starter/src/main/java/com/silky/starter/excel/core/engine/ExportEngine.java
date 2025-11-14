@@ -7,13 +7,15 @@ import cn.hutool.core.util.StrUtil;
 import com.silky.starter.excel.core.exception.ExcelExportException;
 import com.silky.starter.excel.core.model.BatchTask;
 import com.silky.starter.excel.core.model.DataProcessor;
-import com.silky.starter.excel.core.model.export.*;
+import com.silky.starter.excel.core.model.export.ExportPageData;
+import com.silky.starter.excel.core.model.export.ExportRequest;
+import com.silky.starter.excel.core.model.export.ExportResult;
+import com.silky.starter.excel.core.model.export.ExportTask;
 import com.silky.starter.excel.core.storage.factory.StorageStrategyFactory;
 import com.silky.starter.excel.entity.ExportRecord;
 import com.silky.starter.excel.enums.AsyncType;
 import com.silky.starter.excel.enums.ExportStatus;
 import com.silky.starter.excel.enums.StorageType;
-import com.silky.starter.excel.enums.TaskType;
 import com.silky.starter.excel.properties.SilkyExcelProperties;
 import com.silky.starter.excel.service.compression.CompressionService;
 import com.silky.starter.excel.service.export.ExportRecordService;
@@ -30,7 +32,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -48,7 +49,6 @@ public class ExportEngine {
 
     private static final String TEMP_FILE_PREFIX = "silky_export_";
     private static final int CACHE_CLEANUP_DELAY_MINUTES = 5;
-    private static final int BATCH_PROCESSING_TIMEOUT_MINUTES = 30;
 
     // 统计变量
     private final AtomicLong totalProcessedTasks = new AtomicLong(0);
@@ -120,239 +120,6 @@ public class ExportEngine {
     }
 
     /**
-     * 大文件批次导出 - 单条记录，内部多线程处理
-     */
-    public <T> ExportResult exportLargeFile(ExportTask<T> task, int batchSize) {
-        return exportLargeFile(task, batchSize, Math.min(batchSize, properties.getAsync().getThreadPool().getMaxPoolSize()));
-    }
-
-    /**
-     * 大文件批次导出 - 支持自定义并发控制
-     */
-    public <T> ExportResult exportLargeFile(ExportTask<T> task, int batchSize, int maxConcurrentBatches) {
-        String taskId = task.getTaskId();
-        long startTime = System.currentTimeMillis();
-
-        log.info("开始大文件批次导出: {}, 业务类型: {}, 批次大小: {}, 最大并发: {}",
-                taskId, task.getRequest().getBusinessType(), batchSize, maxConcurrentBatches);
-
-        // 创建导出记录（单条记录）
-        createAndSaveExportRecord(task);
-        cacheTask(task);
-
-        File tempFile = null;
-        File finalFile = null;
-
-        try {
-            // 准备数据
-            prepareExportData(task.getRequest());
-
-            // 创建临时文件
-            tempFile = createTempFile(task.getRequest().getFileName());
-
-            // 执行批次导出
-            ExportResult exportResult = executeBatchExport(task, tempFile, batchSize, maxConcurrentBatches);
-
-            // 处理压缩
-            finalFile = processCompression(tempFile, task.getRequest());
-
-            // 上传文件
-            String fileUrl = uploadExportFile(finalFile, task.getRequest());
-
-            // 更新记录
-            updateRecordOnSuccess(taskId, fileUrl, exportResult);
-
-            long costTime = System.currentTimeMillis() - startTime;
-            successTasks.incrementAndGet();
-
-            log.info("大文件批次导出完成: {}, 文件URL: {}, 总耗时: {}ms", taskId, fileUrl, costTime);
-
-            return exportResult.setFileUrl(fileUrl)
-                    .setFileSize(finalFile.length())
-                    .setCostTime(costTime);
-
-        } catch (Exception e) {
-            log.error("大文件批次导出失败: {}", taskId, e);
-            failedTasks.incrementAndGet();
-            recordService.updateFailed(taskId, "导出失败: " + e.getMessage());
-            return ExportResult.fail(taskId, "导出失败: " + e.getMessage());
-        } finally {
-            cleanupExportResources(task.getRequest(), tempFile, finalFile, taskId);
-            totalProcessedTasks.incrementAndGet();
-        }
-    }
-
-    /**
-     * 执行批次导出
-     *
-     * @param task                 导出任务
-     * @param tempFile             临时文件
-     * @param batchSize            批次大小
-     * @param maxConcurrentBatches 最大并发批次
-     */
-    private <T> ExportResult executeBatchExport(ExportTask<T> task, File tempFile,
-                                                int batchSize, int maxConcurrentBatches) {
-        String taskId = task.getTaskId();
-        ExportRequest<T> request = task.getRequest();
-
-        try (EnhancedWriterWrapper writer = new EnhancedWriterWrapper(tempFile.getAbsolutePath(),
-                getMaxRowsPerSheet(request))) {
-
-            // 创建批次上下文
-            BatchTask<ExportPageData<T>> batchContext = BatchTask.<ExportPageData<T>>builder()
-                    .taskId(taskId)
-                    .batchId("BATCH_" + IdUtil.fastSimpleUUID())
-                    .batchIndex(0)
-                    .totalBatches(0) // 稍后计算
-                    .processedCount(new AtomicLong(0))
-                    .successCount(new AtomicLong(0))
-                    .failedCount(new AtomicLong(0))
-                    .startTime(System.currentTimeMillis())
-                    .compressed(request.isCompressionEnabled())
-                    .compressionType(request.getCompressionType())
-                    .build();
-
-            // 计算总页数（估算）
-            int totalPages = estimateTotalPages(request);
-            batchContext.setTotalBatches(totalPages);
-            batchTaskCache.put(batchContext.getBatchId(), batchContext);
-
-            // 使用信号量控制并发
-            Semaphore semaphore = new Semaphore(maxConcurrentBatches);
-            List<CompletableFuture<Boolean>> pageFutures = new ArrayList<>();
-
-            for (int pageNum = 1; pageNum <= totalPages; pageNum++) {
-                final int currentPage = pageNum;
-
-                CompletableFuture<Boolean> future = CompletableFuture.supplyAsync(() -> {
-                    try {
-                        semaphore.acquire();
-                        return processExportPage(writer, request, currentPage, batchContext);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        log.error("导出页面处理被中断, 任务: {}, 页面: {}", taskId, currentPage, e);
-                        return false;
-                    } finally {
-                        semaphore.release();
-                    }
-                }, taskExecutor);
-
-                pageFutures.add(future);
-                batchContext.setBatchIndex(currentPage);
-
-                // 更新进度
-                updateExportProgress(taskId, batchContext);
-            }
-
-            // 等待所有页面完成
-            CompletableFuture<Void> allFutures = CompletableFuture.allOf(
-                    pageFutures.toArray(new CompletableFuture[0])
-            );
-
-            try {
-                allFutures.get(BATCH_PROCESSING_TIMEOUT_MINUTES, TimeUnit.MINUTES);
-
-                // 计算成功失败的页面数量
-                long successPages = pageFutures.stream().filter(f -> {
-                    try {
-                        return f.get();
-                    } catch (Exception e) {
-                        return false;
-                    }
-                }).count();
-
-                long failedPages = totalPages - successPages;
-
-                log.info("批次导出完成: {}, 总页面: {}, 成功: {}, 失败: {}",
-                        taskId, totalPages, successPages, failedPages);
-
-                if (failedPages == 0) {
-                    return ExportResult.success(taskId)
-                            .setTotalCount(writer.getTotalRows().get())
-                            .setSuccessCount(writer.getTotalRows().get())
-                            .setFailedCount(0L)
-                            .setSheetCount(writer.getCurrentSheetIndex());
-                } else {
-                    return ExportResult.partialSuccess(taskId)
-                            .setTotalCount(writer.getTotalRows().get())
-                            .setSuccessCount(writer.getTotalRows().get() - failedPages * batchSize)
-                            .setFailedCount(failedPages * batchSize)
-                            .setSheetCount(writer.getCurrentSheetIndex());
-                }
-
-            } catch (TimeoutException e) {
-                throw new ExcelExportException("批次导出超时", e);
-            } catch (InterruptedException | ExecutionException e) {
-                throw new ExcelExportException("批次导出失败", e);
-            }
-
-        } catch (Exception e) {
-            log.error("批次导出执行失败: {}", taskId, e);
-            throw new ExcelExportException("批次导出执行失败: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * 处理单个导出页面
-     */
-    private <T> boolean processExportPage(EnhancedWriterWrapper writer, ExportRequest<T> request,
-                                          int pageNum, BatchTask<ExportPageData<T>> batchContext) {
-        String taskId = batchContext.getTaskId();
-
-        try {
-            // 检查任务超时
-            checkTaskTimeout(taskId, request.getTimeout());
-
-            // 获取分页数据
-            ExportPageData<T> pageData = fetchPageData(request, pageNum);
-            if (CollUtil.isEmpty(pageData.getData())) {
-                log.debug("第{}页数据为空，跳过", pageNum);
-                return true;
-            }
-
-            // 处理数据
-            List<T> processedData = processPageData(pageData.getData(), request.getProcessors(), pageNum);
-
-            // 写入数据
-            writePageData(writer, processedData, request, pageNum);
-
-            batchContext.getSuccessCount().incrementAndGet();
-            batchContext.getProcessedCount().addAndGet(processedData.size());
-
-            log.debug("第{}页数据处理完成, 数据量: {}, 任务: {}",
-                    pageNum, processedData.size(), taskId);
-
-            return true;
-
-        } catch (Exception e) {
-            log.error("第{}页数据处理失败, 任务: {}", pageNum, taskId, e);
-            batchContext.getFailedCount().incrementAndGet();
-            return false;
-        }
-    }
-
-    /**
-     * 估算总页数
-     *
-     * @param request 请求
-     */
-    private <T> int estimateTotalPages(ExportRequest<T> request) {
-        try {
-            // 调用数据供应商的估算方法
-            if (request.getDataSupplier() instanceof PageableDataSupplier) {
-                PageableDataSupplier<T> pageableSupplier = (PageableDataSupplier<T>) request.getDataSupplier();
-                long totalCount = pageableSupplier.estimateTotalCount(request.getParams());
-                return (int) Math.ceil((double) totalCount / request.getPageSize());
-            }
-            // 默认返回一个较大的页数，实际处理中遇到空数据会停止
-            return Integer.MAX_VALUE;
-        } catch (Exception e) {
-            log.warn("估算总页数失败，使用默认值", e);
-            return 1000; // 默认1000页
-        }
-    }
-
-    /**
      * 处理压缩
      */
     private <T> File processCompression(File sourceFile, ExportRequest<T> request) throws IOException {
@@ -369,31 +136,6 @@ public class ExportEngine {
 
         String compressedPath = sourceFile.getAbsolutePath() + "_compressed";
         return compressionService.compressFile(sourceFile, compressionConfig, compressedPath);
-    }
-
-    /**
-     * 更新导出进度
-     *
-     * @param taskId       任务ID
-     * @param batchContext 批次上下文
-     */
-    private void updateExportProgress(String taskId, BatchTask<?> batchContext) {
-        recordService.updateProgress(taskId,
-                batchContext.getProcessedCount().get(),
-                batchContext.getSuccessCount().get(),
-                batchContext.getFailedCount().get());
-
-        // 记录进度日志
-        if (batchContext.getBatchIndex() % 10 == 0) { // 每10个批次记录一次
-            log.info("导出进度: {}, 批次: {}/{}, 已处理: {}, 成功: {}, 失败: {}, 进度: {}%",
-                    batchContext.getTaskId(),
-                    batchContext.getBatchIndex(),
-                    batchContext.getTotalBatches(),
-                    batchContext.getProcessedCount().get(),
-                    batchContext.getSuccessCount().get(),
-                    batchContext.getFailedCount().get(),
-                    batchContext.getProgress());
-        }
     }
 
     /**
@@ -445,7 +187,6 @@ public class ExportEngine {
             totalProcessedTasks.incrementAndGet();
         }
     }
-
 
     /**
      * 执行单个任务
@@ -825,33 +566,6 @@ public class ExportEngine {
 
         log.info("导出引擎已关闭, 统计信息: 总任务={}, 成功={}, 失败={}",
                 totalProcessedTasks.get(), successTasks.get(), failedTasks.get());
-    }
-
-
-    /**
-     * 同步导出（直接使用请求对象）
-     */
-    public <T> ExportResult exportSync(ExportRequest<T> request) {
-        ExportTask<T> task = new ExportTask<>();
-        task.setRequest(request);
-        task.setTaskId(generateTaskId(request.getBusinessType()));
-        task.setTaskType(TaskType.EXPORT);
-        task.setBusinessType(request.getBusinessType());
-        task.setAsyncType(AsyncType.SYNC);
-        return exportSync(task);
-    }
-
-    /**
-     * 异步导出（直接使用请求对象）
-     */
-    public <T> ExportResult exportAsync(ExportRequest<T> request) {
-        ExportTask<T> task = new ExportTask<>();
-        task.setRequest(request);
-        task.setTaskId(generateTaskId(request.getBusinessType()));
-        task.setTaskType(TaskType.EXPORT);
-        task.setBusinessType(request.getBusinessType());
-        task.setAsyncType(AsyncType.THREAD_POOL);
-        return exportAsync(task);
     }
 
     /**
