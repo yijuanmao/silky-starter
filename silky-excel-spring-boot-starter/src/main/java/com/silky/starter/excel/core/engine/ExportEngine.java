@@ -8,7 +8,7 @@ import com.silky.starter.excel.core.exception.ExcelExportException;
 import com.silky.starter.excel.core.model.BatchTask;
 import com.silky.starter.excel.core.model.DataProcessor;
 import com.silky.starter.excel.core.model.export.*;
-import com.silky.starter.excel.core.storage.StorageStrategy;
+import com.silky.starter.excel.core.storage.factory.StorageStrategyFactory;
 import com.silky.starter.excel.entity.ExportRecord;
 import com.silky.starter.excel.enums.AsyncType;
 import com.silky.starter.excel.enums.ExportStatus;
@@ -60,7 +60,7 @@ public class ExportEngine {
     private final ConcurrentMap<String, BatchTask<?>> batchTaskCache = new ConcurrentHashMap<>();
 
     // 依赖服务
-    private final StorageStrategy storageStrategy;
+    private final StorageStrategyFactory storageStrategyFactory;
     private final ExportRecordService recordService;
     private final SilkyExcelProperties properties;
     private final ThreadPoolTaskExecutor taskExecutor;
@@ -77,12 +77,12 @@ public class ExportEngine {
     // 引擎启动时间
     private final long engineStartTime = System.currentTimeMillis();
 
-    public ExportEngine(StorageStrategy storageStrategy,
+    public ExportEngine(StorageStrategyFactory storageStrategyFactory,
                         ExportRecordService recordService,
                         SilkyExcelProperties properties,
                         ThreadPoolTaskExecutor taskExecutor,
                         CompressionService compressionService) {
-        this.storageStrategy = storageStrategy;
+        this.storageStrategyFactory = storageStrategyFactory;
         this.recordService = recordService;
         this.properties = properties;
         this.taskExecutor = taskExecutor;
@@ -651,7 +651,8 @@ public class ExportEngine {
      * @return 文件URL
      */
     private <T> String uploadExportFile(File tempFile, ExportRequest<T> request) {
-        return storageStrategy.storeFile(tempFile, request.getFileName(), request.getFileMetadata());
+        StorageType storageType = request.getStorageType() == null ? defaultStorageType : request.getStorageType();
+        return storageStrategyFactory.getStrategy(storageType).storeFile(tempFile, request.getFileName(), request.getFileMetadata());
     }
 
     /**

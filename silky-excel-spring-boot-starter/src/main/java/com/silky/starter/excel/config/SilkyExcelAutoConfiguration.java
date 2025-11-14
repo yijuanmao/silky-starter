@@ -79,12 +79,12 @@ public class SilkyExcelAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public ExportEngine exportEngine(StorageStrategy storageStrategy,
+    public ExportEngine exportEngine(StorageStrategyFactory storageStrategyFactory,
                                      ExportRecordService recordService,
                                      SilkyExcelProperties properties,
                                      ThreadPoolTaskExecutor silkyExcelTaskExecutor,
                                      CompressionService compressionService) {
-        return new ExportEngine(storageStrategy, recordService, properties, silkyExcelTaskExecutor, compressionService);
+        return new ExportEngine(storageStrategyFactory, recordService, properties, silkyExcelTaskExecutor, compressionService);
     }
 
     @Bean
@@ -98,9 +98,9 @@ public class SilkyExcelAutoConfiguration {
     public ImportEngine importEngine(ImportRecordService recordService,
                                      ThreadPoolTaskExecutor silkyExcelTaskExecutor,
                                      CompressionService compressionService,
-                                     StorageStrategy storageStrategy,
+                                     StorageStrategyFactory storageStrategyFactory,
                                      SilkyExcelProperties properties) {
-        return new ImportEngine(recordService, silkyExcelTaskExecutor, compressionService, storageStrategy, properties);
+        return new ImportEngine(recordService, silkyExcelTaskExecutor, compressionService, storageStrategyFactory, properties);
     }
 
     @Bean

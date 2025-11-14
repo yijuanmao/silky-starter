@@ -117,14 +117,6 @@ public class ImportResult implements Serializable {
     }
 
     /**
-     * 设置统计信息
-     */
-    public ImportResult withStatistics(Map<String, Object> statistics) {
-        this.statistics = statistics;
-        return this;
-    }
-
-    /**
      * 设置跳过数量
      */
     public ImportResult withSkippedCount(Long skippedCount) {
@@ -137,13 +129,6 @@ public class ImportResult implements Serializable {
      */
     public double getSuccessRate() {
         return totalCount > 0 ? (double) successCount / totalCount : 0.0;
-    }
-
-    /**
-     * 计算失败率
-     */
-    public double getFailureRate() {
-        return totalCount > 0 ? (double) failedCount / totalCount : 0.0;
     }
 
     /**

@@ -11,10 +11,11 @@ import com.silky.starter.excel.core.model.DataProcessor;
 import com.silky.starter.excel.core.model.imports.ImportRequest;
 import com.silky.starter.excel.core.model.imports.ImportResult;
 import com.silky.starter.excel.core.model.imports.ImportTask;
-import com.silky.starter.excel.core.storage.StorageStrategy;
+import com.silky.starter.excel.core.storage.factory.StorageStrategyFactory;
 import com.silky.starter.excel.entity.ImportRecord;
 import com.silky.starter.excel.enums.AsyncType;
 import com.silky.starter.excel.enums.ImportStatus;
+import com.silky.starter.excel.enums.StorageType;
 import com.silky.starter.excel.properties.SilkyExcelProperties;
 import com.silky.starter.excel.service.compression.CompressionService;
 import com.silky.starter.excel.service.imports.ImportRecordService;
@@ -55,7 +56,7 @@ public class ImportEngine {
     private final ImportRecordService recordService;
     private final ThreadPoolTaskExecutor taskExecutor;
     private final CompressionService compressionService;
-    private final StorageStrategy storageStrategy;
+    private final StorageStrategyFactory storageStrategyFactory;
     private final SilkyExcelProperties silkyExcelProperties;
 
     // 清理执行器
@@ -64,16 +65,19 @@ public class ImportEngine {
     // 引擎启动时间
     private final long engineStartTime = System.currentTimeMillis();
 
+    private final StorageType defaultStorageType;
+
     public ImportEngine(ImportRecordService recordService,
                         ThreadPoolTaskExecutor taskExecutor,
                         CompressionService compressionService,
-                        StorageStrategy storageStrategy,
+                        StorageStrategyFactory storageStrategyFactory,
                         SilkyExcelProperties properties) {
         this.recordService = recordService;
         this.taskExecutor = taskExecutor;
         this.compressionService = compressionService;
-        this.storageStrategy = storageStrategy;
+        this.storageStrategyFactory = storageStrategyFactory;
         this.silkyExcelProperties = properties;
+        this.defaultStorageType = properties.getStorage().getStorageType();
 
         this.cleanupExecutor = Executors.newSingleThreadScheduledExecutor(
                 r -> new Thread(r, "import-engine-cleanup")
@@ -327,7 +331,8 @@ public class ImportEngine {
      * @return 下载的临时文件
      */
     private <T> File downloadImportFile(ImportRequest<T> request) {
-        return storageStrategy.downloadFile(request.getFileUrl());
+        StorageType storageType = request.getStorageType() == null ? defaultStorageType : request.getStorageType();
+        return storageStrategyFactory.getStrategy(storageType).downloadFile(request.getFileUrl());
     }
 
     /**
