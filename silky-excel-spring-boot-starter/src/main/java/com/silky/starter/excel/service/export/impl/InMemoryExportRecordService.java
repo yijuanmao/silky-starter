@@ -95,9 +95,11 @@ public class InMemoryExportRecordService implements ExportRecordService {
      *
      * @param taskId         任务ID
      * @param processedCount 已处理数据量
+     * @param successCount   成功数据量
+     * @param failedCount    失败数据量
      */
     @Override
-    public void updateProgress(String taskId, long processedCount) {
+    public void updateProgress(String taskId, long processedCount, long successCount, long failedCount) {
         update(taskId, record -> {
             record.setProcessedCount(processedCount);
 

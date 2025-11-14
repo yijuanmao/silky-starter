@@ -18,12 +18,11 @@ public interface DataImporterSupplier<T> {
      * 导入数据
      * 将数据列表持久化到目标系统
      *
-     * @param data    要导入的数据列表
-     * @param pageNum 当前页码
-     * @param params  导入参数
+     * @param dataList 要导入的数据列表
+     * @param params   导入参数
      * @return 导入结果，包含成功数量和错误信息
      */
-    ImportBatchResult importData(List<T> data, int pageNum, Map<String, Object> params) throws ExcelExportException;
+    ImportBatchResult importData(List<T> dataList, Map<String, Object> params) throws ExcelExportException;
 
     /**
      * 导入前准备

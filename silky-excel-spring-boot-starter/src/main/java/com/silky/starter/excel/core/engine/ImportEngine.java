@@ -2,6 +2,7 @@ package com.silky.starter.excel.core.engine;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.excel.core.exception.ExcelExportException;
@@ -11,6 +12,7 @@ import com.silky.starter.excel.core.model.imports.DataImporterSupplier;
 import com.silky.starter.excel.core.model.imports.ImportRequest;
 import com.silky.starter.excel.core.model.imports.ImportResult;
 import com.silky.starter.excel.core.model.imports.ImportTask;
+import com.silky.starter.excel.core.storage.StorageStrategy;
 import com.silky.starter.excel.entity.ImportRecord;
 import com.silky.starter.excel.enums.ImportStatus;
 import com.silky.starter.excel.properties.SilkyExcelProperties;
@@ -21,11 +23,14 @@ import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import javax.lang.model.element.VariableElement;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -54,6 +59,8 @@ public class ImportEngine {
     private final ImportRecordService recordService;
     private final ThreadPoolTaskExecutor taskExecutor;
     private final CompressionService compressionService;
+    private final StorageStrategy storageStrategy;
+    private final SilkyExcelProperties silkyExcelProperties;
 
     // 清理执行器
     private final ScheduledExecutorService cleanupExecutor;
@@ -63,10 +70,14 @@ public class ImportEngine {
 
     public ImportEngine(ImportRecordService recordService,
                         ThreadPoolTaskExecutor taskExecutor,
-                        CompressionService compressionService) {
+                        CompressionService compressionService,
+                        StorageStrategy storageStrategy,
+                        SilkyExcelProperties properties) {
         this.recordService = recordService;
         this.taskExecutor = taskExecutor;
         this.compressionService = compressionService;
+        this.storageStrategy = storageStrategy;
+        this.silkyExcelProperties = properties;
 
         this.cleanupExecutor = Executors.newSingleThreadScheduledExecutor(
                 r -> new Thread(r, "import-engine-cleanup")
@@ -126,7 +137,7 @@ public class ImportEngine {
 
         try {
             // 下载文件
-            downloadedFile = downloadImportFile(request, taskId);
+            downloadedFile = downloadImportFile(request);
 
             // 处理解压
             decompressedFile = processDecompression(downloadedFile, request, taskId);
@@ -135,7 +146,7 @@ public class ImportEngine {
             prepareDataImporter(request);
 
             // 执行批次导入
-            ImportResult importResult = executeBatchImport(task, decompressedFile, batchSize, maxConcurrentBatches);
+            ImportResult importResult = executeBatchImport(task, decompressedFile, maxConcurrentBatches);
 
             long costTime = System.currentTimeMillis() - startTime;
             successImports.incrementAndGet();
@@ -160,13 +171,14 @@ public class ImportEngine {
     /**
      * 执行批次导入
      */
-    private <T> ImportResult executeBatchImport(ImportTask<T> task, File importFile,
-                                                int batchSize, int maxConcurrentBatches) {
+    private <T> ImportResult executeBatchImport(ImportTask<T> task, File importFile, int maxConcurrentBatches) {
         String taskId = task.getTaskId();
         ImportRequest<T> request = task.getRequest();
 
-        try (EnhancedExcelReader<T> reader = new EnhancedExcelReader<>(importFile.getAbsolutePath(),
-                request.getDataClass(), request.isSkipHeader())) {
+        int maxErrorCount = this.getMaxErrorCount(request.getMaxErrorCount());
+        int maxReadCount = this.getMaxReadCount(request.getMaxReadCount());
+        try (ExcelReaderWrapper<T> reader = new ExcelReaderWrapper<>(importFile.getAbsolutePath(),
+                request.isSkipHeader(), maxErrorCount, maxReadCount)) {
 
             // 创建批次上下文
             BatchTask<List<T>> batchContext = BatchTask.<List<T>>builder()
@@ -218,7 +230,7 @@ public class ImportEngine {
                     batchContext.setBatchIndex(pageNum);
 
                     // 读取下一页数据
-                    List<T> pageData = reader.readPage(pageNum, request.getPageSize());
+                    List<T> pageData = reader.readNextBatch();
                     if (CollUtil.isEmpty(pageData)) {
                         break;
                     }
@@ -289,7 +301,7 @@ public class ImportEngine {
     /**
      * 处理单个导入页面
      */
-    private <T> ImportBatchResult processImportPage(EnhancedExcelReader<T> reader,
+    private <T> ImportBatchResult processImportPage(ExcelReaderWrapper<T> reader,
                                                     ImportRequest<T> request,
                                                     int pageNum,
                                                     BatchTask<List<T>> batchContext) {
@@ -306,17 +318,16 @@ public class ImportEngine {
             }
 
             // 读取数据
-            List<T> pageData = reader.readPage(pageNum, request.getPageSize());
+            List<T> pageData = reader.readNextBatch();
             if (CollUtil.isEmpty(pageData)) {
                 return ImportBatchResult.skipped("数据为空");
             }
-
             // 处理数据
-            List<T> processedData = processImportData(pageData, request.getProcessors(), pageNum);
+            List<T> processedData = processImportData(pageData, request.getProcessors());
 
             // 数据导入
             DataImporterSupplier.ImportBatchResult batchResult = request.getDataImporterSupplier()
-                    .importData(processedData, pageNum, request.getParams());
+                    .importData(processedData, request.getParams());
 
             // 更新统计
             batchContext.getProcessedCount().addAndGet(processedData.size());
@@ -367,7 +378,7 @@ public class ImportEngine {
 
         // 记录进度日志
         if (batchContext.getBatchIndex() % 10 == 0) { // 每10个批次记录一次
-            log.info("导入进度: {}, 批次: {}/{}, 已处理: {}, 成功: {}, 失败: {}, 进度: {:.2f}%",
+            log.info("导入进度: {}, 批次: {}/{}, 已处理: {}, 成功: {}, 失败: {}, 进度: {}%",
                     batchContext.getTaskId(),
                     batchContext.getBatchIndex(),
                     batchContext.getTotalBatches(),
@@ -399,7 +410,7 @@ public class ImportEngine {
             ImportRecord record = createImportRecord(taskId, request);
             recordService.addImportRecord(record);
 
-            downloadedFile = downloadImportFile(request, taskId);
+            downloadedFile = downloadImportFile(request);
             decompressedFile = processDecompression(downloadedFile, request, taskId);
             prepareDataImporter(request);
 
@@ -497,6 +508,9 @@ public class ImportEngine {
         }, 10, 10, TimeUnit.MINUTES);
     }
 
+    /**
+     * 清理过期缓存
+     */
     private void cleanupExpiredCaches() {
         long currentTime = System.currentTimeMillis();
         long expireTime = currentTime - TimeUnit.MINUTES.toMillis(CACHE_CLEANUP_DELAY_MINUTES);
@@ -529,74 +543,130 @@ public class ImportEngine {
      * @param taskId   任务ID
      * @param tempFile 临时文件
      * @param <T>
-     * @return
+     * @return ImportResult
      */
     private <T> ImportResult doImport(ImportRequest<T> request, String taskId, File tempFile) {
-        long totalCount = 0;
-        long successCount = 0;
-        long failedCount = 0;
         long skippedCount = 0;
         List<ImportResult.ImportError> allErrors = new ArrayList<>();
 
-        try (EnhancedExcelReader<T> reader = new EnhancedExcelReader<>(tempFile.getAbsolutePath(),
-                request.getDataClass(), request.isSkipHeader())) {
+        int maxErrorCount = this.getMaxErrorCount(request.getMaxErrorCount());
+        int maxReadCount = this.getMaxReadCount(request.getMaxReadCount());
 
-            int pageNum = 1;
-            boolean hasMoreData = true;
+        // 创建批次上下文
+        BatchTask<List<T>> batchContext = BatchTask.<List<T>>builder()
+                .taskId(taskId)
+                .batchId("IMPORT_BATCH_" + IdUtil.fastSimpleUUID())
+                .batchIndex(0)
+                .totalBatches(0)
+                .processedCount(new AtomicLong(0))
+                .successCount(new AtomicLong(0))
+                .failedCount(new AtomicLong(0))
+                .startTime(System.currentTimeMillis())
+                .compressed(request.isCompressionEnabled())
+                .compressionType(request.getCompressionType())
+                .build();
+
+        try (ExcelReaderWrapper<T> reader = new ExcelReaderWrapper<>(tempFile.getAbsolutePath(),
+                request.isSkipHeader(), maxErrorCount, maxReadCount)) {
+
             long startImportTime = System.currentTimeMillis();
+            int totalSheets = reader.getTotalSheetCount();
 
+            log.info("开始导入任务: {}, 总Sheet数: {}", taskId, totalSheets);
+
+            // 开始事务（如果启用）
             if (request.isEnableTransaction()) {
                 request.getDataImporterSupplier().beginTransaction();
             }
 
-            while (hasMoreData) {
-                long pageStartTime = System.currentTimeMillis();
+            int batchIndex = 1;
+            int currentSheetIndex = 0;
+            String currentSheetName = "";
 
+            // 使用分sheet分批次读取 - 关键优化
+            while (reader.hasMoreData()) {
+                // 检查任务超时
                 if (isTaskTimeout(taskId)) {
                     throw new ExcelExportException("任务执行超时，已中断");
                 }
 
-                if (allErrors.size() >= request.getMaxErrorCount()) {
-                    log.warn("错误数量超过限制: {}，停止导入", request.getMaxErrorCount());
+                // 检查错误数量是否超过限制
+                if (batchContext.getFailedCount().get() >= maxErrorCount) {
+                    log.warn("导入任务 {} 错误数量超过限制 {}，提前终止", taskId, maxErrorCount);
                     break;
                 }
 
-                List<T> pageData = reader.readPage(pageNum, request.getPageSize());
-                if (pageData == null || pageData.isEmpty()) {
-                    log.debug("第{}页数据为空，导入完成", pageNum);
-                    break;
+                long batchStartTime = System.currentTimeMillis();
+
+                // 读取下一批次数据
+                List<T> batchData = reader.readNextBatch();
+
+                if (CollUtil.isEmpty(batchData)) {
+                    // 检查是否需要切换到下一个sheet
+                    if (reader.hasMoreData()) {
+                        continue;
+                    } else {
+                        break;
+                    }
+                }
+                // 更新sheet信息
+                if (currentSheetIndex != reader.getCurrentSheetIndex()) {
+                    currentSheetIndex = reader.getCurrentSheetIndex();
+                    currentSheetName = reader.getCurrentSheetInfo();
+                    log.info("开始处理Sheet: {}, 任务: {}", currentSheetName, taskId);
                 }
 
-                List<T> processedData = processImportData(pageData, request.getProcessors(), pageNum);
+                // 处理数据
+                List<T> processedData = processImportData(batchData, request.getProcessors());
+
+                // 数据导入
                 DataImporterSupplier.ImportBatchResult batchResult = request.getDataImporterSupplier()
-                        .importData(processedData, pageNum, request.getParams());
+                        .importData(processedData, request.getParams());
 
-                totalCount += pageData.size();
-                successCount += batchResult.getSuccessCount();
-                failedCount += batchResult.getFailedCount();
+                // 更新统计
                 allErrors.addAll(batchResult.getErrors());
 
-                recordService.updateProgress(taskId, totalCount, successCount, failedCount);
+                // 更新批次上下文
+                batchContext.setBatchIndex(batchIndex);
+                batchContext.setTotalBatches(batchIndex);
+                batchContext.getProcessedCount().addAndGet(batchData.size());
+                batchContext.getSuccessCount().addAndGet(batchResult.getSuccessCount());
+                batchContext.getFailedCount().addAndGet(batchResult.getFailedCount());
 
-                long pageCostTime = System.currentTimeMillis() - pageStartTime;
-                log.debug("第{}页数据处理完成: 数据量={}, 成功={}, 失败={}, 耗时={}ms",
-                        pageNum, pageData.size(), batchResult.getSuccessCount(),
-                        batchResult.getFailedCount(), pageCostTime);
+                // 更新进度
+                updateImportProgress(taskId, batchContext);
 
-                hasMoreData = reader.hasMoreData();
-                pageNum++;
+                long batchCostTime = System.currentTimeMillis() - batchStartTime;
+
+                // 详细的批次日志
+                log.debug("批次处理完成: 任务[{}], Sheet[{}], 批次[{}], 数据量[{}], 成功[{}], 失败[{}], 耗时[{}ms]",
+                        taskId, currentSheetName, batchIndex, batchData.size(),
+                        batchResult.getSuccessCount(), batchResult.getFailedCount(), batchCostTime);
+
+                batchIndex++;
+
+                // 添加小延迟，避免CPU占用过高
+                if (CollUtil.isNotEmpty(batchData)) {
+                    ThreadUtil.sleep(5); // 5ms延迟
+                }
             }
-
             long totalCostTime = System.currentTimeMillis() - startImportTime;
-
+            // 提交事务（如果启用）
             if (request.isEnableTransaction()) {
                 request.getDataImporterSupplier().commitTransaction();
             }
 
-            log.info("导入任务数据处理完成: {}, 总数据量: {}, 成功: {}, 失败: {}, 处理耗时: {}ms",
-                    taskId, totalCount, successCount, failedCount, totalCostTime);
+            long failedCount = reader.getFailRowCount();
+            long successCount = reader.getSuccessRowCount();
+            long totalCount = reader.getAllCount();
+            // 收集所有错误
+            allErrors.addAll(reader.getAllErrors());
+            log.debug("导入任务完成: {}, 总Sheet数: {}, 总批次: {}, 总数据量: {}, 成功: {}, 失败: {}, 总耗时: {}ms",
+                    taskId, totalSheets, batchIndex - 1, totalCount, successCount, failedCount, totalCostTime);
 
-            if (failedCount == 0) {
+
+            // 构建结果
+            if (failedCount == 0 && allErrors.isEmpty()) {
                 return ImportResult.success(taskId, totalCount, successCount)
                         .withCostTime(totalCostTime);
             } else {
@@ -606,6 +676,7 @@ public class ImportEngine {
             }
 
         } catch (Exception e) {
+            // 回滚事务（如果启用）
             if (request.isEnableTransaction()) {
                 try {
                     request.getDataImporterSupplier().rollbackTransaction();
@@ -617,30 +688,61 @@ public class ImportEngine {
         }
     }
 
-    private <T> List<T> processImportData(List<T> data, List<DataProcessor<T>> processors, int pageNum) {
+    /**
+     * 分页读取数据 - 关键方法：避免一次性读取所有数据
+     *
+     * @param reader   Excel读取器
+     * @param pageSize 页面大小
+     * @param <T>      数据类型
+     * @return 当前批次的数据
+     */
+    private <T> List<T> readBatchData(ExcelReaderWrapper<T> reader, int pageSize) {
+        List<T> allData = reader.readNextBatch();
+        if (CollUtil.isEmpty(allData)) {
+            return Collections.emptyList();
+        }
+        return allData;
+    }
+
+    /**
+     * 处理导入数据
+     *
+     * @param data       原始数据
+     * @param processors 数据处理器列表
+     * @param <T>        数据类型
+     * @return 处理后的数据
+     */
+    private <T> List<T> processImportData(List<T> data, List<DataProcessor<T>> processors) {
         if (CollUtil.isEmpty(processors)) {
             return data;
         }
         List<T> processedData = data;
         for (DataProcessor<T> processor : processors) {
             long startTime = System.currentTimeMillis();
-            processedData = processor.process(processedData, pageNum);
+            processedData = processor.process(processedData);
             long costTime = System.currentTimeMillis() - startTime;
-            log.debug("数据处理器执行完成: {}, 页码: {}, 耗时: {}ms",
-                    processor.getClass().getSimpleName(), pageNum, costTime);
+            log.debug("数据处理器执行完成: {}, 耗时: {}ms",
+                    processor.getClass().getSimpleName(), costTime);
         }
         return processedData;
     }
 
-    private <T> File downloadImportFile(ImportRequest<T> request, String taskId) {
-        String tempDir = System.getProperty("java.io.tmpdir");
-        String filePath = tempDir + File.separator + "silky_import_" +
-                System.currentTimeMillis() + "_" + request.getFileName();
-        File tempFile = new File(filePath);
-        log.info("下载导入文件: {} -> {}", request.getFileUrl(), filePath);
-        return tempFile;
+    /**
+     * 下载导入文件
+     *
+     * @param request 导入请求
+     * @return 下载的临时文件
+     */
+    private <T> File downloadImportFile(ImportRequest<T> request) {
+        return storageStrategy.downloadFile(request.getFileUrl());
     }
 
+    /**
+     * 准备数据导入器
+     *
+     * @param request 导入请求
+     * @param <T>     数据类型
+     */
     private <T> void prepareDataImporter(ImportRequest<T> request) {
         if (request.getDataImporterSupplier() != null) {
             request.getDataImporterSupplier().prepare(request.getParams());
@@ -748,11 +850,43 @@ public class ImportEngine {
         return task;
     }
 
+    /**
+     * 缓存任务
+     *
+     * @param task 导入任务
+     * @param <T>  数据类型
+     */
     private <T> void cacheTask(ImportTask<T> task) {
         taskCache.put(task.getTaskId(), task);
         log.debug("导入任务已缓存: {}", task.getTaskId());
     }
 
+    /**
+     * 获取最大错误数量
+     *
+     * @param maxErrorCount 最大错误数量
+     * @return 最大错误数量
+     */
+    private int getMaxErrorCount(Integer maxErrorCount) {
+        return Objects.isNull(maxErrorCount) ? silkyExcelProperties.getImports().getMaxErrorCount() : maxErrorCount;
+    }
+
+    /**
+     * 获取最大读取数量
+     *
+     * @param maxReadCount 最大读取数量
+     * @return 最大错误数量
+     */
+    private int getMaxReadCount(Integer maxReadCount) {
+        return Objects.isNull(maxReadCount) ? silkyExcelProperties.getImports().getMaxReadCount() : maxReadCount;
+    }
+
+    /**
+     * 判断任务是否超时
+     *
+     * @param taskId 任务ID
+     * @return 是否超时
+     */
     private boolean isTaskTimeout(String taskId) {
         ImportTask<?> task = taskCache.get(taskId);
         if (task == null) {
@@ -760,6 +894,7 @@ public class ImportEngine {
         }
         return task.isTimeout();
     }
+
 
     public void shutdown() {
         log.info("开始关闭导入引擎...");

@@ -8,11 +8,7 @@ import com.silky.starter.excel.enums.StorageType;
 import com.silky.starter.excel.properties.SilkyExcelProperties;
 import org.slf4j.Logger;
 
-import javax.servlet.http.HttpServletResponse;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.OutputStream;
-import java.net.URLEncoder;
 import java.util.Map;
 
 /**
@@ -62,35 +58,31 @@ public class LocalStorageStrategy implements StorageStrategy {
     /**
      * 下载文件
      *
-     * @param fileKey  文件唯一标识
-     * @param response Http响应对象
+     * @param fileKey 文件唯一标识
      */
     @Override
-    public void downloadFile(String fileKey, HttpServletResponse response) {
+    public File downloadFile(String fileKey) {
         try {
-            String exportPath = properties.getStorage().getLocal().getBasePath();
-            File file = new File(exportPath, fileKey);
-            if (!file.exists()) {
+            // 检查原文件是否存在
+            File sourceFile = new File(fileKey);
+            if (!sourceFile.exists()) {
                 throw new ExcelExportException("文件不存在: " + fileKey);
             }
-            // 设置响应头
-            String fileName = getFileNameFromKey(fileKey);
-            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-            response.setHeader("Content-Disposition",
-                    "attachment; filename=\"" + URLEncoder.encode(fileName, "UTF-8") + "\"");
-            response.setHeader("Content-Length", String.valueOf(file.length()));
+            // 获取原始文件名（用于响应头）
+            String originalFileName = FileUtil.getName(fileKey);
+            // 生成安全的临时文件名（避免特殊字符问题）
+            String safeFileName = FileUtil.cleanInvalid(originalFileName);
+            String tempFileName = "silky_import_" + System.currentTimeMillis() + "_" + safeFileName;
 
-            // 流式传输
-            try (FileInputStream inputStream = new FileInputStream(file);
-                 OutputStream outputStream = response.getOutputStream()) {
+            // 创建临时文件（使用系统临时目录）
+            File tempFile = new File(System.getProperty("java.io.tmpdir"), tempFileName);
 
-                byte[] buffer = new byte[8192];
-                int bytesRead;
-                while ((bytesRead = inputStream.read(buffer)) != -1) {
-                    outputStream.write(buffer, 0, bytesRead);
-                }
-                outputStream.flush();
-            }
+            // 安全复制文件到临时目录（使用Hutool的原子复制）
+            FileUtil.copy(sourceFile, tempFile, true); // true表示覆盖
+
+            // 返回临时文件供调用方清理（关键优化点！）
+            return tempFile;
+
         } catch (Exception e) {
             log.error("从本地下载文件失败", e);
             throw new ExcelExportException("文件下载失败: " + e.getMessage());
@@ -146,16 +138,4 @@ public class LocalStorageStrategy implements StorageStrategy {
         return uuid + "_" + fileName;
     }
 
-    /**
-     * 从文件唯一标识中提取原始文件名
-     *
-     * @param fileKey 文件唯一标识
-     * @return 原始文件名
-     */
-    private String getFileNameFromKey(String fileKey) {
-        if (fileKey.contains("_")) {
-            return fileKey.substring(fileKey.lastIndexOf("_") + 1);
-        }
-        return fileKey;
-    }
 }

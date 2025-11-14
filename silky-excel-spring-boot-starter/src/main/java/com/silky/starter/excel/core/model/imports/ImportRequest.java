@@ -103,6 +103,11 @@ public class ImportRequest<T> {
     private Integer maxErrorCount;
 
     /**
+     * 最大读取数量，限制导入的最大数据行数
+     */
+    private Integer maxReadCount;
+
+    /**
      * 压缩类型
      */
     private CompressionType compressionType;
@@ -126,4 +131,5 @@ public class ImportRequest<T> {
      * 分割大小
      */
     private long splitSize = 100 * 1024 * 1024;
+
 }

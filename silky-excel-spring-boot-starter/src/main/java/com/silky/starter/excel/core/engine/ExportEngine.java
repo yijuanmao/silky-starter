@@ -8,6 +8,7 @@ import com.silky.starter.excel.core.exception.ExcelExportException;
 import com.silky.starter.excel.core.model.BatchTask;
 import com.silky.starter.excel.core.model.DataProcessor;
 import com.silky.starter.excel.core.model.export.*;
+import com.silky.starter.excel.core.storage.StorageStrategy;
 import com.silky.starter.excel.entity.ExportRecord;
 import com.silky.starter.excel.enums.AsyncType;
 import com.silky.starter.excel.enums.ExportStatus;
@@ -16,7 +17,6 @@ import com.silky.starter.excel.enums.TaskType;
 import com.silky.starter.excel.properties.SilkyExcelProperties;
 import com.silky.starter.excel.service.compression.CompressionService;
 import com.silky.starter.excel.service.export.ExportRecordService;
-import com.silky.starter.excel.service.storage.StorageService;
 import lombok.Builder;
 import lombok.Data;
 import lombok.Getter;
@@ -60,7 +60,7 @@ public class ExportEngine {
     private final ConcurrentMap<String, BatchTask<?>> batchTaskCache = new ConcurrentHashMap<>();
 
     // 依赖服务
-    private final StorageService storageService;
+    private final StorageStrategy storageStrategy;
     private final ExportRecordService recordService;
     private final SilkyExcelProperties properties;
     private final ThreadPoolTaskExecutor taskExecutor;
@@ -77,12 +77,12 @@ public class ExportEngine {
     // 引擎启动时间
     private final long engineStartTime = System.currentTimeMillis();
 
-    public ExportEngine(StorageService storageService,
+    public ExportEngine(StorageStrategy storageStrategy,
                         ExportRecordService recordService,
                         SilkyExcelProperties properties,
                         ThreadPoolTaskExecutor taskExecutor,
                         CompressionService compressionService) {
-        this.storageService = storageService;
+        this.storageStrategy = storageStrategy;
         this.recordService = recordService;
         this.properties = properties;
         this.taskExecutor = taskExecutor;
@@ -157,7 +157,7 @@ public class ExportEngine {
             finalFile = processCompression(tempFile, task.getRequest());
 
             // 上传文件
-            String fileUrl = uploadExportFile(finalFile, task.getRequest(), taskId);
+            String fileUrl = uploadExportFile(finalFile, task.getRequest());
 
             // 更新记录
             updateRecordOnSuccess(taskId, fileUrl, exportResult);
@@ -195,7 +195,7 @@ public class ExportEngine {
         String taskId = task.getTaskId();
         ExportRequest<T> request = task.getRequest();
 
-        try (EnhancedExcelWriter writer = new EnhancedExcelWriter(tempFile.getAbsolutePath(),
+        try (EnhancedWriterWrapper writer = new EnhancedWriterWrapper(tempFile.getAbsolutePath(),
                 getMaxRowsPerSheet(request))) {
 
             // 创建批次上下文
@@ -295,7 +295,7 @@ public class ExportEngine {
     /**
      * 处理单个导出页面
      */
-    private <T> boolean processExportPage(EnhancedExcelWriter writer, ExportRequest<T> request,
+    private <T> boolean processExportPage(EnhancedWriterWrapper writer, ExportRequest<T> request,
                                           int pageNum, BatchTask<ExportPageData<T>> batchContext) {
         String taskId = batchContext.getTaskId();
 
@@ -398,6 +398,8 @@ public class ExportEngine {
 
     /**
      * 处理单个任务
+     *
+     * @param task 任务
      */
     private <T> ExportResult processExportTask(ExportTask<T> task) {
         ExportRequest<T> request = task.getRequest();
@@ -421,7 +423,7 @@ public class ExportEngine {
             // 处理压缩
             finalFile = processCompression(tempFile, request);
 
-            String fileUrl = uploadExportFile(finalFile, request, taskId);
+            String fileUrl = uploadExportFile(finalFile, request);
             updateRecordOnSuccess(taskId, fileUrl, exportResult);
 
             long costTime = System.currentTimeMillis() - startTime;
@@ -457,7 +459,7 @@ public class ExportEngine {
      */
     private <T> ExportResult executeSingleExport(ExportRequest<T> request, String taskId,
                                                  File tempFile, AsyncType asyncType) {
-        try (EnhancedExcelWriter writer = new EnhancedExcelWriter(tempFile.getAbsolutePath(),
+        try (EnhancedWriterWrapper writer = new EnhancedWriterWrapper(tempFile.getAbsolutePath(),
                 getMaxRowsPerSheet(request))) {
 
             ExportContext<T> context = new ExportContext<>(taskId, request);
@@ -568,7 +570,7 @@ public class ExportEngine {
         }
         List<T> processedData = data;
         for (DataProcessor<T> processor : processors) {
-            processedData = processor.process(processedData, pageNum);
+            processedData = processor.process(processedData);
         }
         return processedData;
     }
@@ -645,13 +647,11 @@ public class ExportEngine {
      *
      * @param tempFile 临时文件
      * @param request  导出请求
-     * @param taskId   任务ID
      * @param <T>      数据类型
      * @return 文件URL
      */
-    private <T> String uploadExportFile(File tempFile, ExportRequest<T> request, String taskId) {
-        return storageService.upload(tempFile, request.getFileName(),
-                request.getStorageType(), taskId);
+    private <T> String uploadExportFile(File tempFile, ExportRequest<T> request) {
+        return storageStrategy.storeFile(tempFile, request.getFileName(), request.getFileMetadata());
     }
 
     /**
@@ -780,7 +780,7 @@ public class ExportEngine {
      * @param pageNum 页码
      * @param <T>
      */
-    private <T> void writePageData(EnhancedExcelWriter writer, List<T> data,
+    private <T> void writePageData(EnhancedWriterWrapper writer, List<T> data,
                                    ExportRequest<T> request, int pageNum) {
         long startTime = System.currentTimeMillis();
         writer.write(data, request.getDataClass());

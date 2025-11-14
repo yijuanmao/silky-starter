@@ -161,17 +161,38 @@ public class ImportResult implements Serializable {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ImportError {
+
+        /**
+         * 行号，从1开始
+         */
         private Integer rowIndex;
+
+        /**
+         * 字段名称
+         */
         private String fieldName;
+
+        /**
+         * 错误信息
+         */
         private String errorMessage;
+
+        /**
+         * 原始值
+         */
         private String originalValue;
 
-        public static ImportError of(Integer rowIndex, String fieldName, String errorMessage) {
-            return new ImportError(rowIndex, fieldName, errorMessage, null);
+        /**
+         * 所属Sheet名称
+         */
+        private String sheetName;
+
+        public static ImportError of(Integer rowIndex, String fieldName, String errorMessage, String sheetName) {
+            return new ImportError(rowIndex, fieldName, errorMessage, null, sheetName);
         }
 
-        public static ImportError of(Integer rowIndex, String fieldName, String errorMessage, String originalValue) {
-            return new ImportError(rowIndex, fieldName, errorMessage, originalValue);
+        public static ImportError of(Integer rowIndex, String fieldName, String errorMessage, String originalValue, String sheetName) {
+            return new ImportError(rowIndex, fieldName, errorMessage, originalValue, sheetName);
         }
 
         public String getErrorDetail() {

@@ -149,6 +149,11 @@ public class SilkyExcelProperties {
         private int maxErrorCount = 100;
 
         /**
+         * 最大读取文件数量
+         */
+        private int maxReadCount = 10000;
+
+        /**
          * 临时文件路径
          */
         private String tempFilePath = "./temp/imports";

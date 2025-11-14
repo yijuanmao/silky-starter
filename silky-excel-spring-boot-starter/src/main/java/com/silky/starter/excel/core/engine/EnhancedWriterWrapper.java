@@ -10,9 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -22,9 +20,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * @date 2025-10-24 16:01
  **/
 @Getter
-public class EnhancedExcelWriter implements Closeable {
+public class EnhancedWriterWrapper implements Closeable {
 
-    private static final Logger log = LoggerFactory.getLogger(EnhancedExcelWriter.class);
+    private static final Logger log = LoggerFactory.getLogger(EnhancedWriterWrapper.class);
 
     private final ExcelWriter writer;
 
@@ -57,7 +55,7 @@ public class EnhancedExcelWriter implements Closeable {
 
     private static final String DEFAULT_SHEET_NAME = "数据";
 
-    public EnhancedExcelWriter(String filePath, long maxRowsPerSheet) {
+    public EnhancedWriterWrapper(String filePath, long maxRowsPerSheet) {
         this.filePath = filePath;
         this.maxRowsPerSheet = maxRowsPerSheet;
 

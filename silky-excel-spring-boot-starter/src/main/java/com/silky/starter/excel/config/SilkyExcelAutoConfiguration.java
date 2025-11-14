@@ -12,8 +12,6 @@ import com.silky.starter.excel.service.export.ExportRecordService;
 import com.silky.starter.excel.service.export.impl.InMemoryExportRecordService;
 import com.silky.starter.excel.service.imports.ImportRecordService;
 import com.silky.starter.excel.service.imports.impl.InMemoryImportRecordService;
-import com.silky.starter.excel.service.storage.StorageService;
-import com.silky.starter.excel.service.storage.impl.DefaultStorageService;
 import com.silky.starter.excel.template.ExcelTemplate;
 import com.silky.starter.excel.template.impl.DefaultExcelTemplate;
 import lombok.extern.slf4j.Slf4j;
@@ -72,12 +70,6 @@ public class SilkyExcelAutoConfiguration {
         return new StorageStrategyFactory(storageStrategies);
     }
 
-    @Bean
-    @ConditionalOnMissingBean
-    public StorageService storageService(StorageStrategyFactory strategyFactory,
-                                         SilkyExcelProperties properties) {
-        return new DefaultStorageService(strategyFactory, properties);
-    }
 
     @Bean
     @ConditionalOnMissingBean
@@ -87,12 +79,12 @@ public class SilkyExcelAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public ExportEngine exportEngine(StorageService storageService,
+    public ExportEngine exportEngine(StorageStrategy storageStrategy,
                                      ExportRecordService recordService,
                                      SilkyExcelProperties properties,
                                      ThreadPoolTaskExecutor silkyExcelTaskExecutor,
                                      CompressionService compressionService) {
-        return new ExportEngine(storageService, recordService, properties, silkyExcelTaskExecutor, compressionService);
+        return new ExportEngine(storageStrategy, recordService, properties, silkyExcelTaskExecutor, compressionService);
     }
 
     @Bean
@@ -105,8 +97,10 @@ public class SilkyExcelAutoConfiguration {
     @ConditionalOnMissingBean
     public ImportEngine importEngine(ImportRecordService recordService,
                                      ThreadPoolTaskExecutor silkyExcelTaskExecutor,
-                                     CompressionService compressionService) {
-        return new ImportEngine(recordService, silkyExcelTaskExecutor, compressionService);
+                                     CompressionService compressionService,
+                                     StorageStrategy storageStrategy,
+                                     SilkyExcelProperties properties) {
+        return new ImportEngine(recordService, silkyExcelTaskExecutor, compressionService, storageStrategy, properties);
     }
 
     @Bean

@@ -4,9 +4,15 @@ import com.silky.starter.excel.ExcelApplicationTest;
 import com.silky.starter.excel.core.model.export.ExportPageData;
 import com.silky.starter.excel.core.model.export.ExportRequest;
 import com.silky.starter.excel.core.model.export.ExportResult;
+import com.silky.starter.excel.core.model.imports.DataImporterSupplier;
+import com.silky.starter.excel.core.model.imports.ImportRequest;
+import com.silky.starter.excel.core.model.imports.ImportResult;
 import com.silky.starter.excel.enums.AsyncType;
+import com.silky.starter.excel.enums.StorageType;
 import com.silky.starter.excel.template.entity.UserTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
@@ -19,6 +25,7 @@ import java.util.List;
  * @author zy
  * @date 2025-10-31 16:53
  **/
+@ExtendWith(MockitoExtension.class)
 public class ExcelTemplateTest extends ExcelApplicationTest {
 
     // 提取测试数据为静态变量，提高复用率并降低内存消耗
@@ -34,7 +41,7 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
     public void testExportSync() {
         ExportResult result = excelTemplate.export(ExportRequest.<UserTest>builder()
                 .dataClass(UserTest.class)
-                .fileName("test.xls")
+                .fileName("test-export.xlsx")
                 .dataSupplier((pageNum, pageSize, params) -> {
                     //这里一次性获取所有数据
                     List<UserTest> users = TEST_DATA;
@@ -88,28 +95,26 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         log.info("导出结果: {}", result);
     }
 
+
     /**
-     * 使用自定义分页查询测试异步导出-分页模式-使用MQ或者自定义异步方式
+     * 测试同步
      */
     @Test
-    public void testPageExportAsyncCustom() {
-        boolean hasNext = true;
-        // 创建导出请求
-        ExportRequest<UserTest> request = new ExportRequest<>();
+    public void testImportSyncAsync() {
+        ImportRequest<UserTest> request = new ImportRequest<>();
         request.setDataClass(UserTest.class);
-        request.setFileName("test_async.xls");
-        request.setPageSize(10);
-        request.setMaxRowsPerSheet(10000L);
-        request.setDataSupplier((pageNum, pageSize, params) -> {
-            //这里模拟数据库分页查询
-            List<UserTest> userTests = this.findByCondition(pageNum, pageSize);
-            //PageInfo<User> page = userService.findByCondition(pageNum, pageSize, queryParams);
-            //return new PageData<>(page.getList(), page.isHasNextPage());
-            //hasNext 用于是否有下一页数据,如果查询findByCondition方法使用分页插件，就可以从分页插件中获取是否有下一页；,参照上述伪代码·
-            return new ExportPageData<>(userTests, hasNext);
+        request.setFileName("test.xls");
+        request.setFileUrl("C:\\Users\\Administrator\\Desktop\\test-export.xlsx");
+        request.setDataImporterSupplier((data, params) -> {
+            // 模拟数据导入逻辑，例如保存到数据库
+            log.info("导入数据长度为: {}", data.size());
+            return new DataImporterSupplier.ImportBatchResult(data.size(), Collections.emptyList());
         });
-        ExportResult result = excelTemplate.export(request, AsyncType.MQ);
-        log.info("导出结果: {}", result);
+        request.setStorageType(StorageType.LOCAL);
+        request.setPageSize(100);
+
+        ImportResult result = excelTemplate.importSync(request);
+        log.info("导入结果: {}", result);
     }
 
     /**
@@ -136,7 +141,7 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
      * @return 测试数据列表
      */
     private static List<UserTest> createTestData() {
-        int size = 10;
+        int size = 500000;
         // 预设容量避免频繁扩容，提高性能
         List<UserTest> list = new ArrayList<>(size);
 

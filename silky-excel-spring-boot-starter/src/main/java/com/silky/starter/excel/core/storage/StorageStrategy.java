@@ -3,7 +3,6 @@ package com.silky.starter.excel.core.storage;
 import com.silky.starter.excel.core.exception.ExcelExportException;
 import com.silky.starter.excel.enums.StorageType;
 
-import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.util.Map;
 
@@ -30,10 +29,9 @@ public interface StorageStrategy {
     /**
      * 下载文件
      *
-     * @param fileKey  文件存储的唯一标识
-     * @param response HttpServletResponse对象，用于输出文件流
+     * @param fileKey 文件存储的唯一标识
      */
-    void downloadFile(String fileKey, HttpServletResponse response) throws ExcelExportException;
+    File downloadFile(String fileKey) throws ExcelExportException;
 
     /**
      * 获取文件访问URL

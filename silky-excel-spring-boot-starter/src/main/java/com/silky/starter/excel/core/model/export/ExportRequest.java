@@ -60,7 +60,15 @@ public class ExportRequest<T> {
      * 指定导出文件的存储方式
      * 默认值：LOCAL
      */
-    private StorageType storageType;
+    @Builder.Default
+    private StorageType storageType = StorageType.LOCAL;
+
+    /**
+     * 文件元数据
+     * 存储时附加的额外信息
+     * 默认值：空Map
+     */
+    private Map<String, Object> fileMetadata;
 
     /**
      * 分页大小
