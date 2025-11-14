@@ -136,7 +136,6 @@ public class ImportEngine {
 
         File downloadedFile = null;
         File decompressedFile = null;
-        File tempFile = null;
 
         try {
             validateImportRequest(request);
@@ -169,7 +168,7 @@ public class ImportEngine {
             return ImportResult.fail(taskId, "导入失败: " + e.getMessage());
         } finally {
             cleanupDataImporter(request);
-            cleanupTempFiles(downloadedFile, decompressedFile, tempFile);
+            cleanupTempFiles(downloadedFile, decompressedFile);
             totalProcessedImports.incrementAndGet();
         }
     }
@@ -367,7 +366,13 @@ public class ImportEngine {
         }
     }
 
-    private void cleanupTempFiles(File downloadedFile, File decompressedFile, File tempFile) {
+    /**
+     * 清理临时文件
+     *
+     * @param downloadedFile   下载的文件
+     * @param decompressedFile 解压后的文件
+     */
+    private void cleanupTempFiles(File downloadedFile, File decompressedFile) {
         if (downloadedFile != null && downloadedFile.exists()) {
             try {
                 FileUtil.del(downloadedFile);
@@ -380,13 +385,6 @@ public class ImportEngine {
                 FileUtil.del(decompressedFile);
             } catch (Exception e) {
                 log.warn("解压文件删除异常: {}", decompressedFile.getAbsolutePath(), e);
-            }
-        }
-        if (tempFile != null && tempFile.exists()) {
-            try {
-                FileUtil.del(tempFile);
-            } catch (Exception e) {
-                log.warn("临时文件删除异常: {}", tempFile.getAbsolutePath(), e);
             }
         }
     }

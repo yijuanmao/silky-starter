@@ -276,7 +276,6 @@ public class DefaultExcelTemplate implements ExcelTemplate, InitializingBean {
 
         validateImportRequest(request);
 
-
         ImportTask<T> task = createImportTask(request, asyncType);
         if (taskConfigurer != null) {
             try {

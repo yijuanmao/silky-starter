@@ -141,6 +141,31 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
     }
 
     /**
+     * 测试通用导入方法
+     */
+    @Test
+    public void imports() {
+        ImportRequest<UserTest> request = new ImportRequest<>();
+        request.setDataClass(UserTest.class);
+        request.setFileName("test.xls");
+        request.setFileUrl("C:\\Users\\Administrator\\Desktop\\test-export.xlsx");
+        request.setDataImporterSupplier((data, params) -> {
+            // 模拟数据导入逻辑，例如保存到数据库
+            log.info("导入数据长度为: {}", data.size());
+            return new DataImporterSupplier.ImportBatchResult(data.size(), Collections.emptyList());
+        });
+        request.setStorageType(StorageType.LOCAL);
+        //不给默认10000
+        request.setPageSize(20000);
+
+        ImportResult result = excelTemplate.imports(request,AsyncType.SYNC, task -> {
+            // 自定义任务配置，例如设置超时时间
+            System.out.println("自定义任务配置: 设置超时时间为5分钟");
+        });
+        log.info("导入结果: {}", result);
+    }
+
+    /**
      * 查询数据库（带分页）
      */
     private List<UserTest> findByCondition(int pageNum, int pageSize) {
