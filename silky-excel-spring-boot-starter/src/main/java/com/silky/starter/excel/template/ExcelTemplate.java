@@ -60,23 +60,6 @@ public interface ExcelTemplate {
     <T> CompletableFuture<ExportResult> exportFuture(ExportRequest<T> request);
 
     /**
-     * 大文件导出
-     *
-     * @param request   导出请求
-     * @param batchSize 批量大小
-     */
-    <T> ExportResult exportLargeFile(ExportRequest<T> request, int batchSize);
-
-    /**
-     * 大文件导出（支持自定义配置）
-     *
-     * @param request        导出请求
-     * @param batchSize      批量大小
-     * @param taskConfigurer 任务配置器
-     */
-    <T> ExportResult exportLargeFile(ExportRequest<T> request, int batchSize, Consumer<ExportTask<T>> taskConfigurer);
-
-    /**
      * 同步导入数据（适合小数据量）
      *
      * @param request 导入请求
@@ -113,23 +96,6 @@ public interface ExcelTemplate {
      * @param request 导入请求
      */
     <T> CompletableFuture<ImportResult> importFuture(ImportRequest<T> request);
-
-    /**
-     * 大文件导入
-     *
-     * @param request   导入请求
-     * @param batchSize 批量大小
-     */
-    <T> ImportResult importLargeFile(ImportRequest<T> request, int batchSize);
-
-    /**
-     * 大文件导入（支持自定义配置）
-     *
-     * @param request        导入请求
-     * @param batchSize      批量大小
-     * @param taskConfigurer 任务配置器
-     */
-    <T> ImportResult importLargeFile(ImportRequest<T> request, int batchSize, Consumer<ImportTask<T>> taskConfigurer);
 
     /**
      * 获取导出引擎状态

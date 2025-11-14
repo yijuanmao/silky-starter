@@ -100,7 +100,7 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
      * 测试同步
      */
     @Test
-    public void testImportSyncAsync() {
+    public void testImportSync() {
         ImportRequest<UserTest> request = new ImportRequest<>();
         request.setDataClass(UserTest.class);
         request.setFileName("test.xls");
@@ -115,6 +115,28 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         request.setPageSize(20000);
 
         ImportResult result = excelTemplate.importSync(request);
+        log.info("导入结果: {}", result);
+    }
+
+    /**
+     * 测试异步
+     */
+    @Test
+    public void testImportAsync() {
+        ImportRequest<UserTest> request = new ImportRequest<>();
+        request.setDataClass(UserTest.class);
+        request.setFileName("test.xls");
+        request.setFileUrl("C:\\Users\\Administrator\\Desktop\\test-export.xlsx");
+        request.setDataImporterSupplier((data, params) -> {
+            // 模拟数据导入逻辑，例如保存到数据库
+            log.info("导入数据长度为: {}", data.size());
+            return new DataImporterSupplier.ImportBatchResult(data.size(), Collections.emptyList());
+        });
+        request.setStorageType(StorageType.LOCAL);
+        //不给默认10000
+        request.setPageSize(20000);
+
+        ImportResult result = excelTemplate.importAsync(request);
         log.info("导入结果: {}", result);
     }
 

@@ -113,8 +113,7 @@ public class SilkyExcelAutoConfiguration {
     @ConditionalOnMissingBean
     public ExcelTemplate excelTemplate(ExportEngine exportEngine,
                                        ImportEngine importEngine,
-                                       SilkyExcelProperties properties,
                                        ThreadPoolTaskExecutor silkyExcelTaskExecutor) {
-        return new DefaultExcelTemplate(exportEngine, importEngine, properties, silkyExcelTaskExecutor);
+        return new DefaultExcelTemplate(exportEngine, importEngine, silkyExcelTaskExecutor);
     }
 }

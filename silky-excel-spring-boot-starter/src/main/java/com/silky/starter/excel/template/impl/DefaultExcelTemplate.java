@@ -34,17 +34,13 @@ public class DefaultExcelTemplate implements ExcelTemplate, InitializingBean {
 
     private final ImportEngine importEngine;
 
-    private final SilkyExcelProperties properties;
-
     private final ThreadPoolTaskExecutor silkyExcelTaskExecutor;
 
     public DefaultExcelTemplate(ExportEngine exportEngine,
                                 ImportEngine importEngine,
-                                SilkyExcelProperties properties,
                                 ThreadPoolTaskExecutor silkyExcelTaskExecutor) {
         this.exportEngine = exportEngine;
         this.importEngine = importEngine;
-        this.properties = properties;
         this.silkyExcelTaskExecutor = silkyExcelTaskExecutor;
 
         log.info("DefaultExcelTemplate initialized with exportEngine: {}, importEngine: {}",
@@ -106,28 +102,6 @@ public class DefaultExcelTemplate implements ExcelTemplate, InitializingBean {
         return CompletableFuture.supplyAsync(() -> exportSync(request), silkyExcelTaskExecutor);
     }
 
-    /**
-     * 异步导出数据（使用默认异步方式）
-     *
-     * @param request 导出请求
-     */
-    @Override
-    public <T> ExportResult exportLargeFile(ExportRequest<T> request, int batchSize) {
-        return exportLargeFileInternal(request, batchSize, null);
-    }
-
-    /**
-     * 大文件导出（支持自定义配置）
-     *
-     * @param request        导出请求
-     * @param batchSize      批量大小
-     * @param taskConfigurer 任务配置器
-     */
-    @Override
-    public <T> ExportResult exportLargeFile(ExportRequest<T> request, int batchSize,
-                                            Consumer<ExportTask<T>> taskConfigurer) {
-        return exportLargeFileInternal(request, batchSize, taskConfigurer);
-    }
 
     /**
      * 同步导入数据（适合小数据量）
@@ -181,30 +155,6 @@ public class DefaultExcelTemplate implements ExcelTemplate, InitializingBean {
     @Override
     public <T> CompletableFuture<ImportResult> importFuture(ImportRequest<T> request) {
         return CompletableFuture.supplyAsync(() -> importSync(request), silkyExcelTaskExecutor);
-    }
-
-    /**
-     * 大文件导入
-     *
-     * @param request   导入请求
-     * @param batchSize 批量大小
-     */
-    @Override
-    public <T> ImportResult importLargeFile(ImportRequest<T> request, int batchSize) {
-        return importLargeFileInternal(request, batchSize, null);
-    }
-
-    /**
-     * 大文件导入（支持自定义配置）
-     *
-     * @param request        导入请求
-     * @param batchSize      批量大小
-     * @param taskConfigurer 任务配置器
-     */
-    @Override
-    public <T> ImportResult importLargeFile(ImportRequest<T> request, int batchSize,
-                                            Consumer<ImportTask<T>> taskConfigurer) {
-        return importLargeFileInternal(request, batchSize, taskConfigurer);
     }
 
     /**
@@ -318,43 +268,11 @@ public class DefaultExcelTemplate implements ExcelTemplate, InitializingBean {
     }
 
     /**
-     * 内部大文件导出方法
-     */
-    private <T> ExportResult exportLargeFileInternal(ExportRequest<T> request, int batchSize,
-                                                     Consumer<ExportTask<T>> taskConfigurer) {
-        log.info("开始大文件导出，业务类型: {}, 批次大小: {}", request.getBusinessType(), batchSize);
-
-        validateExportRequest(request);
-
-        if (batchSize <= 0) {
-            throw new IllegalArgumentException("批次大小必须大于0");
-        }
-
-        ExportTask<T> task = createExportTask(request, AsyncType.SYNC);
-        if (taskConfigurer != null) {
-            try {
-                taskConfigurer.accept(task);
-            } catch (Exception e) {
-                log.warn("大文件导出任务配置器执行异常", e);
-            }
-        }
-        try {
-            ExportResult result = exportEngine.exportLargeFile(task, batchSize);
-            log.info("大文件导出完成，任务ID: {}, 文件: {}", task.getTaskId(), result.getFileUrl());
-            return result;
-        } catch (Exception e) {
-            log.error("大文件导出异常，业务类型: {}", request.getBusinessType(), e);
-            return ExportResult.fail(task.getTaskId(), "大文件导出失败: " + e.getMessage());
-        }
-    }
-
-    /**
      * 内部导入方法
      */
     private <T> ImportResult importInternal(ImportRequest<T> request, AsyncType asyncType,
                                             Consumer<ImportTask<T>> taskConfigurer) {
-        log.debug("开始处理导入请求，业务类型: {}, 异步类型: {}",
-                request.getBusinessType(), asyncType);
+        log.debug("开始处理导入请求，业务类型: {}, 异步类型: {}", request.getBusinessType(), asyncType);
 
         validateImportRequest(request);
 
@@ -391,36 +309,6 @@ public class DefaultExcelTemplate implements ExcelTemplate, InitializingBean {
         }
     }
 
-    /**
-     * 内部大文件导入方法
-     */
-    private <T> ImportResult importLargeFileInternal(ImportRequest<T> request, int batchSize,
-                                                     Consumer<ImportTask<T>> taskConfigurer) {
-        log.info("开始大文件导入，业务类型: {}, 批次大小: {}", request.getBusinessType(), batchSize);
-
-        validateImportRequest(request);
-
-        if (batchSize <= 0) {
-            throw new IllegalArgumentException("批次大小必须大于0");
-        }
-
-        ImportTask<T> task = createImportTask(request);
-        if (taskConfigurer != null) {
-            try {
-                taskConfigurer.accept(task);
-            } catch (Exception e) {
-                log.warn("大文件导入任务配置器执行异常", e);
-            }
-        }
-        try {
-            ImportResult result = importEngine.importLargeFile(task, batchSize);
-            log.info("大文件导入完成，任务ID: {}, 处理结果: {}", task.getTaskId(), result.getSummary());
-            return result;
-        } catch (Exception e) {
-            log.error("大文件导入异常，业务类型: {}", request.getBusinessType(), e);
-            return ImportResult.fail(task.getTaskId(), "大文件导入失败: " + e.getMessage());
-        }
-    }
 
     /**
      * 创建导出任务
