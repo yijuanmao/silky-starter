@@ -2,10 +2,10 @@ package com.silky.starter.excel.core.engine;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.excel.core.exception.ExcelExportException;
+import com.silky.starter.excel.core.model.AnalysisListenersContext;
 import com.silky.starter.excel.core.model.BatchTask;
 import com.silky.starter.excel.core.model.DataProcessor;
 import com.silky.starter.excel.core.model.imports.DataImporterSupplier;
@@ -23,12 +23,10 @@ import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
-import javax.lang.model.element.VariableElement;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.*;
@@ -175,10 +173,20 @@ public class ImportEngine {
         String taskId = task.getTaskId();
         ImportRequest<T> request = task.getRequest();
 
+
+        AnalysisListenersContext<T> context = AnalysisListenersContext.<T>builder()
+                .maxErrorCount(this.getMaxErrorCount(request.getMaxErrorCount()))
+                .pageSize(this.getPageSize(request.getPageSize()))
+                .request(request)
+                .TotalCount(0)
+                .SuccessCount(0)
+                .FailCount(0)
+                .build();
+
         int maxErrorCount = this.getMaxErrorCount(request.getMaxErrorCount());
-        int maxReadCount = this.getMaxReadCount(request.getMaxReadCount());
+        int maxReadCount = this.getPageSize(request.getMaxReadCount());
         try (ExcelReaderWrapper<T> reader = new ExcelReaderWrapper<>(importFile.getAbsolutePath(),
-                request.isSkipHeader(), maxErrorCount, maxReadCount)) {
+                request.isSkipHeader(), context)) {
 
             // 创建批次上下文
             BatchTask<List<T>> batchContext = BatchTask.<List<T>>builder()
@@ -230,7 +238,8 @@ public class ImportEngine {
                     batchContext.setBatchIndex(pageNum);
 
                     // 读取下一页数据
-                    List<T> pageData = reader.readNextBatch();
+                    List<T> pageData = new ArrayList<>();
+                    reader.doReadAll();
                     if (CollUtil.isEmpty(pageData)) {
                         break;
                     }
@@ -316,9 +325,9 @@ public class ImportEngine {
             if (batchContext.getFailedCount().get() >= request.getMaxErrorCount()) {
                 return ImportBatchResult.skipped("错误数量超过限制");
             }
-
             // 读取数据
-            List<T> pageData = reader.readNextBatch();
+            List<T> pageData = new ArrayList<>();
+            reader.doReadAll();
             if (CollUtil.isEmpty(pageData)) {
                 return ImportBatchResult.skipped("数据为空");
             }
@@ -549,124 +558,57 @@ public class ImportEngine {
         long skippedCount = 0;
         List<ImportResult.ImportError> allErrors = new ArrayList<>();
 
-        int maxErrorCount = this.getMaxErrorCount(request.getMaxErrorCount());
-        int maxReadCount = this.getMaxReadCount(request.getMaxReadCount());
-
-        // 创建批次上下文
-        BatchTask<List<T>> batchContext = BatchTask.<List<T>>builder()
-                .taskId(taskId)
-                .batchId("IMPORT_BATCH_" + IdUtil.fastSimpleUUID())
-                .batchIndex(0)
-                .totalBatches(0)
-                .processedCount(new AtomicLong(0))
-                .successCount(new AtomicLong(0))
-                .failedCount(new AtomicLong(0))
-                .startTime(System.currentTimeMillis())
-                .compressed(request.isCompressionEnabled())
-                .compressionType(request.getCompressionType())
+        AnalysisListenersContext<T> context = AnalysisListenersContext.<T>builder()
+                .maxErrorCount(this.getMaxErrorCount(request.getMaxErrorCount()))
+                .pageSize(this.getPageSize(request.getPageSize()))
+                .request(request)
+                .TotalCount(0)
+                .SuccessCount(0)
+                .FailCount(0)
                 .build();
 
-        try (ExcelReaderWrapper<T> reader = new ExcelReaderWrapper<>(tempFile.getAbsolutePath(),
-                request.isSkipHeader(), maxErrorCount, maxReadCount)) {
+        try (ExcelReaderWrapper<T> reader = new ExcelReaderWrapper<>(tempFile.getAbsolutePath(), request.isSkipHeader(), context)) {
 
             long startImportTime = System.currentTimeMillis();
-            int totalSheets = reader.getTotalSheetCount();
-
-            log.info("开始导入任务: {}, 总Sheet数: {}", taskId, totalSheets);
 
             // 开始事务（如果启用）
             if (request.isEnableTransaction()) {
                 request.getDataImporterSupplier().beginTransaction();
             }
+            long pageStartTime = System.currentTimeMillis();
 
-            int batchIndex = 1;
-            int currentSheetIndex = 0;
-            String currentSheetName = "";
-
-            // 使用分sheet分批次读取 - 关键优化
-            while (reader.hasMoreData()) {
-                // 检查任务超时
-                if (isTaskTimeout(taskId)) {
-                    throw new ExcelExportException("任务执行超时，已中断");
-                }
-
-                // 检查错误数量是否超过限制
-                if (batchContext.getFailedCount().get() >= maxErrorCount) {
-                    log.warn("导入任务 {} 错误数量超过限制 {}，提前终止", taskId, maxErrorCount);
-                    break;
-                }
-
-                long batchStartTime = System.currentTimeMillis();
-
-                // 读取下一批次数据
-                List<T> batchData = reader.readNextBatch();
-
-                if (CollUtil.isEmpty(batchData)) {
-                    // 检查是否需要切换到下一个sheet
-                    if (reader.hasMoreData()) {
-                        continue;
-                    } else {
-                        break;
-                    }
-                }
-                // 更新sheet信息
-                if (currentSheetIndex != reader.getCurrentSheetIndex()) {
-                    currentSheetIndex = reader.getCurrentSheetIndex();
-                    currentSheetName = reader.getCurrentSheetInfo();
-                    log.info("开始处理Sheet: {}, 任务: {}", currentSheetName, taskId);
-                }
-
-                // 处理数据
-                List<T> processedData = processImportData(batchData, request.getProcessors());
-
-                // 数据导入
-                DataImporterSupplier.ImportBatchResult batchResult = request.getDataImporterSupplier()
-                        .importData(processedData, request.getParams());
-
-                // 更新统计
-                allErrors.addAll(batchResult.getErrors());
-
-                // 更新批次上下文
-                batchContext.setBatchIndex(batchIndex);
-                batchContext.setTotalBatches(batchIndex);
-                batchContext.getProcessedCount().addAndGet(batchData.size());
-                batchContext.getSuccessCount().addAndGet(batchResult.getSuccessCount());
-                batchContext.getFailedCount().addAndGet(batchResult.getFailedCount());
-
-                // 更新进度
-                updateImportProgress(taskId, batchContext);
-
-                long batchCostTime = System.currentTimeMillis() - batchStartTime;
-
-                // 详细的批次日志
-                log.debug("批次处理完成: 任务[{}], Sheet[{}], 批次[{}], 数据量[{}], 成功[{}], 失败[{}], 耗时[{}ms]",
-                        taskId, currentSheetName, batchIndex, batchData.size(),
-                        batchResult.getSuccessCount(), batchResult.getFailedCount(), batchCostTime);
-
-                batchIndex++;
-
-                // 添加小延迟，避免CPU占用过高
-                if (CollUtil.isNotEmpty(batchData)) {
-                    ThreadUtil.sleep(5); // 5ms延迟
-                }
+            // 检查任务超时
+            if (isTaskTimeout(taskId)) {
+                throw new ExcelExportException("任务执行超时，已中断");
             }
+
+            // 分页读取数据
+            reader.doReadAll();
+
+            long successCount = reader.getSuccessRowCount();
+            long failedCount = reader.getFailRowCount();
+            long totalCount = reader.getAllCount();
+
+            // 更新进度
+            recordService.updateProgress(taskId, totalCount, successCount, failedCount);
+
+            // 记录分页处理时间
+            long pageCostTime = System.currentTimeMillis() - pageStartTime;
+            log.debug("数据处理完成: 数据量={}, 成功={}, 失败={}, 耗时={}ms",
+                    totalCount, successCount, totalCount, pageCostTime);
+
             long totalCostTime = System.currentTimeMillis() - startImportTime;
+
             // 提交事务（如果启用）
             if (request.isEnableTransaction()) {
                 request.getDataImporterSupplier().commitTransaction();
             }
 
-            long failedCount = reader.getFailRowCount();
-            long successCount = reader.getSuccessRowCount();
-            long totalCount = reader.getAllCount();
-            // 收集所有错误
-            allErrors.addAll(reader.getAllErrors());
-            log.debug("导入任务完成: {}, 总Sheet数: {}, 总批次: {}, 总数据量: {}, 成功: {}, 失败: {}, 总耗时: {}ms",
-                    taskId, totalSheets, batchIndex - 1, totalCount, successCount, failedCount, totalCostTime);
+            log.info("导入任务数据处理完成: {}, 总数据量: {}, 成功: {}, 失败: {}, 处理耗时: {}ms",
+                    taskId, totalCount, successCount, failedCount, totalCostTime);
 
-
-            // 构建结果
-            if (failedCount == 0 && allErrors.isEmpty()) {
+            // 构建导入结果
+            if (failedCount == 0) {
                 return ImportResult.success(taskId, totalCount, successCount)
                         .withCostTime(totalCostTime);
             } else {
@@ -686,22 +628,6 @@ public class ImportEngine {
             }
             throw e;
         }
-    }
-
-    /**
-     * 分页读取数据 - 关键方法：避免一次性读取所有数据
-     *
-     * @param reader   Excel读取器
-     * @param pageSize 页面大小
-     * @param <T>      数据类型
-     * @return 当前批次的数据
-     */
-    private <T> List<T> readBatchData(ExcelReaderWrapper<T> reader, int pageSize) {
-        List<T> allData = reader.readNextBatch();
-        if (CollUtil.isEmpty(allData)) {
-            return Collections.emptyList();
-        }
-        return allData;
     }
 
     /**
@@ -874,11 +800,11 @@ public class ImportEngine {
     /**
      * 获取最大读取数量
      *
-     * @param maxReadCount 最大读取数量
+     * @param pageSize 最大读取数量
      * @return 最大错误数量
      */
-    private int getMaxReadCount(Integer maxReadCount) {
-        return Objects.isNull(maxReadCount) ? silkyExcelProperties.getImports().getMaxReadCount() : maxReadCount;
+    private int getPageSize(Integer pageSize) {
+        return Objects.isNull(pageSize) ? silkyExcelProperties.getImports().getPageSize() : pageSize;
     }
 
     /**

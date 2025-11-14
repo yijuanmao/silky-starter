@@ -139,19 +139,14 @@ public class SilkyExcelProperties {
     public static class Import {
 
         /**
-         * 分页大小
+         * 分页大小，比如每次读取10000行，就会操作业务，比如保存到数据库等业务操作
          */
-        private int pageSize = 1000;
+        private int pageSize = 10000;
 
         /**
          * 最大错误数量
          */
         private int maxErrorCount = 100;
-
-        /**
-         * 最大读取文件数量
-         */
-        private int maxReadCount = 10000;
 
         /**
          * 临时文件路径

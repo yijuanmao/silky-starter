@@ -1,5 +1,7 @@
 package com.silky.starter.excel.core.listener;
 
+import com.silky.starter.excel.core.model.AnalysisListenersContext;
+
 /**
  * Excel导入默认监听器
  *
@@ -11,10 +13,9 @@ public class DefaultAnalysisListeners<T> extends BaseAnalysisListeners<T> {
     /**
      * 构造方法
      *
-     * @param maxErrorCount 最大错误数量
-     * @param maxReadCount  最大读取数量
+     * @param context 监听器上下文
      */
-    public DefaultAnalysisListeners(Integer maxErrorCount, Integer maxReadCount) {
-        super(maxErrorCount, maxReadCount);
+    public DefaultAnalysisListeners(AnalysisListenersContext<T> context) {
+        super(context);
     }
 }

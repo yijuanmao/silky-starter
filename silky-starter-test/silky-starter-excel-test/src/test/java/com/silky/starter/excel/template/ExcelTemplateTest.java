@@ -111,7 +111,8 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
             return new DataImporterSupplier.ImportBatchResult(data.size(), Collections.emptyList());
         });
         request.setStorageType(StorageType.LOCAL);
-        request.setPageSize(100);
+        //不给默认10000
+        request.setPageSize(20000);
 
         ImportResult result = excelTemplate.importSync(request);
         log.info("导入结果: {}", result);

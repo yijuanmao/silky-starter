@@ -54,8 +54,7 @@ public interface DataProcessor<T> {
     }
 
     /**
-     * 创建数据过滤处理器
-     * 使用断言函数过滤数据
+     * 创建数据过滤处理器 使用断言函数过滤数据
      *
      * @param filter 过滤条件断言函数
      * @param <T>    数据类型

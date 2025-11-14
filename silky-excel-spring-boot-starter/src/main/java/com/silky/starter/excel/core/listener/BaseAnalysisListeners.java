@@ -1,9 +1,14 @@
 package com.silky.starter.excel.core.listener;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.idev.excel.context.AnalysisContext;
 import cn.idev.excel.event.AnalysisEventListener;
 import cn.idev.excel.exception.ExcelDataConvertException;
 import com.silky.starter.excel.core.exception.ExcelExportException;
+import com.silky.starter.excel.core.model.AnalysisListenersContext;
+import com.silky.starter.excel.core.model.DataProcessor;
+import com.silky.starter.excel.core.model.imports.DataImporterSupplier;
+import com.silky.starter.excel.core.model.imports.ImportRequest;
 import com.silky.starter.excel.core.model.imports.ImportResult;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @Getter
 public abstract class BaseAnalysisListeners<T> extends AnalysisEventListener<T> {
 
-    private final int maxReadCount;
+    private final int pageSize;
 
     private final int maxErrorCount;
 
@@ -43,17 +48,24 @@ public abstract class BaseAnalysisListeners<T> extends AnalysisEventListener<T> 
 
     private final AtomicLong failCount = new AtomicLong(0);
 
-    private volatile boolean paused = false;
-
-    private volatile boolean sheetFinished = false;
-
-    private volatile boolean allFinished;
-
     private String currentSheetName;
 
-    public BaseAnalysisListeners(Integer maxErrorCount, Integer maxReadCount) {
-        this.maxErrorCount = maxErrorCount;
-        this.maxReadCount = maxReadCount;
+    private final List<DataProcessor<T>> processors;
+
+    private final DataImporterSupplier<T> dataImporterSupplier;
+
+    private final ImportRequest<T> importRequest;
+
+    private final AnalysisListenersContext<T> context;
+
+    public BaseAnalysisListeners(AnalysisListenersContext<T> context) {
+        context.validate();
+        this.context = context;
+        this.maxErrorCount = context.getMaxErrorCount();
+        this.pageSize = context.getPageSize();
+        this.processors = context.getRequest().getProcessors();
+        this.importRequest = context.getRequest();
+        this.dataImporterSupplier = context.getRequest().getDataImporterSupplier();
     }
 
     @Override
@@ -65,28 +77,28 @@ public abstract class BaseAnalysisListeners<T> extends AnalysisEventListener<T> 
 
     @Override
     public void invoke(T t, AnalysisContext analysisContext) {
-        // 当达到批次大小时暂停读取
-        if (dataList.size() >= maxReadCount) {
-            this.paused = true;
-            throw new PauseReadException("达到批次大小，暂停读取");
-        }
         dataList.add(t);
+        if (dataList.size() >= pageSize) {
+            List<T> processedData = dataList;
+            // 数据导入前处理，比如加解密、数据转换等
+            processImportData(processedData, processors);
+            // 数据导入
+            dataImporterSupplier.importData(processedData, importRequest.getParams());
+            dataList.clear();
+        }
         successCount.incrementAndGet();
         currentSheetRowCount.incrementAndGet();
     }
 
     @Override
     public void doAfterAllAnalysed(AnalysisContext analysisContext) {
-        this.sheetFinished = true;
+        context.setTotalCount((int) (successCount.get() + failCount.get()));
+        context.setSuccessCount((int) successCount.get());
+        context.setFailCount((int) failCount.get());
     }
 
     @Override
     public void onException(Exception exception, AnalysisContext context) {
-        // 如果是暂停异常，直接返回
-        if (exception instanceof PauseReadException) {
-//            throw new PauseReadException(exception.getMessage());
-            return;
-        }
         failCount.incrementAndGet();
 
         int rowIndex = -1;
@@ -124,56 +136,6 @@ public abstract class BaseAnalysisListeners<T> extends AnalysisEventListener<T> 
         }
     }
 
-    /**
-     * 获取当前批次数据并清空，准备下一批次读取
-     */
-    public List<T> getAndClearBatchData() {
-        List<T> batchData = new ArrayList<>(dataList);
-        dataList.clear();
-        paused = false;
-        return batchData;
-    }
-
-    /**
-     * 重置批次状态（同一sheet内）
-     */
-    public void resetBatchState() {
-        this.paused = false;
-    }
-
-    /**
-     * 准备读取新sheet
-     */
-    public void resetForNewSheet() {
-        this.dataList.clear();
-        this.currentSheetErrors.clear();
-        this.currentSheetRowCount.set(0);
-        this.headerIndexMap.clear();
-        this.paused = false;
-        this.sheetFinished = false;
-        this.currentSheetName = null;
-    }
-
-    /**
-     * 设置当前sheet名称
-     */
-    public void setCurrentSheetName(String sheetName) {
-        this.currentSheetName = sheetName;
-    }
-
-    /**
-     * 检查当前sheet是否还有更多数据
-     */
-    public boolean hasMoreDataInCurrentSheet() {
-        return !sheetFinished || !dataList.isEmpty();
-    }
-
-    /**
-     * 检查是否所有数据都已完成
-     */
-    public boolean isAllFinished() {
-        return allFinished;
-    }
 
     /**
      * 获取当前sheet的错误信息
@@ -190,11 +152,24 @@ public abstract class BaseAnalysisListeners<T> extends AnalysisEventListener<T> 
     }
 
     /**
-     * 暂停读取异常
+     * 处理导入数据
+     *
+     * @param data       原始数据
+     * @param processors 数据处理器列表
+     * @param <T>        数据类型
+     * @return 处理后的数据
      */
-    public static class PauseReadException extends RuntimeException {
-        public PauseReadException(String message) {
-            super(message);
+    private <T> List<T> processImportData(List<T> data, List<DataProcessor<T>> processors) {
+        if (CollUtil.isEmpty(processors)) {
+            return data;
         }
+        List<T> processedData = data;
+        for (DataProcessor<T> processor : processors) {
+            long startTime = System.currentTimeMillis();
+            processedData = processor.process(processedData);
+            long costTime = System.currentTimeMillis() - startTime;
+            log.debug("数据处理器执行完成: {}, 耗时: {}ms", processor.getClass().getSimpleName(), costTime);
+        }
+        return processedData;
     }
 }
