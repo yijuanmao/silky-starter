@@ -10,7 +10,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <name>silky-rexcel-spring-boot-starter</name>
+    <name>silky-excel-spring-boot-starter</name>
     <artifactId>silky-excel-spring-boot-starter</artifactId>
     <description>Silky Excel Spring Boot Starter</description>
     <packaging>jar</packaging>
