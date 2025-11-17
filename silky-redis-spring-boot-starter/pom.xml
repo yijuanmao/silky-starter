@@ -11,7 +11,7 @@
     </parent>
 
     <artifactId>silky-redis-spring-boot-starter</artifactId>
-    <name>silky-rabbitmq-spring-boot-starter</name>
+    <name>silky-redis-spring-boot-starter</name>
     <description>Silky Redis Spring Boot Starter</description>
     <packaging>jar</packaging>
 
