@@ -18,6 +18,7 @@
         <module>silky-starter-rabbitmq-test</module>
         <module>silky-starter-redis-test</module>
         <module>silky-starter-excel-test</module>
+        <module>silky-starter-mongodb-test</module>
     </modules>
 
 

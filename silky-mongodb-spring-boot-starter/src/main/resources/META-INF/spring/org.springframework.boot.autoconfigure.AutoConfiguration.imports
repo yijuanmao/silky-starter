@@ -1,1 +1,2 @@
-com.silky.starter.mongodb.autoconfigure.MongodbAutoConfiguration
+com.silky.starter.mongodb.configure.SilkyMongoAutoConfiguration
+com.silky.starter.mongodb.configure.MultiDataSourceConfig

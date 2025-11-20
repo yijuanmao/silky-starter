@@ -7,11 +7,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.ComponentScan;
 
 /**
- * OSS应用测试类
+ * Excel应用测试类
  */
 @SpringBootApplication
 @SpringBootTest(classes = ExcelApplicationTest.class)
-@ComponentScan({"com.silky","com.silky.**", "com.silky.starter.excel.template.processor"})
+@ComponentScan({"com.silky", "com.silky.**"})
 public class ExcelApplicationTest {
 
     protected final Logger log = org.slf4j.LoggerFactory.getLogger(this.getClass());

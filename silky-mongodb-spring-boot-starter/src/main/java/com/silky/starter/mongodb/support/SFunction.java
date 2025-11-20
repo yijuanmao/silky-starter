@@ -1,5 +1,7 @@
 package com.silky.starter.mongodb.support;
 
+import cn.hutool.core.lang.func.Func1;
+
 import java.io.Serializable;
 import java.util.function.Function;
 
@@ -12,6 +14,6 @@ import java.util.function.Function;
  * @date 2025-09-04 10:40
  */
 @FunctionalInterface
-public interface SerializableFunction<E, R> extends Function<E, R>, Serializable {
+public interface SFunction<E, R> extends Func1<E, R>, Serializable {
 
 }

@@ -26,7 +26,7 @@
     </modules>
 
     <properties>
-        <revision>1.0.2</revision>
+        <revision>1.0.3</revision>
         <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -35,7 +35,7 @@
         <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
         <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
         <spring.boot.version>2.7.8</spring.boot.version>
-        <cn.hutool.version>5.8.39</cn.hutool.version>
+        <cn.hutool.version>5.8.41</cn.hutool.version>
         <aliyun.oss.version>3.18.3</aliyun.oss.version>
         <com.huaweicloud.version>3.25.7</com.huaweicloud.version>
         <commons-io.version>2.20.0</commons-io.version>
