@@ -83,7 +83,6 @@ public class DefaultMongodbTemplate implements SilkyMongoTemplate {
     @ReadOnly
     @Override
     public <T> T getById(String id, Class<T> entityClass) {
-        T t = getMongoTemplate(true).findById(id, entityClass);
         return getMongoTemplate(true).findById(new ObjectId(id), entityClass);
 //
     }

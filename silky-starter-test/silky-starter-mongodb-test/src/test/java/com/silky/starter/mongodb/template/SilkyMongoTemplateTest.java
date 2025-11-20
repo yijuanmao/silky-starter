@@ -90,7 +90,7 @@ public class SilkyMongoTemplateTest extends MongodbApplicationTest {
      */
     @Test
     public void testGetById() {
-        User user = silkyMongoTemplate.getById("691ee96e6f9d3a2444d03e2f", User.class);
+        User user = silkyMongoTemplate.getById("691ef184dba63c6bc7fd5617", User.class);
         log.info("查询用户详情: {}", user);
     }
 }

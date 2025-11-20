@@ -2,6 +2,7 @@ package com.silky.starter.mongodb.model.base;
 
 import lombok.Data;
 import lombok.ToString;
+import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -21,11 +22,11 @@ public class BaseMongodbModel implements Serializable {
     private static final long serialVersionUID = 6380370958571308646L;
 
     /**
-     * 主键
+     * MongoDB中的主键id，对应_id字段
      */
     @Id
-    @Field(name = "_id", value = "_id", order = 1)
-    private String _id;
+    @Field(name = "_id" , order = 1)
+    private ObjectId mongoId;
 
     /**
      * 保存到MongoDB创建时间
