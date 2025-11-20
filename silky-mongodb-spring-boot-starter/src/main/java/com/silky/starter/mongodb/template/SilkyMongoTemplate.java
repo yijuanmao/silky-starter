@@ -65,15 +65,6 @@ public interface SilkyMongoTemplate {
      */
     <T> List<T> list(Class<T> entityClass);
 
-    /**
-     * 根据条件查询
-     *
-     * @param query       查询条件
-     * @param entityClass 实体类
-     * @param <T>         实体类
-     * @return 实体类列表
-     */
-    <T> List<T> list(Query query, Class<T> entityClass);
 
     /**
      * 根据条件查询
@@ -84,16 +75,6 @@ public interface SilkyMongoTemplate {
      * @return 列表
      */
     <T> List<T> list(LambdaQueryWrapper<T> wrapper, Class<T> entityClass);
-
-    /**
-     * 根据条件查询
-     *
-     * @param query       查询条件
-     * @param entityClass 实体类
-     * @param <T>         实体类
-     * @return 列表
-     */
-    <T> T getOne(Query query, Class<T> entityClass);
 
     /**
      * 根据条件查询
@@ -123,16 +104,6 @@ public interface SilkyMongoTemplate {
      * @return 数量
      */
     <T> long count(LambdaQueryWrapper<T> wrapper, Class<T> entityClass);
-
-    /**
-     * 判断是否存在
-     *
-     * @param query       查询条件
-     * @param entityClass 封装类
-     * @param <T>         封装类
-     * @return 是否存在
-     */
-    <T> boolean exists(Query query, Class<T> entityClass);
 
     /**
      * 判断是否存在
@@ -220,17 +191,6 @@ public interface SilkyMongoTemplate {
     /**
      * 根据条件更新
      *
-     * @param query       查询条件
-     * @param update      更新条件
-     * @param entityClass 封装类
-     * @param <T>         * @return 是否更新成功
-     *
-     */
-    <T> boolean update(Query query, Update update, Class<T> entityClass);
-
-    /**
-     * 根据条件更新
-     *
      * @param queryWrapper  查询条件
      * @param updateWrapper 更新条件
      * @param entityClass   封装类
@@ -260,16 +220,6 @@ public interface SilkyMongoTemplate {
      * @return 是否删除成功
      */
     <T> boolean removeById(String id, Class<T> entityClass);
-
-    /**
-     * 根据条件删除
-     *
-     * @param query       查询条件
-     * @param entityClass 封装类
-     * @param <T>
-     * @return 是否删除成功
-     */
-    <T> boolean remove(Query query, Class<T> entityClass);
 
     /**
      * 根据条件删除
@@ -320,7 +270,7 @@ public interface SilkyMongoTemplate {
      * @param <T>
      * @return 封装类
      */
-    <T> T findAndModify(Query query, Update update, Class<T> entityClass);
+    <T> T findAndModify(LambdaQueryWrapper<T> query, LambdaUpdateWrapper<T> update, Class<T> entityClass);
 
     /**
      * 创建集合

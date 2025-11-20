@@ -17,7 +17,7 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 //        MongoAutoConfiguration.class,
 //        MongoDataAutoConfiguration.class
 //})
-@EnableAutoConfiguration(exclude = {MongoDataAutoConfiguration.class, MongoRepositoriesAutoConfiguration.class})
+//@EnableAutoConfiguration(exclude = {MongoDataAutoConfiguration.class, MongoRepositoriesAutoConfiguration.class})
 //@EnableMongoRepositories
 @SpringBootTest(classes = MongodbApplicationTest.class)
 @ComponentScan({"com.silky", "com.silky.starter.mongodb"})

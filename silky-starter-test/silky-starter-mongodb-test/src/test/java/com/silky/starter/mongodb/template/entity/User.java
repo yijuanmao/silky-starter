@@ -24,30 +24,24 @@ public class User extends BaseMongodbModel {
     /**
      * 用户ID
      */
-    @Field(name = "user_id")
+    @Field(name = "user_id", order = 5)
     private Long id;
 
     /**
      * 用户名
      */
-    @Field(name = "name")
+    @Field(name = "name", order = 6)
     private String name;
 
     /**
      * 密码
      */
-    @Field(name = "password")
+    @Field(name = "password", order = 7)
     private String password;
 
     /**
      * 年龄
      */
-    @Field(name = "age")
+    @Field(name = "age", order = 8)
     private int age;
-
-    /**
-     * 创建时间
-     */
-//    @Field(name = "create_time")
-    private LocalDateTime createTime;
 }

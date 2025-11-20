@@ -1,6 +1,7 @@
 package com.silky.starter.mongodb.support;
 
 import cn.hutool.core.lang.func.LambdaUtil;
+import lombok.Getter;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 
@@ -16,6 +17,7 @@ public class LambdaQueryWrapper<T> {
 
     private final Query query = new Query();
 
+    @Getter
     private final Class<T> entityClass;
 
     public LambdaQueryWrapper(Class<T> entityClass) {

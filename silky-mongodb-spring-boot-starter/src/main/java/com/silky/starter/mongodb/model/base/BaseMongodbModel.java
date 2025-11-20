@@ -24,18 +24,19 @@ public class BaseMongodbModel implements Serializable {
      * 主键
      */
     @Id
-    private String mongoId;
+    @Field(name = "_id", value = "_id", order = 1)
+    private String _id;
 
     /**
      * 保存到MongoDB创建时间
      */
     @Field(name = "create_time", order = 2)
-    private LocalDateTime mgCreateTime;
+    private LocalDateTime createTime;
 
     /**
      * 保存到MongoDB修改时间
      */
     @Field(name = "update_time", order = 3)
-    private LocalDateTime mgUpdateTime;
+    private LocalDateTime updateTime;
 
 }

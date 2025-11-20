@@ -33,6 +33,7 @@ public class SilkyMongoTemplateTest extends MongodbApplicationTest {
         user.setAge(25);
         user.setId(1L);
         user.setCreateTime(LocalDateTime.now());
+        user.setUpdateTime(LocalDateTime.now());
         silkyMongoTemplate.save(user);
     }
 
@@ -42,13 +43,14 @@ public class SilkyMongoTemplateTest extends MongodbApplicationTest {
     @Test
     public void testSaveBatch() {
         // 批量保存
-        List<User> users = new ArrayList<>(10);
-        for (int i = 1; i < 10; i++) {
+        List<User> users = new ArrayList<>(20);
+        for (int i = 1; i < 20; i++) {
             User user = new User();
             user.setName("John" + i);
             user.setAge(i);
             user.setId(Convert.toLong(i));
             user.setCreateTime(LocalDateTime.now());
+            user.setUpdateTime(LocalDateTime.now());
             users.add(user);
         }
         silkyMongoTemplate.saveBatch(users);
@@ -75,11 +77,20 @@ public class SilkyMongoTemplateTest extends MongodbApplicationTest {
     public void testPage() {
         // Lambda查询
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>(User.class)
-                .eq(User::getName, "John")
-                .gt(User::getAge, 20)
+                .eq(User::getName, "John1")
+//                .gt(User::getAge, 20)
                 .orderByDesc(User::getCreateTime);
         // 分页查询
         PageResult<User> pageResult = silkyMongoTemplate.page(1, 10, queryWrapper, User.class);
         log.info("分页查询结果: {}", pageResult);
+    }
+
+    /**
+     * 根据id查询
+     */
+    @Test
+    public void testGetById() {
+        User user = silkyMongoTemplate.getById("691ee96e6f9d3a2444d03e2f", User.class);
+        log.info("查询用户详情: {}", user);
     }
 }

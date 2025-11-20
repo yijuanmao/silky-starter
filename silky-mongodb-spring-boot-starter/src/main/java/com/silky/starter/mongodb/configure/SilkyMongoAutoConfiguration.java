@@ -1,6 +1,7 @@
 package com.silky.starter.mongodb.configure;
 
 import com.silky.starter.mongodb.aspect.DataSourceAspect;
+import com.silky.starter.mongodb.aspect.MongoLogAspect;
 import com.silky.starter.mongodb.properties.SilkyMongoProperties;
 import com.silky.starter.mongodb.template.SilkyMongoTemplate;
 import com.silky.starter.mongodb.template.impl.DefaultMongodbTemplate;
@@ -11,7 +12,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 
 /**
  * mongodb自动配置类
@@ -23,25 +26,21 @@ import org.springframework.context.annotation.Import;
 @ConditionalOnClass(name = "org.springframework.data.mongodb.core.MongoTemplate")
 @EnableConfigurationProperties(SilkyMongoProperties.class)
 @Import({MultiDataSourceConfig.class})
+@EnableAspectJAutoProxy
 public class SilkyMongoAutoConfiguration {
 
     private static final Logger logger = LoggerFactory.getLogger(SilkyMongoAutoConfiguration.class);
 
+
     /**
-     * mongodbTemplate
-     *
-     * @param properties     MongodbProperties
-     * @param mongoConverter MongoConverter
-     * @param mongoTemplate  MongoTemplate
-     * @return MongodbTemplate
+     * MongoLogAspect - 确保切面被注册
      */
-//    @Bean
-//    @ConditionalOnMissingBean
-//    public MongodbTemplate defaultmongodbTemplate(SilkyMongoProperties properties,
-//                                           MongoConverter mongoConverter,
-//                                           MongoTemplate mongoTemplate) {
-//        return new DefaultMongodbTemplateImpl(properties, mongoConverter, mongoTemplate);
-//    }
+    @Bean
+    @ConditionalOnMissingBean
+    public MongoLogAspect mongoLogAspect(SilkyMongoProperties properties,
+                                         MappingMongoConverter mappingMongoConverter) {
+        return new MongoLogAspect(properties, mappingMongoConverter);
+    }
 
     /**
      * mongodbTemplate

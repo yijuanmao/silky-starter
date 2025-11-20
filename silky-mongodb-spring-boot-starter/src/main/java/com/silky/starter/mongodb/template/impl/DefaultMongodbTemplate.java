@@ -1,11 +1,14 @@
+
 package com.silky.starter.mongodb.template.impl;
 
 import com.silky.starter.mongodb.annotation.ReadOnly;
 import com.silky.starter.mongodb.configure.DynamicMongoTemplate;
+import com.silky.starter.mongodb.core.constant.MongodbConstant;
 import com.silky.starter.mongodb.entity.PageResult;
 import com.silky.starter.mongodb.support.LambdaQueryWrapper;
 import com.silky.starter.mongodb.support.LambdaUpdateWrapper;
 import com.silky.starter.mongodb.template.SilkyMongoTemplate;
+import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -23,7 +26,6 @@ import java.util.List;
  */
 public class DefaultMongodbTemplate implements SilkyMongoTemplate {
 
-    private static final String ID_FIELD = "_id";
 
     private final DynamicMongoTemplate dynamicMongoTemplate;
 
@@ -81,7 +83,9 @@ public class DefaultMongodbTemplate implements SilkyMongoTemplate {
     @ReadOnly
     @Override
     public <T> T getById(String id, Class<T> entityClass) {
-        return getMongoTemplate(true).findById(id, entityClass);
+        T t = getMongoTemplate(true).findById(id, entityClass);
+        return getMongoTemplate(true).findById(new ObjectId(id), entityClass);
+//
     }
 
     /**
@@ -99,19 +103,6 @@ public class DefaultMongodbTemplate implements SilkyMongoTemplate {
     /**
      * 根据条件查询
      *
-     * @param query       查询条件
-     * @param entityClass 实体类
-     * @return 实体类列表
-     */
-    @ReadOnly
-    @Override
-    public <T> List<T> list(Query query, Class<T> entityClass) {
-        return getMongoTemplate(true).find(query, entityClass);
-    }
-
-    /**
-     * 根据条件查询
-     *
      * @param wrapper     条件
      * @param entityClass 实体类
      * @return 列表
@@ -120,19 +111,6 @@ public class DefaultMongodbTemplate implements SilkyMongoTemplate {
     @Override
     public <T> List<T> list(LambdaQueryWrapper<T> wrapper, Class<T> entityClass) {
         return getMongoTemplate(true).find(wrapper.build(), entityClass);
-    }
-
-    /**
-     * 根据条件查询
-     *
-     * @param query       查询条件
-     * @param entityClass 实体类
-     * @return 列表
-     */
-    @ReadOnly
-    @Override
-    public <T> T getOne(Query query, Class<T> entityClass) {
-        return getMongoTemplate(true).findOne(query, entityClass);
     }
 
     /**
@@ -171,19 +149,6 @@ public class DefaultMongodbTemplate implements SilkyMongoTemplate {
     @Override
     public <T> long count(LambdaQueryWrapper<T> wrapper, Class<T> entityClass) {
         return getMongoTemplate(true).count(wrapper.build(), entityClass);
-    }
-
-    /**
-     * 判断是否存在
-     *
-     * @param query       查询条件
-     * @param entityClass 封装类
-     * @return 是否存在
-     */
-    @ReadOnly
-    @Override
-    public <T> boolean exists(Query query, Class<T> entityClass) {
-        return getMongoTemplate(true).exists(query, entityClass);
     }
 
     /**
@@ -245,7 +210,13 @@ public class DefaultMongodbTemplate implements SilkyMongoTemplate {
     @ReadOnly
     @Override
     public <T> PageResult<T> page(long pageNum, long size, LambdaQueryWrapper<T> wrapper, Class<T> entityClass) {
-        return page(pageNum, size, wrapper.build(), entityClass);
+        Query query = wrapper.build();
+        long total = getMongoTemplate(true).count(query, entityClass);
+
+        query.skip((pageNum - 1) * size).limit((int) size);
+        List<T> records = getMongoTemplate(true).find(query, entityClass);
+
+        return new PageResult<>(pageNum, size, total, records);
     }
 
     /**
@@ -298,19 +269,6 @@ public class DefaultMongodbTemplate implements SilkyMongoTemplate {
     /**
      * 根据条件更新
      *
-     * @param query       查询条件
-     * @param update      更新条件
-     * @param entityClass 封装类
-     *
-     */
-    @Override
-    public <T> boolean update(Query query, Update update, Class<T> entityClass) {
-        return getMongoTemplate(false).updateFirst(query, update, entityClass).getModifiedCount() > 0;
-    }
-
-    /**
-     * 根据条件更新
-     *
      * @param queryWrapper  查询条件
      * @param updateWrapper 更新条件
      * @param entityClass   封装类
@@ -318,7 +276,7 @@ public class DefaultMongodbTemplate implements SilkyMongoTemplate {
      */
     @Override
     public <T> boolean update(LambdaQueryWrapper<T> queryWrapper, LambdaUpdateWrapper<T> updateWrapper, Class<T> entityClass) {
-        return update(queryWrapper.build(), updateWrapper.build(), entityClass);
+        return getMongoTemplate(false).updateFirst(queryWrapper.build(), updateWrapper.build(), entityClass).getModifiedCount() > 0;
     }
 
     /**
@@ -354,25 +312,13 @@ public class DefaultMongodbTemplate implements SilkyMongoTemplate {
     /**
      * 根据条件删除
      *
-     * @param query       查询条件
-     * @param entityClass 封装类
-     * @return 是否删除成功
-     */
-    @Override
-    public <T> boolean remove(Query query, Class<T> entityClass) {
-        return getMongoTemplate(false).remove(query, entityClass).getDeletedCount() > 0;
-    }
-
-    /**
-     * 根据条件删除
-     *
      * @param wrapper     封装条件
      * @param entityClass 封装类
      * @return 是否删除成功
      */
     @Override
     public <T> boolean remove(LambdaQueryWrapper<T> wrapper, Class<T> entityClass) {
-        return remove(wrapper.build(), entityClass);
+        return getMongoTemplate(false).remove(wrapper.build(), entityClass).getDeletedCount() > 0;
     }
 
     /**
@@ -387,7 +333,7 @@ public class DefaultMongodbTemplate implements SilkyMongoTemplate {
         if (CollectionUtils.isEmpty(ids)) {
             return 0;
         }
-        Query query = new Query(Criteria.where(ID_FIELD).in(ids));
+        Query query = new Query(Criteria.where(MongodbConstant.ID_FIELD).in(ids));
         return getMongoTemplate(false).remove(query, entityClass).getDeletedCount();
     }
 
@@ -404,7 +350,7 @@ public class DefaultMongodbTemplate implements SilkyMongoTemplate {
             return java.util.Collections.emptyList();
         }
 
-        Query query = new Query(Criteria.where(ID_FIELD).in(ids));
+        Query query = new Query(Criteria.where(MongodbConstant.ID_FIELD).in(ids));
         return getMongoTemplate(false).find(query, entityClass);
     }
 
@@ -417,7 +363,7 @@ public class DefaultMongodbTemplate implements SilkyMongoTemplate {
      */
     @Override
     public <T> boolean existsById(String id, Class<T> entityClass) {
-        return getMongoTemplate(false).exists(Query.query(Criteria.where(ID_FIELD).is(id)), entityClass);
+        return getMongoTemplate(false).exists(Query.query(Criteria.where(MongodbConstant.ID_FIELD).is(id)), entityClass);
     }
 
     /**
@@ -429,8 +375,8 @@ public class DefaultMongodbTemplate implements SilkyMongoTemplate {
      * @return 封装类
      */
     @Override
-    public <T> T findAndModify(Query query, Update update, Class<T> entityClass) {
-        return getMongoTemplate(false).findAndModify(query, update, entityClass);
+    public <T> T findAndModify(LambdaQueryWrapper<T> query, LambdaUpdateWrapper<T> update, Class<T> entityClass) {
+        return getMongoTemplate(false).findAndModify(query.build(), update.build(), entityClass);
     }
 
     /**
