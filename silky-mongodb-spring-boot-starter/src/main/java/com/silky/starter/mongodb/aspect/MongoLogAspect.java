@@ -1,6 +1,7 @@
 package com.silky.starter.mongodb.aspect;
 
 import cn.hutool.core.collection.ListUtil;
+import cn.hutool.core.util.ReflectUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
@@ -9,11 +10,13 @@ import com.silky.starter.mongodb.core.utils.FormatUtils;
 import com.silky.starter.mongodb.core.utils.MongoQueryParser;
 import com.silky.starter.mongodb.properties.SilkyMongoProperties;
 import com.silky.starter.mongodb.support.LambdaQueryWrapper;
+import com.silky.starter.mongodb.support.LambdaUpdateWrapper;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.bson.Document;
+import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
@@ -24,10 +27,11 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 
 /**
  * Mongo日志切面
@@ -71,7 +75,7 @@ public class MongoLogAspect {
         try {
             Object result = joinPoint.proceed();
             if (properties.isShowSql()) {
-                logMongoOperation(className, methodName, joinPoint.getArgs(), startTime, result);
+                logMongoOperation(methodName, joinPoint.getArgs(), startTime, result);
             } else {
                 logger.info("{}.{} executed in {} ms", className, methodName, startTime);
             }
@@ -87,13 +91,12 @@ public class MongoLogAspect {
     /**
      * 打印MongoDB操作日志
      *
-     * @param className  类名
      * @param methodName 方法名
      * @param args       参数
      * @param startTime  开始时间
      * @param result     结果
      */
-    private void logMongoOperation(String className, String methodName, Object[] args, long startTime, Object result) {
+    private void logMongoOperation(String methodName, Object[] args, long startTime, Object result) {
         switch (methodName) {
             case "save":
                 generateSaveSyntax(args, startTime);
@@ -108,29 +111,28 @@ public class MongoLogAspect {
                 generateFindSyntax(args, startTime);
                 break;
             case "updateById":
-                generateUpdateByIdSyntax(args, result);
+                generateUpdateByIdSyntax(args, startTime);
                 break;
             case "update":
-                generateUpdateSyntax(args, result);
+                generateUpdateSyntax(args, startTime);
                 break;
             case "removeById":
-                generateRemoveByIdSyntax(args, result);
+                generateRemoveByIdSyntax(args, startTime);
                 break;
             case "remove":
-                generateRemoveSyntax(args, result);
+                generateRemoveSyntax(args, startTime);
                 break;
             case "count":
-                generateCountSyntax(args, result);
+                generateCountSyntax(args, startTime);
                 break;
             case "page":
-                generatePageSyntax(args, result);
+                generatePageSyntax(args, startTime);
                 break;
             default:
                 generateDefaultSyntax(methodName, args, result);
                 break;
         }
     }
-
 
     /**
      * 打印查询语句
@@ -139,7 +141,7 @@ public class MongoLogAspect {
      * @param query         查询对象
      * @param executionTime 执行时间
      */
-    private void logQuery(Class<?> clazz, Query query, long executionTime) {
+    private void printlnLogQuery(Class<?> clazz, Query query, long executionTime) {
         MongoPersistentEntity<?> entity = mappingMongoConverter.getMappingContext().getPersistentEntity(clazz);
         Document mappedQuery = queryMapper.getMappedObject(query.getQueryObject(), entity);
         Document mappedField = queryMapper.getMappedObject(query.getFieldsObject(), entity);
@@ -170,12 +172,38 @@ public class MongoLogAspect {
     }
 
     /**
+     * 打印查询语句
+     *
+     * @param clazz     类
+     * @param query     查询对象
+     * @param update    更新对象
+     * @param multi     是否为批量更新
+     * @param startTime 查询开始时间
+     */
+    private void logUpdate(Class<?> clazz, Query query, Update update, boolean multi, Long startTime) {
+
+        MongoPersistentEntity<?> entity = mappingMongoConverter.getMappingContext().getPersistentEntity(clazz);
+        Document mappedQuery = queryMapper.getMappedObject(query.getQueryObject(), entity);
+        Document mappedUpdate = updateMapper.getMappedObject(update.getUpdateObject(), entity);
+
+        String log = "\ndb." + getCollectionName(clazz) + ".update(";
+        log += FormatUtils.toJson(mappedQuery.toJson()) + ",";
+        log += FormatUtils.toJson(mappedUpdate.toJson()) + ",";
+        log += FormatUtils.toJson("{multi:" + multi + "})");
+        log += ";";
+        // 记录慢查询
+        long queryTime = System.currentTimeMillis() - startTime;
+        // 打印语句
+        logger.info(log + "\n执行时间:" + queryTime + "ms");
+    }
+
+    /**
      * 打印保存语句
      *
      * @param list      保存集合
      * @param startTime 查询开始时间
      */
-    private void logSave(List<?> list, Long startTime) {
+    private void printlnLogSave(List<?> list, Long startTime) {
         List<JSONObject> cloneList = new ArrayList<>();
         for (Object item : list) {
             JSONObject jsonObject = JSONUtil.parseObj(item);
@@ -195,28 +223,44 @@ public class MongoLogAspect {
         logger.info(log + "\n执行时间:" + queryTime + "ms");
     }
 
+    /**
+     * 打印查询语句
+     *
+     * @param clazz     类
+     * @param query     查询对象
+     * @param startTime 查询开始时间
+     */
+    private void logDelete(Class<?> clazz, Query query, Long startTime) {
+
+        MongoPersistentEntity<?> entity = mappingMongoConverter.getMappingContext().getPersistentEntity(clazz);
+        Document mappedQuery = queryMapper.getMappedObject(query.getQueryObject(), entity);
+
+        String log = "\ndb." + this.getCollectionName(clazz) + ".remove(";
+        log += FormatUtils.toJson(mappedQuery.toJson()) + ")";
+        log += ";";
+        // 记录慢查询
+        long queryTime = System.currentTimeMillis() - startTime;
+        // 打印语句
+        logger.info(log + "\n执行时间:" + queryTime + "ms");
+    }
 
     /**
-     * 根据方法名获取操作类型
+     * 打印查询数量语句
+     *
+     * @param clazz     类
+     * @param query     查询对象
+     * @param startTime 查询开始时间
      */
-    private String getOperationType(String methodName) {
-        if (methodName.startsWith("save")) {
-            return "INSERT/SAVE";
-        } else if (methodName.startsWith("update") || methodName.startsWith("modify")) {
-            return "UPDATE";
-        } else if (methodName.startsWith("remove") || methodName.startsWith("delete")) {
-            return "DELETE";
-        } else if (methodName.startsWith("find") || methodName.startsWith("get") ||
-                methodName.startsWith("list") || methodName.startsWith("count") ||
-                methodName.startsWith("exists")) {
-            return "QUERY";
-        } else if (methodName.startsWith("create")) {
-            return "CREATE COLLECTION";
-        } else if (methodName.startsWith("drop")) {
-            return "DROP COLLECTION";
-        } else {
-            return "OPERATION";
-        }
+    private void logCount(Class<?> clazz, Query query, Long startTime) {
+        MongoPersistentEntity<?> entity = mappingMongoConverter.getMappingContext().getPersistentEntity(clazz);
+        Document mappedQuery = queryMapper.getMappedObject(query.getQueryObject(), entity);
+
+        String log = "\ndb." + this.getCollectionName(clazz) + ".find(";
+        log += FormatUtils.toJson(mappedQuery.toJson()) + ")";
+        log += ".count();";
+        long queryTime = System.currentTimeMillis() - startTime;
+        // 打印语句
+        logger.info(log + "\n执行时间:" + queryTime + "ms");
     }
 
     /**
@@ -225,7 +269,7 @@ public class MongoLogAspect {
     private void generateSaveSyntax(Object[] args, long executionTime) {
         if (args.length > 0) {
             Object entity = args[0];
-            logSave(ListUtil.toList(entity), executionTime);
+            printlnLogSave(ListUtil.toList(entity), executionTime);
         }
     }
 
@@ -235,7 +279,7 @@ public class MongoLogAspect {
     private void generateSaveBatchSyntax(Object[] args, long startTime) {
         if (args.length > 0) {
             Collection<?> entities = (Collection<?>) args[0];
-            this.logSave((List<?>) entities, startTime);
+            this.printlnLogSave((List<?>) entities, startTime);
         }
     }
 
@@ -248,7 +292,7 @@ public class MongoLogAspect {
             Class<?> entityClass = (Class<?>) args[1];
             Query query = new Query();
             query.addCriteria(Criteria.where(MongodbConstant.ID_FIELD).is(id));
-            logQuery(entityClass, query, startTime);
+            printlnLogQuery(entityClass, query, startTime);
         }
     }
 
@@ -261,112 +305,96 @@ public class MongoLogAspect {
                 LambdaQueryWrapper wrapper = (LambdaQueryWrapper) args[0];
                 Query query = wrapper.build();
                 Class<?> entityClass = wrapper.getEntityClass();
-                logQuery(entityClass, query, executionTime);
+                printlnLogQuery(entityClass, query, executionTime);
             } else if (args[0] instanceof Class) {
                 Class<?> entityClass = (Class<?>) args[0];
                 String collectionName = entityClass.getSimpleName().toLowerCase();
                 String.format("db.%s.find({})", collectionName);
             }
         }
-//        return "db.collection.find({})";
     }
 
     /**
      * 生成根据ID更新的语法
      */
-    private String generateUpdateByIdSyntax(Object[] args, Object result) {
+    private void generateUpdateByIdSyntax(Object[] args, long startTime) {
         if (args.length >= 2) {
-            String id = (String) args[0];
             Object entity = args[1];
-            String collectionName = entity.getClass().getSimpleName().toLowerCase();
-            return String.format("db.%s.updateOne({_id: ObjectId('%s')}, {$set: {...}})",
-                    collectionName, id);
+            Class<?> entityClass = entity.getClass();
+            ObjectId id = (ObjectId) ReflectUtil.getFieldValue(entity, MongodbConstant.ID_FIELD);
+            if (Objects.isNull(id)) {
+                printlnLogSave(ListUtil.toList(entity), startTime);
+            } else {
+                Update update = this.buildUpdateFromEntity(entity);
+                logUpdate(entityClass, new Query(), update, false, startTime);
+            }
         }
-        return "db.collection.updateOne({_id: ObjectId('id')}, {$set: {...}})";
     }
 
     /**
      * 生成更新操作的语法
      */
-    private String generateUpdateSyntax(Object[] args, Object result) {
+    private void generateUpdateSyntax(Object[] args, long startTime) {
         if (args.length >= 3) {
-            Query query = (Query) args[0];
-            Update update = (Update) args[1];
+            LambdaQueryWrapper<?> query = (LambdaQueryWrapper<?>) args[0];
+            LambdaUpdateWrapper<?> update = (LambdaUpdateWrapper<?>) args[1];
             Class<?> entityClass = (Class<?>) args[2];
-            String collectionName = entityClass.getSimpleName().toLowerCase();
-
-            return String.format("db.%s.updateMany(%s, %s)",
-                    collectionName,
-                    buildQueryCriteria(query),
-                    buildUpdateCriteria(update));
+            this.logUpdate(entityClass, query.build(), update.build(), false, startTime);
         }
-        return "db.collection.updateMany(query, update)";
     }
 
     /**
      * 生成根据ID删除的语法
      */
-    private String generateRemoveByIdSyntax(Object[] args, Object result) {
+    private void generateRemoveByIdSyntax(Object[] args, long startTime) {
         if (args.length >= 2) {
             String id = (String) args[0];
             Class<?> entityClass = (Class<?>) args[1];
-            String collectionName = entityClass.getSimpleName().toLowerCase();
-            return String.format("db.%s.deleteOne({_id: ObjectId('%s')})", collectionName, id);
+            Query query = new Query(Criteria.where("_id").is(id));
+            logDelete(entityClass, query, startTime);
         }
-        return "db.collection.deleteOne({_id: ObjectId('id')})";
     }
 
     /**
      * 生成删除操作的语法
      */
-    private String generateRemoveSyntax(Object[] args, Object result) {
+    private void generateRemoveSyntax(Object[] args, long startTime) {
         if (args.length >= 2) {
             Query query = (Query) args[0];
             Class<?> entityClass = (Class<?>) args[1];
-            String collectionName = entityClass.getSimpleName().toLowerCase();
-            return String.format("db.%s.deleteMany(%s)", collectionName, buildQueryCriteria(query));
+            logDelete(entityClass, query, startTime);
         }
-        return "db.collection.deleteMany(query)";
     }
 
     /**
      * 生成计数操作的语法
      */
-    private String generateCountSyntax(Object[] args, Object result) {
+    private void generateCountSyntax(Object[] args, long startTime) {
         if (args.length > 0) {
-            if (args[0] instanceof Query) {
-                Query query = (Query) args[0];
-                Class<?> entityClass = (Class<?>) args[1];
-                String collectionName = entityClass.getSimpleName().toLowerCase();
-                return String.format("db.%s.countDocuments(%s)", collectionName, buildQueryCriteria(query));
+            if (args[0] instanceof LambdaQueryWrapper) {
+                LambdaQueryWrapper<?> query = (LambdaQueryWrapper<?>) args[0];
+                Class<?> entityClass = args[1].getClass();
+
+                this.logCount(entityClass, query.build(), startTime);
+
             } else if (args[0] instanceof Class) {
-                Class<?> entityClass = (Class<?>) args[0];
-                String collectionName = entityClass.getSimpleName().toLowerCase();
-                return String.format("db.%s.countDocuments({})", collectionName);
+                Class<?> entityClass = args[0].getClass();
+                this.logCount(entityClass, new Query(), startTime);
             }
         }
-        return "db.collection.countDocuments({})";
     }
 
     /**
      * 生成分页查询的语法
      */
-    private String generatePageSyntax(Object[] args, Object result) {
+    private void generatePageSyntax(Object[] args, long startTime) {
         if (args.length >= 3) {
-            long pageNum = (Long) args[0];
-            long size = (Long) args[1];
-
-            if (args[2] instanceof Query) {
-                Query query = (Query) args[2];
-                Class<?> entityClass = (Class<?>) args[3];
-                String collectionName = entityClass.getSimpleName().toLowerCase();
-
-                return String.format("db.%s.find(%s).skip(%d).limit(%d)",
-                        collectionName, buildQueryCriteria(query),
-                        (pageNum - 1) * size, size);
+            if (args[2] instanceof LambdaQueryWrapper) {
+                LambdaQueryWrapper<?> query = (LambdaQueryWrapper<?>) args[2];
+                Class<?> entityClass = args[3].getClass();
+                printlnLogQuery(entityClass, query.build(), startTime);
             }
         }
-        return "db.collection.find(query).skip(n).limit(m)";
     }
 
     /**
@@ -376,36 +404,6 @@ public class MongoLogAspect {
         return String.format("db.collection.%s(...)", methodName);
     }
 
-    /**
-     * 构建查询条件
-     */
-    private String buildQueryCriteria(Query query) {
-        return MongoQueryParser.parseQuery(query);
-    }
-
-    /**
-     * 构建排序条件
-     */
-    private String buildSortCriteria(Query query) {
-        if (query == null || query.getSortObject() == null) {
-            return "{}";
-        }
-        return query.getSortObject().toString();
-    }
-
-    /**
-     * 构建更新条件
-     */
-    private String buildUpdateCriteria(Update update) {
-        if (update == null) {
-            return "{}";
-        }
-        Map<String, Object> updateObject = update.getUpdateObject();
-        if (updateObject.isEmpty()) {
-            return "{}";
-        }
-        return updateObject.toString();
-    }
 
     /**
      * 根据类获取集合名
@@ -424,6 +422,35 @@ public class MongoLogAspect {
             }
         }
         return StrUtil.lowerFirst(clazz.getSimpleName());
+    }
+
+    /**
+     * 根据实体对象构建Update对象，排除null值和_id字段
+     *
+     * @param entity 实体对象
+     * @return Update对象
+     */
+    private <T> Update buildUpdateFromEntity(T entity) {
+        Update update = new Update();
+
+        // 使用反射获取实体类的所有字段
+        Field[] fields = entity.getClass().getDeclaredFields();
+        for (Field field : fields) {
+            try {
+                // 跳过serialVersionUID字段
+                if ("serialVersionUID".equals(field.getName())) {
+                    continue;
+                }
+                field.setAccessible(true);
+                Object value = field.get(entity);
+                // 排除null值和_id字段
+                if (value != null && !MongodbConstant.ID_FIELD.equals(field.getName())) {
+                    update.set(field.getName(), value);
+                }
+            } catch (IllegalAccessException e) {
+            }
+        }
+        return update;
     }
 
 }

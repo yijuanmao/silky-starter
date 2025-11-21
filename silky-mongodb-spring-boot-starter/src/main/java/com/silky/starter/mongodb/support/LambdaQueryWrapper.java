@@ -20,6 +20,10 @@ public class LambdaQueryWrapper<T> {
     @Getter
     private final Class<T> entityClass;
 
+    public LambdaQueryWrapper() {
+        this(null);
+    }
+
     public LambdaQueryWrapper(Class<T> entityClass) {
         this.entityClass = entityClass;
     }

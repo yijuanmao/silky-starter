@@ -181,12 +181,11 @@ public interface SilkyMongoTemplate {
     /**
      * 根据id更新
      *
-     * @param id     id
      * @param entity 封装类
      * @param <T>
      * @return 是否更新成功
      */
-    <T> boolean updateById(String id, T entity);
+    <T> boolean updateById(T entity);
 
     /**
      * 根据条件更新

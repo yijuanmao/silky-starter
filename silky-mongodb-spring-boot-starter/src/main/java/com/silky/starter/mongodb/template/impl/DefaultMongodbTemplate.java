@@ -1,6 +1,7 @@
 
 package com.silky.starter.mongodb.template.impl;
 
+import cn.hutool.core.util.ReflectUtil;
 import com.silky.starter.mongodb.annotation.ReadOnly;
 import com.silky.starter.mongodb.configure.DynamicMongoTemplate;
 import com.silky.starter.mongodb.core.constant.MongodbConstant;
@@ -17,6 +18,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 默认MongoDB模板实现
@@ -84,7 +86,6 @@ public class DefaultMongodbTemplate implements SilkyMongoTemplate {
     @Override
     public <T> T getById(String id, Class<T> entityClass) {
         return getMongoTemplate(true).findById(new ObjectId(id), entityClass);
-//
     }
 
     /**
@@ -255,14 +256,18 @@ public class DefaultMongodbTemplate implements SilkyMongoTemplate {
     /**
      * 根据id更新
      *
-     * @param id     id
      * @param entity 封装类
      * @return 是否更新成功
      */
     @Override
-    public <T> boolean updateById(String id, T entity) {
-        T result = getMongoTemplate(false).save(entity);
-        return result != null;
+    public <T> boolean updateById(T entity) {
+        ObjectId objectId = (ObjectId) ReflectUtil.getFieldValue(entity, MongodbConstant.ID_FIELD);
+        getMongoTemplate(false).save(entity);
+        if (Objects.isNull(objectId)) {
+            // 去除id值,如果是新增,则将id值设置为null，因为切面日志会根据MongoDB id判断是新增还是更新
+            ReflectUtil.setFieldValue(entity, MongodbConstant.ID_FIELD, null);
+        }
+        return true;
     }
 
     /**

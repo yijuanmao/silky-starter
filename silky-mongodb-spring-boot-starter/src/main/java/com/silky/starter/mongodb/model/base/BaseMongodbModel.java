@@ -26,7 +26,7 @@ public class BaseMongodbModel implements Serializable {
      */
     @Id
     @Field(name = "_id" , order = 1)
-    private ObjectId mongoId;
+    private ObjectId _id;
 
     /**
      * 保存到MongoDB创建时间
