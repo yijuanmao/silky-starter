@@ -183,9 +183,9 @@ public class MongoLogAspect {
     private void generateFindSyntax(Object[] args, long startTime) {
         if (args.length > 0) {
             if (args[0] instanceof LambdaQueryWrapper) {
-                LambdaQueryWrapper wrapper = (LambdaQueryWrapper) args[0];
+                LambdaQueryWrapper<?> wrapper = (LambdaQueryWrapper<?>) args[0];
+                Class<?> entityClass = (Class<?>) args[1];
                 Query query = wrapper.build();
-                Class<?> entityClass = wrapper.getEntityClass();
                 LogPrintlnUtil.queryLog(entityClass, query, startTime, mappingMongoConverter, queryMapper);
             } else if (args[0] instanceof Class) {
                 Class<?> entityClass = (Class<?>) args[0];

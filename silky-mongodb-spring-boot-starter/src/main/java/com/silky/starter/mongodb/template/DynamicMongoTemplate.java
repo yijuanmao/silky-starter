@@ -5,7 +5,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.util.StringUtils;
 
 import java.util.Map;
-import java.util.Set;
 
 /**
  * 动态数据源切换
@@ -93,7 +92,6 @@ public class DynamicMongoTemplate {
      * 获取读数据源名称
      */
     private String getReadDataSource() {
-        Set<Object> objects = targetDataSources.keySet();
         // 查找读数据源，如果没有配置则使用默认数据源
         return targetDataSources.keySet().stream()
                 .filter(key -> key.toString().endsWith("_read"))
