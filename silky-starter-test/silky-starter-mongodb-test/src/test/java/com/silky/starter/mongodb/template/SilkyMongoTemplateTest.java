@@ -147,4 +147,23 @@ public class SilkyMongoTemplateTest extends MongodbApplicationTest {
         long count1 = silkyMongoTemplate.count(queryWrapper, User.class);
         log.info("根据条件查询数量:" + count1);
     }
+
+    /**
+     * 根据条件查询是否存在
+     */
+    @Test
+    public void testExists() {
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>(User.class).eq(User::getName, "John2");
+        boolean exists = silkyMongoTemplate.exists(queryWrapper, User.class);
+        log.info("根据条件查询是否存在:" + exists);
+    }
+
+    /**
+     * 根据id查询是否存在
+     */
+    @Test
+    public void testExistsById() {
+        boolean exists = silkyMongoTemplate.existsById("69202c2227cb6b40696b4e1a", User.class);
+        log.info("根据id查询是否存在:" + exists);
+    }
 }

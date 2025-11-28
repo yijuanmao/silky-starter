@@ -116,6 +116,17 @@ public interface SilkyMongoTemplate {
     <T> boolean exists(LambdaQueryWrapper<T> wrapper, Class<T> entityClass);
 
     /**
+     * 根据id查询是否存在
+     *
+     * @param id          id
+     * @param entityClass 封装类
+     * @param <T>
+     * @return 结果
+     */
+    <T> boolean existsById(String id, Class<T> entityClass);
+
+
+    /**
      * 分页查询
      *
      * @param current     当前页
@@ -249,16 +260,6 @@ public interface SilkyMongoTemplate {
      * @return 封装类
      */
     <T> List<T> findByIds(Collection<String> ids, Class<T> entityClass);
-
-    /**
-     * 根据id查询是否存在
-     *
-     * @param id          id
-     * @param entityClass 封装类
-     * @param <T>
-     * @return 结果
-     */
-    <T> boolean existsById(String id, Class<T> entityClass);
 
     /**
      * 根据条件查询并更新

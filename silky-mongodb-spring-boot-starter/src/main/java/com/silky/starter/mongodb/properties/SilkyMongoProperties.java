@@ -31,11 +31,6 @@ public class SilkyMongoProperties {
     private boolean printLog;
 
     /**
-     * 是否记录慢查询到数据库中，默认不记录
-     */
-    private boolean showSql;
-
-    /**
      * 打印执行时间
      */
     protected Long slowTime;

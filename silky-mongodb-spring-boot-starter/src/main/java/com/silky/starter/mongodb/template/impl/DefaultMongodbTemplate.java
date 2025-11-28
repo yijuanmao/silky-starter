@@ -165,6 +165,18 @@ public class DefaultMongodbTemplate implements SilkyMongoTemplate {
     }
 
     /**
+     * 根据id查询是否存在
+     *
+     * @param id          id
+     * @param entityClass 封装类
+     * @return 结果
+     */
+    @Override
+    public <T> boolean existsById(String id, Class<T> entityClass) {
+        return getMongoTemplate(false).exists(Query.query(Criteria.where(MongodbConstant.ID_FIELD).is(id)), entityClass);
+    }
+
+    /**
      * 分页查询
      *
      * @param current     当前页
@@ -356,18 +368,6 @@ public class DefaultMongodbTemplate implements SilkyMongoTemplate {
 
         Query query = new Query(Criteria.where(MongodbConstant.ID_FIELD).in(ids));
         return getMongoTemplate(false).find(query, entityClass);
-    }
-
-    /**
-     * 根据id查询是否存在
-     *
-     * @param id          id
-     * @param entityClass 封装类
-     * @return 结果
-     */
-    @Override
-    public <T> boolean existsById(String id, Class<T> entityClass) {
-        return getMongoTemplate(false).exists(Query.query(Criteria.where(MongodbConstant.ID_FIELD).is(id)), entityClass);
     }
 
     /**
