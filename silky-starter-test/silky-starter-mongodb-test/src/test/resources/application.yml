@@ -1,32 +1,26 @@
 silky:
   mongodb:
-    # 是否启用
     enabled: true
-    # 是否打印日志
+    # 打印日志
     print-log: true
-    # 是否打印 SQL
-    show-sql: true
+    #事务开关
+    transaction-enabled: false
+    # 不配置 primary，默认使用第一个数据源
+    primary: master
     datasource:
       #主库
-      primary:
+      master:
         uri: mongodb://username:password@localhost:27017/test
         # 不配置 database，会自动从 URI 中解析
-#        database: test
+        #database: test
         #读写分离
         read-write-separation:
           #默认关闭
-          enabled: false
-          read-uri: mongodb://username:password@localhost:27017/test
-          read-database: test
+          enabled: true
+          read-uri: mongodb://username:password@localhost:27017/test1
+          #不配置，会自动从 URI 中解析
+          read-database: test1
       #从库
-#      slave:
-#        uri: mongodb://username:password@localhost:27017/test
-#        database: test
+      slave:
+        uri: mongodb://username:password@localhost:27017/test2
 
-spring:
-  #  data:
-  #    mongodb:
-  #      auto-index-creation: true
-  jackson:
-    date-format: yyyy-MM-dd HH:mm:ss
-    time-zone: GMT+8
