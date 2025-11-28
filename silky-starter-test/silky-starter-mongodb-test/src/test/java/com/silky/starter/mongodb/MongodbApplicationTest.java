@@ -20,7 +20,7 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 //@EnableAutoConfiguration(exclude = {MongoDataAutoConfiguration.class, MongoRepositoriesAutoConfiguration.class})
 //@EnableMongoRepositories
 @SpringBootTest(classes = MongodbApplicationTest.class)
-@ComponentScan({"com.silky", "com.silky.starter.mongodb"})
+@ComponentScan({"com.silky"})
 public class MongodbApplicationTest {
 
     protected final Logger log = org.slf4j.LoggerFactory.getLogger(this.getClass());
