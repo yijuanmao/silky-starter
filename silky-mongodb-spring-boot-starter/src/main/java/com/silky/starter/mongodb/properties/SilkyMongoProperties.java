@@ -2,6 +2,7 @@ package com.silky.starter.mongodb.properties;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -26,6 +27,17 @@ public class SilkyMongoProperties {
     private boolean enabled = true;
 
     /**
+     * 是否启用事务
+     */
+    private boolean transactionEnabled = false;
+
+    /**
+     * 主数据源名称，默认使用第一个数据源作为主数据源
+     * 如果配置了primary，则使用指定的数据源作为主数据源
+     */
+    private String primary;
+
+    /**
      * 是否打印Mongodb操作日志，默认不打印
      */
     private boolean printLog;
@@ -38,13 +50,13 @@ public class SilkyMongoProperties {
     /**
      * 数据源配置
      */
-    private Map<String, SilkyDataSourceProperties> datasource = new HashMap<>();
+    private Map<String, DataSourceProperties> datasource = new HashMap<>();
 
     /**
      * 数据源配置
      */
     @Data
-    public static class SilkyDataSourceProperties {
+    public static class DataSourceProperties {
         /**
          * 数据库连接地址
          */
@@ -83,5 +95,35 @@ public class SilkyMongoProperties {
          */
         private String readDatabase;
 
+    }
+
+    /**
+     * 获取主数据源名称
+     * 如果配置了primary，则使用配置的值，否则使用第一个数据源
+     */
+    public String getPrimaryDataSourceName() {
+        if (StringUtils.hasText(primary) && datasource.containsKey(primary)) {
+            return primary;
+        }
+        // 如果没有配置primary或者配置的primary不存在，返回第一个数据源
+        if (!datasource.isEmpty()) {
+            return datasource.keySet().iterator().next();
+        }
+        throw new IllegalStateException("No data source configured");
+    }
+
+    /**
+     * 获取主数据源配置
+     */
+    public DataSourceProperties getPrimaryDataSource() {
+        String primaryName = getPrimaryDataSourceName();
+        return datasource.get(primaryName);
+    }
+
+    /**
+     * 检查指定的数据源是否存在
+     */
+    public boolean containsDataSource(String dataSourceName) {
+        return datasource.containsKey(dataSourceName);
     }
 }

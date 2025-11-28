@@ -3,6 +3,7 @@ package com.silky.starter.mongodb.configure;
 import com.silky.starter.mongodb.aspect.DataSourceAspect;
 import com.silky.starter.mongodb.aspect.MongoLogAspect;
 import com.silky.starter.mongodb.properties.SilkyMongoProperties;
+import com.silky.starter.mongodb.template.DynamicMongoTemplate;
 import com.silky.starter.mongodb.template.SilkyMongoTemplate;
 import com.silky.starter.mongodb.template.impl.DefaultMongodbTemplate;
 import org.slf4j.Logger;
@@ -25,7 +26,7 @@ import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 @Configuration
 @ConditionalOnClass(name = "org.springframework.data.mongodb.core.MongoTemplate")
 @EnableConfigurationProperties(SilkyMongoProperties.class)
-@Import({MultiDataSourceConfig.class})
+@Import({MultiDataSourceConfig.class, TransactionConfig.class, MongoConfigValidator.class})
 @EnableAspectJAutoProxy
 public class SilkyMongoAutoConfiguration {
 

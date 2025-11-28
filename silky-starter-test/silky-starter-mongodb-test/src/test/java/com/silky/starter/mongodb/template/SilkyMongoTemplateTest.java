@@ -91,7 +91,7 @@ public class SilkyMongoTemplateTest extends MongodbApplicationTest {
      */
     @Test
     public void testGetById() {
-        User user = silkyMongoTemplate.getById("691ef184dba63c6bc7fd5617", User.class);
+        User user = silkyMongoTemplate.getById("69202c2227cb6b40696b4e1e", User.class);
         log.info("查询用户详情: {}", user);
     }
 
@@ -163,7 +163,7 @@ public class SilkyMongoTemplateTest extends MongodbApplicationTest {
      */
     @Test
     public void testExistsById() {
-        boolean exists = silkyMongoTemplate.existsById("69202c2227cb6b40696b4e1a", User.class);
+        boolean exists = silkyMongoTemplate.existsById("69202c2227cb6b40696b4e1e", User.class);
         log.info("根据id查询是否存在:" + exists);
     }
 }

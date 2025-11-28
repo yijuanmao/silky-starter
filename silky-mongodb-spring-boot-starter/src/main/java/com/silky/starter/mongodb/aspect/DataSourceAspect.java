@@ -1,7 +1,7 @@
 package com.silky.starter.mongodb.aspect;
 
 import com.silky.starter.mongodb.annotation.DataSource;
-import com.silky.starter.mongodb.configure.DynamicMongoTemplate;
+import com.silky.starter.mongodb.template.DynamicMongoTemplate;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;

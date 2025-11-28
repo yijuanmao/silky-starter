@@ -4,8 +4,10 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.silky.starter.mongodb.core.utils.MongoUriParser;
 import com.silky.starter.mongodb.properties.SilkyMongoProperties;
+import com.silky.starter.mongodb.template.DynamicMongoTemplate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -42,32 +44,34 @@ public class MultiDataSourceConfig {
     @Bean
     @Primary
     public MongoDatabaseFactory mongoDatabaseFactory() {
-        log.info("Creating primary MongoDatabaseFactory");
         if (properties.getDatasource().isEmpty()) {
             throw new IllegalStateException("No MongoDB data source configured");
         }
+        // 使用配置的主数据源
+        String primaryDataSourceName = properties.getPrimaryDataSourceName();
+        SilkyMongoProperties.DataSourceProperties primaryDataSource = properties.getPrimaryDataSource();
 
-        String firstDataSourceName = properties.getDatasource().keySet().iterator().next();
-        SilkyMongoProperties.SilkyDataSourceProperties firstDataSource = properties.getDatasource().get(firstDataSourceName);
+        log.info("Using '{}' as primary data source", primaryDataSourceName);
 
-        String databaseName = StringUtils.hasText(firstDataSource.getDatabase())
-                ? firstDataSource.getDatabase()
-                : MongoUriParser.getDatabaseFromUri(firstDataSource.getUri());
+        String databaseName = StringUtils.hasText(primaryDataSource.getDatabase())
+                ? primaryDataSource.getDatabase()
+                : MongoUriParser.getDatabaseFromUri(primaryDataSource.getUri());
 
-        return createMongoFactory(firstDataSource.getUri(), databaseName);
+        return createMongoFactory(primaryDataSource.getUri(), databaseName);
     }
 
     @Bean
+    @ConditionalOnMissingBean
     public MongoMappingContext mongoMappingContext() {
         return new MongoMappingContext();
     }
 
     @Bean
+    @ConditionalOnMissingBean
     public MappingMongoConverter mappingMongoConverter(MongoDatabaseFactory mongoDatabaseFactory,
                                                        MongoMappingContext mongoMappingContext) {
         DbRefResolver dbRefResolver = new DefaultDbRefResolver(mongoDatabaseFactory);
-        MappingMongoConverter converter = new MappingMongoConverter(dbRefResolver, mongoMappingContext);
-        return converter;
+        return new MappingMongoConverter(dbRefResolver, mongoMappingContext);
     }
 
     /**
@@ -75,13 +79,9 @@ public class MultiDataSourceConfig {
      */
     @Bean
     public DynamicMongoTemplate dynamicMongoTemplate(MappingMongoConverter mappingMongoConverter) {
-        log.info("Creating DynamicMongoTemplate with {} data sources", properties.getDatasource().size());
-
         Map<Object, Object> targetDataSources = new HashMap<>();
 
         properties.getDatasource().forEach((dataSourceName, dataSourceProps) -> {
-            log.info("Configuring data source: {}", dataSourceName);
-
             String databaseName = StringUtils.hasText(dataSourceProps.getDatabase())
                     ? dataSourceProps.getDatabase()
                     : MongoUriParser.getDatabaseFromUri(dataSourceProps.getUri());
@@ -90,7 +90,8 @@ public class MultiDataSourceConfig {
             MongoDatabaseFactory primaryFactory = createMongoFactory(dataSourceProps.getUri(), databaseName);
             MongoTemplate primaryTemplate = new MongoTemplate(primaryFactory, mappingMongoConverter);
             targetDataSources.put(dataSourceName, primaryTemplate);
-            log.info("Added primary data source: {}", dataSourceName);
+
+            log.info("Registered data source: {}", dataSourceName);
 
             // 读写分离的读数据源
             if (dataSourceProps.getReadWriteSeparation() != null &&
@@ -107,22 +108,24 @@ public class MultiDataSourceConfig {
                         readDatabaseName);
                 MongoTemplate readTemplate = new MongoTemplate(readFactory, mappingMongoConverter);
                 targetDataSources.put(dataSourceName + "_read", readTemplate);
-                log.info("Added read-only data source: {}", dataSourceName + "_read");
+
+                log.info("Registered read-only data source: {}", dataSourceName + "_read");
             }
         });
 
-        DynamicMongoTemplate dynamicTemplate = new DynamicMongoTemplate(targetDataSources);
-        log.info("DynamicMongoTemplate created successfully with {} templates", targetDataSources.size());
-        return dynamicTemplate;
+        // 记录主数据源信息
+        String primaryDataSource = properties.getPrimaryDataSourceName();
+        log.info("DynamicMongoTemplate created with {} data sources, primary: {}",
+                targetDataSources.size(), primaryDataSource);
+
+        return new DynamicMongoTemplate(targetDataSources, primaryDataSource);
     }
 
+    /**
+     * 创建 MongoDatabaseFactory
+     */
     private MongoDatabaseFactory createMongoFactory(String uri, String database) {
-        try {
-            MongoClient mongoClient = MongoClients.create(uri);
-            return new SimpleMongoClientDatabaseFactory(mongoClient, database);
-        } catch (Exception e) {
-            log.error("Failed to create MongoDatabaseFactory for URI: {}", uri, e);
-            throw new RuntimeException("Failed to create MongoDatabaseFactory", e);
-        }
+        MongoClient mongoClient = MongoClients.create(uri);
+        return new SimpleMongoClientDatabaseFactory(mongoClient, database);
     }
 }

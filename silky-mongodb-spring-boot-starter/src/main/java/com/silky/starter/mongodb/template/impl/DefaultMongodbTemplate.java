@@ -3,7 +3,7 @@ package com.silky.starter.mongodb.template.impl;
 
 import cn.hutool.core.util.ReflectUtil;
 import com.silky.starter.mongodb.annotation.ReadOnly;
-import com.silky.starter.mongodb.configure.DynamicMongoTemplate;
+import com.silky.starter.mongodb.template.DynamicMongoTemplate;
 import com.silky.starter.mongodb.core.constant.MongodbConstant;
 import com.silky.starter.mongodb.entity.PageResult;
 import com.silky.starter.mongodb.support.LambdaQueryWrapper;
