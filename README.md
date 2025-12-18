@@ -590,14 +590,14 @@ public class FileProcessingPipeline {
     
     <!-- Redis全能组件 -->
     <dependency>
-        <groupId>com.silky</groupId>
+        <groupId>io.github.yijuanmao</groupId>
         <artifactId>silky-redis-spring-boot-starter</artifactId>
         <version>最新版本</version>
     </dependency>
     
     <!-- MongoDB增强 -->
     <dependency>
-        <groupId>com.silky</groupId>
+        <groupId>io.github.yijuanmao</groupId>
         <artifactId>silky-mongodb-spring-boot-starter</artifactId>
         <version>最新版本</version>
     </dependency>
