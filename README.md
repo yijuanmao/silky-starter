@@ -775,7 +775,8 @@ public class DemoController {
 -   **🌐 官方网站**：[https://silky-ecosystem.github.io](https://github.com/yijuanmao/silky-starter)
 -   **📖 完整文档**：[GitHub Wiki](https://github.com/yijuanmao/silky-starter/wiki)
 -   **💻 示例项目**：[silky-demo](https://github.com/yijuanmao/silky-starter/tree/master/silky-starter-test)
--   **🎬 视频教程**：[B站专栏](https://space.bilibili.com/your-channel)
+
+[//]: # (-   **🎬 视频教程**：[B站专栏]&#40;https://space.bilibili.com/your-channel&#41;)
 
 ## 🤝 加入我们
 
@@ -805,6 +806,18 @@ mvn spring-boot:run
 
 * * *
 
+### 👥 加入社区
+
+📢 **关注SilkyStarter**公众号获取最新源码和技术动态！  
+💬 **加入silky-starter技术交流群**，与众多开发者一起探讨技术问题：  
+添加微信 `824414828` 或扫描公众号二维码，备注"技术交流"邀请进群
+
+⭐ **如果这个项目帮助了你，请给我们一个Star！**
+
+**如果这让你感同身受，那么今天就是你的幸运日！**
+
+* * *
+
 ## 🙏 感谢支持
 
 **如果觉得 Silky 生态对你有帮助，请给我们一个 ⭐ Star 支持！**  
@@ -820,14 +833,6 @@ mvn spring-boot:run
 
 或者点击以下链接，将页面拉到最下方点击"捐赠"即可  
 [Gitee上捐赠](https://gitee.com/zeng_er/silky-starter)
-
-* * *
-
-### 🗣️ 加入社区
-
-欢迎扫码加入**Silky Starter 技术交流群**，与开发者们直接交流、获取帮助、共同进步！
-
-<img src=".image/wechatQrCode.jpg" height="300px" alt="Silky Starter 技术交流群" />
 
 * * *
 
