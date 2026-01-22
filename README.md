@@ -782,11 +782,11 @@ public class DemoController {
 
 Silky 生态由开发者共建，为开发者服务！我们欢迎：
 
--   🐞 **提交 Issue**：[报告问题或建议](https://github.com/yijuanmao/silky-starter/issues)
--   🔧 **提交 PR**：欢迎代码贡献，共建更好用的组件
--   📚 **完善文档**：帮助更多人上手使用
--   💬 **技术交流**：加入我们的开发者社区
--   ⭐ **Star 支持**：你的认可是我们持续更新的动力
+-   🐞 **提交 Issue**：[报告问题或建议](https://github.com/yijuanmao/silky-starter/issues)
+-   🔧 **提交 PR**：欢迎代码贡献，共建更好用的组件
+-   📚 **完善文档**：帮助更多人上手使用
+-   💬 **技术交流**：加入我们的开发者社区
+-   ⭐ **Star 支持**：你的认可是我们持续更新的动力
 
 ## 🎉 立即开始
 
