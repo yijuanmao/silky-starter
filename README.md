@@ -5,6 +5,7 @@
 [![体验-丝滑一般顺滑](https://img.shields.io/badge/体验-丝滑一般顺滑-ff69b4.svg)]()
 [![特性-开箱即用](https://img.shields.io/badge/特性-开箱即用-green.svg)]()
 [![目标-高效开发](https://img.shields.io/badge/目标-高效开发-blue.svg)]()
+[![服务器赞助-风铃云](https://img.shields.io/badge/服务器赞助-风铃云-9cf.svg)](https://aeoliancloud.com/)
 
 
 </div>
@@ -15,6 +16,38 @@
 [![Spring Boot 2.7.x](https://img.shields.io/badge/Spring%20Boot-2.7.x-brightgreen.svg)]()
 [![Maven 3.10+](https://img.shields.io/badge/Maven-3.10+-blue.svg)]()
 [![License Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-lightgrey.svg)]()
+
+</div>
+
+## 🏆 赞助商特别鸣谢
+
+<div align="center" style="margin: 40px 0; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 15px; color: white;">
+
+### 🏢 服务器赞助商：风铃云有限公司
+
+<h3 style="margin: 15px 0; font-size: 2.2em;">
+<a href="https://aeoliancloud.com/" target="_blank" style="color: white; text-decoration: none;">
+🌬️ 风铃云 | Aeolian Cloud
+</a>
+</h3>
+
+<p style="font-size: 1.2em; margin: 20px 0; line-height: 1.6;">
+为Silky生态提供<strong>高性能、高可靠</strong>的服务器支持，<br>
+助力开发者体验更流畅、更稳定的服务！
+</p>
+
+<div style="margin: 25px 0;">
+<a href="https://aeoliancloud.com/" target="_blank" style="display: inline-block; margin: 10px; padding: 12px 28px; background: white; color: #667eea; border-radius: 8px; font-weight: bold; text-decoration: none; transition: all 0.3s;">
+🌐 访问风铃云官网
+</a>
+<a href="mailto:824414828@qq.com" style="display: inline-block; margin: 10px; padding: 12px 28px; background: rgba(255,255,255,0.2); color: white; border: 2px solid white; border-radius: 8px; font-weight: bold; text-decoration: none; transition: all 0.3s;">
+📧 商务合作联系
+</a>
+</div>
+
+<div style="margin-top: 20px; font-size: 0.9em; opacity: 0.9;">
+🎯 专业云服务 | 🚀 高性能服务器 | 🔒 安全稳定 | 💼 企业级解决方案
+</div>
 
 </div>
 
