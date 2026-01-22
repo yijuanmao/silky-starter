@@ -40,9 +40,10 @@
 <a href="https://aeoliancloud.com/" target="_blank" style="display: inline-block; margin: 10px; padding: 12px 28px; background: white; color: #667eea; border-radius: 8px; font-weight: bold; text-decoration: none; transition: all 0.3s;">
 🌐 访问风铃云官网
 </a>
-<a href="mailto:824414828@qq.com" style="display: inline-block; margin: 10px; padding: 12px 28px; background: rgba(255,255,255,0.2); color: white; border: 2px solid white; border-radius: 8px; font-weight: bold; text-decoration: none; transition: all 0.3s;">
-📧 商务合作联系
-</a>
+
+<div style="display: inline-block; margin: 10px; padding: 12px 28px; background: rgba(255,255,255,0.2); color: white; border: 2px solid white; border-radius: 8px; font-weight: bold;">
+📧 商务合作联系：824414828@qq.com
+</div>
 </div>
 
 <div style="margin-top: 20px; font-size: 0.9em; opacity: 0.9;">
