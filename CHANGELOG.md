@@ -1,4 +1,11 @@
-## v1.0.3 (2025-11-19)
+## v1.0.3 (2026-03-11)
+### 💎 功能优化
+* silky-excel-spring-boot-starter pom文件指定 silky-starter-core版本
+* silky-mongodb-spring-boot-starter pom文件指定 silky-starter-core版本
+* silky-oss-spring-boot-starter pom文件指定 silky-starter-core版本
+* silky-rabbitmq-spring-boot-starter pom文件指定 silky-starter-core版本
+* silky-redis-spring-boot-starter pom文件指定 silky-starter-core版本
+* silky-statemachine-spring-boot-starter pom文件指定 silky-starter-core版本
 
 ### 💎 功能优化
 * silky-mongodb-spring-boot-starter 组件重构

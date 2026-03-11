@@ -33,6 +33,7 @@
         <dependency>
             <groupId>io.github.yijuanmao</groupId>
             <artifactId>silky-starter-core</artifactId>
+            <version>${revision}</version>
         </dependency>
 
         <dependency>

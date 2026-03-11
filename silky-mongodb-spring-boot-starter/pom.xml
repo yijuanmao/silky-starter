@@ -26,6 +26,7 @@
         <dependency>
             <groupId>io.github.yijuanmao</groupId>
             <artifactId>silky-starter-core</artifactId>
+            <version>${revision}</version>
         </dependency>
 
         <dependency>
@@ -48,6 +49,7 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
+
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-tx</artifactId>
