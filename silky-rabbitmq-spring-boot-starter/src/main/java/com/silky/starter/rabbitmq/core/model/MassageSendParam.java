@@ -6,6 +6,7 @@ import lombok.experimental.Accessors;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
  * 发送消息基础对象
@@ -81,7 +82,7 @@ public class MassageSendParam implements Serializable {
     /**
      * 扩展属性
      */
-//    private Object extData;
+    private Map<String, Object> extData;
 
     public MassageSendParam(Object msg) {
         this.msg = msg;

@@ -30,7 +30,8 @@ public class FastJson2MessageSerializer implements RabbitMqMessageSerializer {
             return null;
         }
         try {
-            return JSON.toJSONBytes(object, JSONWriter.Feature.WriteClassName);
+//            return JSON.toJSONBytes(object, JSONWriter.Feature.WriteClassName);
+            return JSON.toJSONBytes(object);
         } catch (Exception e) {
             log.error("Failed to serialize object: {}", object.getClass(), e);
             throw new SerializationException("Failed to serialize object: " + object.getClass(), e);

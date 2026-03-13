@@ -1,5 +1,6 @@
 package com.silky.starter.rabbitmq.template.impl;
 
+import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.rabbitmq.core.model.MassageSendParam;
@@ -11,16 +12,14 @@ import com.silky.starter.rabbitmq.properties.SilkyRabbitMQProperties;
 import com.silky.starter.rabbitmq.serialization.RabbitMqMessageSerializer;
 import com.silky.starter.rabbitmq.service.SendCallback;
 import com.silky.starter.rabbitmq.template.SkRabbitMqTemplate;
-import org.springframework.amqp.core.Message;
-import org.springframework.amqp.core.MessageBuilder;
-import org.springframework.amqp.core.MessageDeliveryMode;
-import org.springframework.amqp.core.MessageProperties;
+import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.*;
 
@@ -257,7 +256,7 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
         }
 
         try {
-            Message rabbitMessage = this.buildMessage(param, messageId);
+            Message rabbitMessage = this.buildMessage(param);
 
             SendResult result;
 
@@ -299,18 +298,31 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
     /**
      * 构建消息对象
      *
-     * @param message   消息体
-     * @param messageId 消息ID
+     * @param param 消息参数
      * @return 消息对象
      */
-    private Message buildMessage(Object message, String messageId) {
-        byte[] body = messageSerializer.serialize(message);
-        return MessageBuilder.withBody(body)
+    private Message buildMessage(MassageSendParam param) {
+        byte[] body = messageSerializer.serialize(param.getMsg());
+        MessageBuilderSupport<Message> builderSupport = MessageBuilder.withBody(body)
                 .setContentType(MessageProperties.CONTENT_TYPE_JSON)
                 .setDeliveryMode(MessageDeliveryMode.PERSISTENT)
-                .setMessageId(messageId)
-                .setTimestamp(new Date())
-                .build();
+                .setMessageId(param.getMessageId())
+                .setTimestamp(new Date());
+
+        String businessType = param.getBusinessType();
+        String description = param.getDescription();
+        Map<String, Object> extData = param.getExtData();
+
+        if (StrUtil.isNotBlank(businessType)) {
+            builderSupport.setHeader("businessType", businessType);
+        }
+        if (StrUtil.isNotBlank(description)) {
+            builderSupport.setHeader("description", description);
+        }
+        if (MapUtil.isNotEmpty(extData)) {
+            builderSupport.setHeader("extData", extData);
+        }
+        return builderSupport.build();
     }
 
     /**
