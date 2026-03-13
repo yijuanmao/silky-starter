@@ -1,6 +1,7 @@
 package com.silky.starter.rabbitmq.config;
 
 import com.silky.starter.rabbitmq.aop.RabbitMessageAspect;
+import com.silky.starter.rabbitmq.converter.FastJson2MessageConverter;
 import com.silky.starter.rabbitmq.listener.RabbitMQListenerContainer;
 import com.silky.starter.rabbitmq.listener.registry.ListenerRegistry;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
@@ -13,6 +14,7 @@ import com.silky.starter.rabbitmq.template.SkRabbitMqTemplate;
 import com.silky.starter.rabbitmq.template.impl.DefaultSkRabbitMqTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.boot.autoconfigure.amqp.RabbitProperties;
@@ -138,6 +140,17 @@ public class SilkyRabbitMQAutoConfiguration {
         );
     }
 
+    @Bean
+    @ConditionalOnMissingBean
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+            ConnectionFactory connectionFactory,
+            RabbitMqMessageSerializer messageSerializer) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        factory.setMessageConverter(new FastJson2MessageConverter(messageSerializer));
+        return factory;
+    }
+
     @PostConstruct
     public void initialize() {
         logger.info("Silky RabbitMQ AutoConfiguration initialized");
@@ -153,6 +166,5 @@ public class SilkyRabbitMQAutoConfiguration {
             persistenceService.destroy();
         }
     }
-
 
 }
