@@ -1,19 +1,25 @@
 package com.silky.starter.rabbitmq.aop;
 
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.rabbitmq.annotation.RabbitMessage;
-import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
+import com.silky.starter.rabbitmq.annotation.RabbitPayload;
+import com.silky.starter.rabbitmq.core.model.MassageSendParam;
 import com.silky.starter.rabbitmq.core.model.SendResult;
 import com.silky.starter.rabbitmq.enums.SendStatus;
 import com.silky.starter.rabbitmq.exception.RabbitMessageSendException;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
-import com.silky.starter.rabbitmq.template.RabbitSendTemplate;
+import com.silky.starter.rabbitmq.template.SkRabbitMqTemplate;
 import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.Signature;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Parameter;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
@@ -27,25 +33,39 @@ public class RabbitMessageAspect {
 
     private final Logger log = LoggerFactory.getLogger(RabbitMessageAspect.class);
 
-    private final RabbitSendTemplate rabbitSendTemplate;
+    private final SkRabbitMqTemplate skRabbitMqTemplate;
 
     private final MessagePersistenceService persistenceService;
 
 
-    public RabbitMessageAspect(RabbitSendTemplate rabbitSendTemplate, MessagePersistenceService persistenceService) {
-        this.rabbitSendTemplate = rabbitSendTemplate;
+    public RabbitMessageAspect(SkRabbitMqTemplate skRabbitMqTemplate, MessagePersistenceService persistenceService) {
+        this.skRabbitMqTemplate = skRabbitMqTemplate;
         this.persistenceService = persistenceService;
     }
 
     @Around("@annotation(rabbitMessage)")
     public Object aroundRabbitMessage(ProceedingJoinPoint joinPoint,
                                       RabbitMessage rabbitMessage) throws Throwable {
-        Object[] args = joinPoint.getArgs();
-        BaseMassageSend message = findMessageParameter(args);
-        if (message == null) {
-            log.warn("No BaseMassageSend parameter found, proceeding without message sending");
+//        MassageSendParam message = findMessageParameter(args);
+        // 1. 解析消息体
+        Object payload = this.resolvePayload(joinPoint.getArgs(), joinPoint.getSignature());
+        if (payload == null) {
+            log.warn("No message payload found, proceeding without sending");
             return joinPoint.proceed();
         }
+
+        MassageSendParam message = MassageSendParam.builder()
+                .msg(payload)
+                .messageId(IdUtil.fastSimpleUUID())
+                .exchange(rabbitMessage.exchange())
+                .routingKey(rabbitMessage.routingKey())
+                .sendDelay(rabbitMessage.delay() > 0)
+                .delayMillis(rabbitMessage.delay())
+                .sendMode(rabbitMessage.sendMode())
+                .sendTime(LocalDateTime.now())
+                .description(rabbitMessage.description())
+                .build();
+
         // 执行消息发送（支持重试）
         SendResult result = this.sendMessageWithRetry(joinPoint, rabbitMessage, message);
 
@@ -77,7 +97,7 @@ public class RabbitMessageAspect {
      * @param rabbitMessage 注解
      * @param message       消息体
      */
-    private SendResult sendMessageWithRetry(ProceedingJoinPoint joinPoint, RabbitMessage rabbitMessage, BaseMassageSend message) {
+    private SendResult sendMessageWithRetry(ProceedingJoinPoint joinPoint, RabbitMessage rabbitMessage, MassageSendParam message) {
         int retryCount = 0;
         int maxRetries = Math.max(0, rabbitMessage.retryCount());
         long retryInterval = Math.max(0, rabbitMessage.retryInterval());
@@ -122,23 +142,25 @@ public class RabbitMessageAspect {
      * @param rabbitMessage 注解
      * @param message       消息体
      */
-    private SendResult doSendMessage(RabbitMessage rabbitMessage, BaseMassageSend message) {
+    private SendResult doSendMessage(RabbitMessage rabbitMessage, MassageSendParam message) {
         if (rabbitMessage.delay() > 0) {
             // 发送延迟消息
-            return rabbitSendTemplate.sendDelay(
+            return skRabbitMqTemplate.sendDelay(
                     rabbitMessage.exchange(),
                     rabbitMessage.routingKey(),
                     message,
+                    message.getMessageId(),
                     rabbitMessage.delay(),
                     getBusinessType(rabbitMessage, message),
                     getDescription(rabbitMessage, message)
             );
         } else {
             // 发送普通消息
-            return rabbitSendTemplate.send(
+            return skRabbitMqTemplate.send(
                     rabbitMessage.exchange(),
                     rabbitMessage.routingKey(),
                     message,
+                    message.getMessageId(),
                     getBusinessType(rabbitMessage, message),
                     getDescription(rabbitMessage, message),
                     rabbitMessage.sendMode()
@@ -147,14 +169,21 @@ public class RabbitMessageAspect {
     }
 
     /**
-     * 查找方法参数中类型为 BaseMassageSend 的参数
-     *
-     * @param args 方法参数
+     * 解析消息体：优先找 @RabbitPayload 参数，其次找 MassageSendParam 类型，最后可扩展返回值
      */
-    private BaseMassageSend findMessageParameter(Object[] args) {
+    private Object resolvePayload(Object[] args, Signature signature) {
+        // 优先查找被 @RabbitPayload 标记的参数
+        MethodSignature methodSignature = (MethodSignature) signature;
+        Parameter[] parameters = methodSignature.getMethod().getParameters();
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameters[i].isAnnotationPresent(RabbitPayload.class)) {
+                return args[i];
+            }
+        }
+        // 回退：查找类型为 MassageSendParam 的参数（兼容旧版）
         for (Object arg : args) {
-            if (arg instanceof BaseMassageSend) {
-                return (BaseMassageSend) arg;
+            if (arg instanceof MassageSendParam) {
+                return arg;
             }
         }
         return null;
@@ -166,7 +195,7 @@ public class RabbitMessageAspect {
      * @param rabbitMessage 注解
      * @param message       消息体
      */
-    private String getBusinessType(RabbitMessage rabbitMessage, BaseMassageSend message) {
+    private String getBusinessType(RabbitMessage rabbitMessage, MassageSendParam message) {
         if (StrUtil.isNotBlank(rabbitMessage.businessType())) {
             return rabbitMessage.businessType();
         }
@@ -180,7 +209,7 @@ public class RabbitMessageAspect {
      * @param message       消息体
      * @return 描述
      */
-    private String getDescription(RabbitMessage rabbitMessage, BaseMassageSend message) {
+    private String getDescription(RabbitMessage rabbitMessage, MassageSendParam message) {
         if (!rabbitMessage.description().isEmpty()) {
             return rabbitMessage.description();
         }

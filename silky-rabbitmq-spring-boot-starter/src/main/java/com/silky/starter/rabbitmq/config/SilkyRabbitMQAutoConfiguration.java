@@ -9,8 +9,8 @@ import com.silky.starter.rabbitmq.properties.SilkyRabbitListenerProperties;
 import com.silky.starter.rabbitmq.properties.SilkyRabbitMQProperties;
 import com.silky.starter.rabbitmq.serialization.RabbitMqMessageSerializer;
 import com.silky.starter.rabbitmq.serialization.impl.FastJson2MessageSerializer;
-import com.silky.starter.rabbitmq.template.RabbitSendTemplate;
-import com.silky.starter.rabbitmq.template.impl.DefaultRabbitSendTemplate;
+import com.silky.starter.rabbitmq.template.SkRabbitMqTemplate;
+import com.silky.starter.rabbitmq.template.impl.DefaultSkRabbitMqTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
@@ -90,9 +90,9 @@ public class SilkyRabbitMQAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(RabbitSendTemplate.class)
+    @ConditionalOnMissingBean(SkRabbitMqTemplate.class)
     @ConditionalOnBean({RabbitTemplate.class, RabbitMqMessageSerializer.class})
-    public RabbitSendTemplate rabbitSenderTemplate(RabbitTemplate rabbitTemplate,
+    public SkRabbitMqTemplate rabbitSenderTemplate(RabbitTemplate rabbitTemplate,
                                                    RabbitMqMessageSerializer messageSerializer,
                                                    MessagePersistenceService messagePersistenceService) {
         // 记录持久化配置
@@ -108,13 +108,13 @@ public class SilkyRabbitMQAutoConfiguration {
                 properties.getSend().isEnableRetry() ? "enabled" : "disabled",
                 properties.getSend().getMaxRetryCount(),
                 properties.getSend().getAsyncThreadPoolSize());
-        return new DefaultRabbitSendTemplate(rabbitTemplate, messageSerializer, properties, messagePersistenceService);
+        return new DefaultSkRabbitMqTemplate(rabbitTemplate, messageSerializer, properties, messagePersistenceService);
     }
 
     @Bean
     @ConditionalOnMissingBean
-    public RabbitMessageAspect rabbitMessageAspect(RabbitSendTemplate rabbitSendTemplate, MessagePersistenceService messagePersistenceService) {
-        return new RabbitMessageAspect(rabbitSendTemplate, messagePersistenceService);
+    public RabbitMessageAspect rabbitMessageAspect(SkRabbitMqTemplate skRabbitMqTemplate, MessagePersistenceService messagePersistenceService) {
+        return new RabbitMessageAspect(skRabbitMqTemplate, messagePersistenceService);
     }
 
     @Bean

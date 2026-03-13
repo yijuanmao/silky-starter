@@ -1,3 +1,11 @@
+## v1.0.4 (2026-03-14)
+### 💎 功能优化
+* 组件的pom版本统一维护改为单独版本管理
+* silky-rabbitmq-spring-boot-starter：添加RabbitPayload注解用于标记消息体参数重构消息发送方法，支持延迟消息和异步发送等
+
+
+
+
 ## v1.0.3 (2026-03-11)
 ### 💎 功能优化
 * silky-excel-spring-boot-starter pom文件指定 silky-starter-core版本
@@ -6,8 +14,6 @@
 * silky-rabbitmq-spring-boot-starter pom文件指定 silky-starter-core版本
 * silky-redis-spring-boot-starter pom文件指定 silky-starter-core版本
 * silky-statemachine-spring-boot-starter pom文件指定 silky-starter-core版本
-
-### 💎 功能优化
 * silky-mongodb-spring-boot-starter 组件重构
 * hutool-all pom版本5.8.39 => 5.8.41
 

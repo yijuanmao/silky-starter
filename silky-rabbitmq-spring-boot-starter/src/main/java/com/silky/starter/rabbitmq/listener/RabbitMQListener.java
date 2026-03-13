@@ -1,7 +1,7 @@
 package com.silky.starter.rabbitmq.listener;
 
 import com.rabbitmq.client.Channel;
-import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
+import com.silky.starter.rabbitmq.core.model.MassageSendParam;
 import org.springframework.amqp.core.Message;
 
 /**
@@ -11,7 +11,7 @@ import org.springframework.amqp.core.Message;
  * @author zy
  * @date 2025-10-16 10:39
  **/
-public interface RabbitMQListener<T extends BaseMassageSend> {
+public interface RabbitMQListener<T extends MassageSendParam> {
 
     /**
      * 处理消息

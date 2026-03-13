@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.yijuanmao</groupId>
         <artifactId>silky-starter-test</artifactId>
-        <version>${revision}</version>
+        <version>1.0.0</version>
     </parent>
 
     <artifactId>silky-starter-rabbitmq-test</artifactId>
@@ -35,7 +35,6 @@
         <dependency>
             <groupId>io.github.yijuanmao</groupId>
             <artifactId>silky-rabbitmq-spring-boot-starter</artifactId>
-            <version>${revision}</version>
         </dependency>
 
 <!--        <dependency>-->

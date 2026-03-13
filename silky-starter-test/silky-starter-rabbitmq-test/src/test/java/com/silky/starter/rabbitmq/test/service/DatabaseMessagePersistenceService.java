@@ -1,6 +1,6 @@
 package com.silky.starter.rabbitmq.test.service;
 
-import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
+import com.silky.starter.rabbitmq.core.model.MassageSendParam;
 import com.silky.starter.rabbitmq.enums.SendMode;
 import com.silky.starter.rabbitmq.enums.SendStatus;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
@@ -28,7 +28,7 @@ public class DatabaseMessagePersistenceService implements MessagePersistenceServ
      * @param description  描述
      */
     @Override
-    public void saveMessageBeforeSend(BaseMassageSend message, String exchange, String routingKey, SendMode sendMode, String businessType, String description) {
+    public void saveMessageBeforeSend(MassageSendParam message, String exchange, String routingKey, SendMode sendMode, String businessType, String description) {
 
         log.info("保存消息记录: messageId={}, exchange={}, routingKey={}, sendMode={}, businessType={}, description={}",
                 message.getMessageId(), exchange, routingKey, sendMode, businessType, description);

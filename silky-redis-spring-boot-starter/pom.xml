@@ -6,13 +6,14 @@
     <parent>
         <groupId>io.github.yijuanmao</groupId>
         <artifactId>silky-starter</artifactId>
-        <version>${revision}</version>
+        <version>1.0.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>silky-redis-spring-boot-starter</artifactId>
     <name>silky-redis-spring-boot-starter</name>
     <description>Silky Redis Spring Boot Starter</description>
+    <version>${silky.redis.version}</version>
     <packaging>jar</packaging>
 
     <dependencies>
@@ -32,7 +33,7 @@
         <dependency>
             <groupId>io.github.yijuanmao</groupId>
             <artifactId>silky-starter-core</artifactId>
-            <version>${revision}</version>
+            <version>${silky.core.version}</version>
         </dependency>
 
         <dependency>

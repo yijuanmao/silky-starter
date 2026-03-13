@@ -41,11 +41,6 @@ public @interface RabbitMessage {
     SendMode sendMode() default SendMode.AUTO;
 
     /**
-     * 是否异步持久化
-     */
-//    boolean asyncPersistence() default true;
-
-    /**
      * 延迟时间（毫秒）
      */
     long delay() default 0L;

@@ -560,7 +560,7 @@ public class StateMachinePersistenceService {
 
 @Component  
 public class FileProcessingPipeline {
-    @Autowired private RabbitSendTemplate rabbitSendTemplate;
+    @Autowired private SkRabbitMqTemplate skRabbitMqTemplate;
     @Autowired private RedisLockTemplate redisLockTemplate;
     @Autowired private OssTemplate ossTemplate;
     
@@ -583,7 +583,7 @@ public class FileProcessingPipeline {
             message.setFileUrl(uploadResult.getUrl());
             message.setFileSize(event.getFileSize());
             
-            rabbitSendTemplate.send(
+            skRabbitMqTemplate.send(
                 "file.exchange",
                 "file.processed",
                 message,
@@ -711,7 +711,7 @@ silky:
 public class DemoController {
     
     @Autowired private StateMachineFactory stateMachineFactory;
-    @Autowired private RabbitSendTemplate rabbitSendTemplate;
+    @Autowired private SkRabbitMqTemplate skRabbitMqTemplate;
     @Autowired private RedisCacheTemplate redisCacheTemplate;
     @Autowired private SilkyMongoTemplate silkyMongoTemplate;
     @Autowired private OssTemplate ossTemplate;

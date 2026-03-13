@@ -2,15 +2,15 @@ package com.silky.starter.rabbitmq.template.impl;
 
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
-import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
+import com.silky.starter.rabbitmq.core.model.MassageSendParam;
 import com.silky.starter.rabbitmq.core.model.SendResult;
-import com.silky.starter.rabbitmq.enums.SendStatus;
 import com.silky.starter.rabbitmq.enums.SendMode;
+import com.silky.starter.rabbitmq.enums.SendStatus;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
 import com.silky.starter.rabbitmq.properties.SilkyRabbitMQProperties;
 import com.silky.starter.rabbitmq.serialization.RabbitMqMessageSerializer;
 import com.silky.starter.rabbitmq.service.SendCallback;
-import com.silky.starter.rabbitmq.template.RabbitSendTemplate;
+import com.silky.starter.rabbitmq.template.SkRabbitMqTemplate;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageDeliveryMode;
@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.Objects;
 import java.util.concurrent.*;
 
 /**
@@ -30,9 +31,9 @@ import java.util.concurrent.*;
  * @date 2025-10-12 08:13
  **/
 @Service
-public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
+public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
 
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DefaultRabbitSendTemplate.class);
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DefaultSkRabbitMqTemplate.class);
 
     /**
      * 默认发送模式
@@ -74,7 +75,7 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
 
     private final MessagePersistenceService persistenceService;
 
-    public DefaultRabbitSendTemplate(RabbitTemplate rabbitTemplate, RabbitMqMessageSerializer messageSerializer,
+    public DefaultSkRabbitMqTemplate(RabbitTemplate rabbitTemplate, RabbitMqMessageSerializer messageSerializer,
                                      SilkyRabbitMQProperties silkyRabbitMQProperties, MessagePersistenceService persistenceService) {
         this.rabbitTemplate = rabbitTemplate;
         this.messageSerializer = messageSerializer;
@@ -96,11 +97,24 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
      *
      * @param exchange   交换机
      * @param routingKey 路由键
-     * @param message    消息体
+     * @param message    消息参数
      */
     @Override
-    public <T extends BaseMassageSend> SendResult send(String exchange, String routingKey, T message) {
-        return this.send(exchange, routingKey, message, defaultSendMode);
+    public SendResult send(String exchange, String routingKey, Object message) {
+        return this.send(exchange, routingKey, message, "", defaultSendMode);
+    }
+
+    /**
+     * 发送消息
+     *
+     * @param exchange   交换机
+     * @param routingKey 路由键
+     * @param message    消息参数
+     * @param messageId  消息id
+     */
+    @Override
+    public SendResult send(String exchange, String routingKey, Object message, String messageId) {
+        return this.send(exchange, routingKey, message, messageId, defaultSendMode);
     }
 
     /**
@@ -112,24 +126,8 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
      * @param sendMode   发送模式
      */
     @Override
-    public <T extends BaseMassageSend> SendResult send(String exchange, String routingKey, T message, SendMode sendMode) {
-        String businessType = StrUtil.isBlank(message.getBusinessType()) ? "DEFAULT" : message.getBusinessType();
-        String description = StrUtil.isBlank(message.getDescription()) ? StrUtil.EMPTY : message.getDescription();
-        return this.send(exchange, routingKey, message, businessType, description, sendMode);
-    }
-
-    /**
-     * 发送消息（带业务类型）
-     *
-     * @param exchange     交换机
-     * @param routingKey   路由键
-     * @param message      消息体
-     * @param businessType 业务类型
-     * @param description  描述
-     */
-    @Override
-    public <T extends BaseMassageSend> SendResult send(String exchange, String routingKey, T message, String businessType, String description) {
-        return this.send(exchange, routingKey, message, businessType, description, defaultSendMode);
+    public SendResult send(String exchange, String routingKey, Object message, String messageId, SendMode sendMode) {
+        return this.send(exchange, routingKey, message, messageId, "DEFAULT", StrUtil.EMPTY, sendMode);
     }
 
     /**
@@ -138,51 +136,152 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
      * @param exchange     交换机
      * @param routingKey   路由键
      * @param message      消息体
+     * @param messageId    消息id
      * @param businessType 业务类型
      * @param description  描述
      * @param sendMode     发送模式
      */
     @Override
-    public <T extends BaseMassageSend> SendResult send(String exchange, String routingKey, T message, String businessType, String description, SendMode sendMode) {
-        //检查必要的依赖
-        this.checkDependencies();
+    public SendResult send(String exchange, String routingKey, Object message, String messageId, String businessType, String description, SendMode sendMode) {
+        MassageSendParam param = new MassageSendParam();
+        param.setMsg(message);
+        param.setMessageId(messageId);
+        param.setExchange(exchange);
+        param.setRoutingKey(routingKey);
+        param.setSendMode(sendMode);
+        param.setBusinessType(businessType);
+        param.setDescription(description);
+        param.setSendDelay(false);
+        return this.send(param);
+    }
 
+    /**
+     * 发送延迟消息
+     *
+     * @param exchange     交换机
+     * @param routingKey   路由键
+     * @param message      消息体
+     * @param messageId    消息id
+     * @param delayMillis  延迟时间
+     * @param businessType 业务类型
+     * @param description  描述
+     */
+    @Override
+    public SendResult sendDelay(String exchange, String routingKey, Object message, String messageId, long delayMillis, String businessType, String description) {
+        MassageSendParam param = new MassageSendParam();
+        param.setMsg(message);
+        param.setMessageId(messageId);
+        param.setExchange(exchange);
+        param.setRoutingKey(routingKey);
+        param.setSendMode(SendMode.SYNC);
+        param.setBusinessType(businessType);
+        param.setDescription(description);
+        param.setSendDelay(true);
+        param.setDelayMillis(delayMillis);
+        return this.send(param);
+    }
+
+    /**
+     * 异步发送消息
+     *
+     * @param exchange   交换机
+     * @param routingKey 路由键
+     * @param message    消息体
+     */
+    @Override
+    public void sendAsync(String exchange, String routingKey, Object message) {
+        this.sendAsync(exchange, routingKey, message, null);
+    }
+
+    /**
+     * 异步发送消息（带回调）
+     *
+     * @param exchange   交换机
+     * @param routingKey 路由键
+     * @param message    消息体
+     * @param callback   回调
+     */
+    @Override
+    public void sendAsync(String exchange, String routingKey, Object message, SendCallback callback) {
+        CompletableFuture.runAsync(() -> {
+            SendResult result = send(exchange, routingKey, message, "", SendMode.ASYNC);
+            if (callback != null) {
+                if (result.isSuccess()) {
+                    callback.onSuccess(result);
+                } else {
+                    callback.onFailure(result);
+                }
+            }
+        }, asyncExecutor);
+    }
+
+
+    /**
+     * 发送消息
+     *
+     * @param param 消息体
+     */
+    @Override
+    public SendResult send(MassageSendParam param) {
+        //检查必要的依赖
+        this.checkDependencies(param);
+
+        String messageId = this.generateMessageId(param.getMessageId());
+        String exchange = param.getExchange();
+        String routingKey = param.getRoutingKey();
+        SendMode sendMode = param.getSendMode();
+        String businessType = param.getBusinessType();
+        String description = param.getDescription();
+
+        param.setSendTime(Objects.isNull(param.getSendTime()) ? LocalDateTime.now() : param.getSendTime());
+        param.setMessageId(messageId);
         // 如果Silky发送功能被禁用，直接使用原生RabbitTemplate
         if (!properties.getSend().isEnabled()) {
             log.debug("Silky send is disabled, using native RabbitTemplate");
-            return doNativeSend(exchange, routingKey, message);
+            return doNativeSend(exchange, routingKey, param.getMessageId(), param.getMessageId());
         }
 
         SendMode actualMode = sendMode == SendMode.AUTO ? this.determineSendMode() : sendMode;
-        String messageId = this.generateMessageId(message.getMessageId());
+
         long startTime = System.currentTimeMillis();
 
-        message.setMessageId(messageId);
-        message.setSendTime(LocalDateTime.now());
         if (StrUtil.isNotBlank(businessType)) {
-            message.setBusinessType(businessType);
+            param.setBusinessType(businessType);
         }
         if (StrUtil.isNotBlank(description)) {
-            message.setDescription(description);
+            param.setDescription(description);
         }
 
         if (isPersistenceEnabled()) {
-            persistenceService.saveMessageBeforeSend(message, exchange, routingKey, actualMode, businessType, description);
+            persistenceService.saveMessageBeforeSend(param, exchange, routingKey, actualMode, businessType, description);
         }
 
         try {
-            Message rabbitMessage = this.buildMessage(message, messageId);
+            Message rabbitMessage = this.buildMessage(param, messageId);
+
             SendResult result;
-            if (actualMode == SendMode.SYNC) {
-                result = doSyncSend(exchange, routingKey, rabbitMessage, messageId, startTime);
+
+            long costTime = System.currentTimeMillis() - startTime;
+
+            if (param.isSendDelay()) {
+                // 设置延迟属性
+                rabbitMessage.getMessageProperties().setHeader("x-delay", param.getDelayMillis());
+                // 延迟消息使用同步发送
+                CorrelationData correlationData = new CorrelationData(messageId);
+                rabbitTemplate.convertAndSend(exchange, routingKey, rabbitMessage, correlationData);
+                result = SendResult.success(messageId, costTime);
             } else {
-                result = doAsyncSend(exchange, routingKey, rabbitMessage, messageId, startTime).get();
-            }
-            if (isPersistenceEnabled()) {
-                if (result.isSuccess()) {
-                    persistenceService.updateMessageAfterSend(messageId, SendStatus.SENT, result.getCostTime(), "");
+                if (actualMode == SendMode.SYNC) {
+                    result = doSyncSend(exchange, routingKey, rabbitMessage, messageId, startTime);
                 } else {
-                    persistenceService.updateMessageAfterSend(messageId, SendStatus.FAILED, result.getCostTime(), result.getErrorMessage());
+                    result = doAsyncSend(exchange, routingKey, rabbitMessage, messageId, startTime).get();
+                }
+                if (isPersistenceEnabled()) {
+                    if (result.isSuccess()) {
+                        persistenceService.updateMessageAfterSend(messageId, SendStatus.SENT, result.getCostTime(), "");
+                    } else {
+                        persistenceService.updateMessageAfterSend(messageId, SendStatus.FAILED, result.getCostTime(), result.getErrorMessage());
+                    }
                 }
             }
             return result;
@@ -198,106 +297,13 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
     }
 
     /**
-     * 发送延迟消息
-     *
-     * @param exchange     交换机
-     * @param routingKey   路由键
-     * @param message      消息体
-     * @param delayMillis  延迟时间
-     * @param businessType 业务类型
-     * @param description  描述
-     */
-    @Override
-    public <T extends BaseMassageSend> SendResult sendDelay(String exchange, String routingKey, T message, long delayMillis, String businessType, String description) {
-        //检查必要的依赖
-        this.checkDependencies();
-
-        String messageId = this.generateMessageId(message.getMessageId());
-        long startTime = System.currentTimeMillis();
-
-        message.setMessageId(messageId);
-        message.setSendTime(LocalDateTime.now());
-        if (StrUtil.isNotBlank(businessType)) {
-            message.setBusinessType(businessType);
-        }
-        if (StrUtil.isNotBlank(description)) {
-            message.setDescription(description);
-        }
-        if (isPersistenceEnabled()) {
-            persistenceService.saveMessageBeforeSend(message, exchange, routingKey, SendMode.SYNC, businessType, description);
-        }
-        try {
-            Message rabbitMessage = this.buildMessage(message, messageId);
-
-            // 设置延迟属性
-            rabbitMessage.getMessageProperties().setHeader("x-delay", delayMillis);
-
-            // 延迟消息使用同步发送
-            CorrelationData correlationData = new CorrelationData(messageId);
-            rabbitTemplate.convertAndSend(exchange, routingKey, rabbitMessage, correlationData);
-            long costTime = System.currentTimeMillis() - startTime;
-
-            if (isPersistenceEnabled()) {
-                persistenceService.updateMessageAfterSend(messageId, SendStatus.SENT, costTime, null);
-            }
-            return SendResult.success(messageId, costTime);
-        } catch (Exception e) {
-            long costTime = System.currentTimeMillis() - startTime;
-            log.error("Send delay message failed, exchange: {}, routingKey: {}, messageId: {}",
-                    exchange, routingKey, messageId, e);
-
-            // 3. 持久化发送失败记录
-            if (isPersistenceEnabled()) {
-                persistenceService.updateMessageAfterSend(messageId, SendStatus.FAILED, costTime, e.getMessage());
-            }
-
-            return SendResult.failure(e.getMessage(), costTime);
-        }
-    }
-
-    /**
-     * 异步发送消息
-     *
-     * @param exchange   交换机
-     * @param routingKey 路由键
-     * @param message    消息体
-     */
-    @Override
-    public <T extends BaseMassageSend> void sendAsync(String exchange, String routingKey, T message) {
-        this.sendAsync(exchange, routingKey, message, null);
-    }
-
-    /**
-     * 异步发送消息（带回调）
-     *
-     * @param exchange   交换机
-     * @param routingKey 路由键
-     * @param message    消息体
-     * @param callback   回调
-     */
-    @Override
-    public <T extends BaseMassageSend> void sendAsync(String exchange, String routingKey, T message, SendCallback callback) {
-        CompletableFuture.runAsync(() -> {
-            SendResult result = send(exchange, routingKey, message, SendMode.ASYNC);
-            if (callback != null) {
-                if (result.isSuccess()) {
-                    callback.onSuccess(result);
-                } else {
-                    callback.onFailure(result);
-                }
-            }
-        }, asyncExecutor);
-    }
-
-    /**
      * 构建消息对象
      *
      * @param message   消息体
      * @param messageId 消息ID
-     * @param <T>       消息类型
      * @return 消息对象
      */
-    private <T extends BaseMassageSend> Message buildMessage(T message, String messageId) {
+    private Message buildMessage(Object message, String messageId) {
         byte[] body = messageSerializer.serialize(message);
         return MessageBuilder.withBody(body)
                 .setContentType(MessageProperties.CONTENT_TYPE_JSON)
@@ -472,12 +478,12 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
      * @param routingKey 路由键
      * @param message    消息体
      */
-    private <T extends BaseMassageSend> SendResult doNativeSend(String exchange, String routingKey, T message) {
+    private <T> SendResult doNativeSend(String exchange, String routingKey, Object message, String messageId) {
         long startTime = System.currentTimeMillis();
         try {
             rabbitTemplate.convertAndSend(exchange, routingKey, message);
             long costTime = System.currentTimeMillis() - startTime;
-            return SendResult.success(message.getMessageId(), costTime);
+            return SendResult.success(messageId, costTime);
         } catch (Exception e) {
             long costTime = System.currentTimeMillis() - startTime;
             return SendResult.failure(e.getMessage(), costTime);
@@ -496,12 +502,27 @@ public class DefaultRabbitSendTemplate implements RabbitSendTemplate {
     /**
      * 检查必要的依赖
      */
-    private void checkDependencies() {
+    private void checkDependencies(MassageSendParam param) {
         if (rabbitTemplate == null) {
             throw new IllegalStateException("RabbitTemplate is not available.");
         }
         if (messageSerializer == null) {
             throw new IllegalStateException("MessageSerializer is not available.");
+        }
+        if (Objects.isNull(param)) {
+            throw new IllegalStateException("MassageSendParam is null");
+        }
+        if (Objects.isNull(param.getMsg()) || (param.getMsg() instanceof String && StrUtil.isBlank((String) param.getMsg()))) {
+            throw new IllegalStateException("Message body is null");
+        }
+        if (StrUtil.isBlank(param.getExchange())) {
+            throw new IllegalStateException("Exchange is null");
+        }
+        if (StrUtil.isBlank(param.getRoutingKey())) {
+            throw new IllegalStateException("Routing key is null");
+        }
+        if (param.isSendDelay() && (Objects.isNull(param.getDelayMillis()) || param.getDelayMillis() <= 0)) {
+            throw new IllegalStateException("Delay millis is null or less than or equal to 0");
         }
     }
 

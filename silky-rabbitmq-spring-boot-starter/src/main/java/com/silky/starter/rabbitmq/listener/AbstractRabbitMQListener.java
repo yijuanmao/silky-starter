@@ -1,6 +1,6 @@
 package com.silky.starter.rabbitmq.listener;
 
-import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
+import com.silky.starter.rabbitmq.core.model.MassageSendParam;
 import com.silky.starter.rabbitmq.listener.registry.ListenerRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +16,7 @@ import java.lang.reflect.Type;
  * @author zy
  * @date 2025-10-16 10:43
  **/
-public abstract class AbstractRabbitMQListener<T extends BaseMassageSend> implements RabbitMQListener<T>, InitializingBean {
+public abstract class AbstractRabbitMQListener<T extends MassageSendParam> implements RabbitMQListener<T>, InitializingBean {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 

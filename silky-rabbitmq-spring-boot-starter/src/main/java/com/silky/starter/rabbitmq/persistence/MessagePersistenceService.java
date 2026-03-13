@@ -1,6 +1,6 @@
 package com.silky.starter.rabbitmq.persistence;
 
-import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
+import com.silky.starter.rabbitmq.core.model.MassageSendParam;
 import com.silky.starter.rabbitmq.enums.SendMode;
 import com.silky.starter.rabbitmq.enums.SendStatus;
 
@@ -22,7 +22,7 @@ public interface MessagePersistenceService {
      * @param businessType 业务类型
      * @param description  描述
      */
-    void saveMessageBeforeSend(BaseMassageSend message, String exchange, String routingKey,
+    void saveMessageBeforeSend(MassageSendParam message, String exchange, String routingKey,
                                SendMode sendMode, String businessType, String description);
 
     /**

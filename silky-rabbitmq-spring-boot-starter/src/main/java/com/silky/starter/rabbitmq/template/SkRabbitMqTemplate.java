@@ -1,6 +1,6 @@
 package com.silky.starter.rabbitmq.template;
 
-import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
+import com.silky.starter.rabbitmq.core.model.MassageSendParam;
 import com.silky.starter.rabbitmq.core.model.SendResult;
 import com.silky.starter.rabbitmq.enums.SendMode;
 import com.silky.starter.rabbitmq.service.SendCallback;
@@ -11,16 +11,26 @@ import com.silky.starter.rabbitmq.service.SendCallback;
  * @author zy
  * @date 2025-10-09 17:52
  **/
-public interface RabbitSendTemplate {
+public interface SkRabbitMqTemplate {
 
     /**
      * 发送消息
      *
      * @param exchange   交换机
      * @param routingKey 路由键
-     * @param message    消息体
+     * @param message    消息参数
      */
-    <T extends BaseMassageSend> SendResult send(String exchange, String routingKey, T message);
+    SendResult send(String exchange, String routingKey, Object message);
+
+    /**
+     * 发送消息
+     *
+     * @param exchange   交换机
+     * @param routingKey 路由键
+     * @param message    消息参数
+     * @param messageId  消息id
+     */
+    SendResult send(String exchange, String routingKey, Object message, String messageId);
 
     /**
      * 发送消息（指定发送模式）
@@ -30,18 +40,7 @@ public interface RabbitSendTemplate {
      * @param message    消息体
      * @param sendMode   发送模式
      */
-    <T extends BaseMassageSend> SendResult send(String exchange, String routingKey, T message, SendMode sendMode);
-
-    /**
-     * 发送消息（带业务类型）
-     *
-     * @param exchange     交换机
-     * @param routingKey   路由键
-     * @param message      消息体
-     * @param businessType 业务类型
-     * @param description  描述
-     */
-    <T extends BaseMassageSend> SendResult send(String exchange, String routingKey, T message, String businessType, String description);
+    SendResult send(String exchange, String routingKey, Object message, String messageId, SendMode sendMode);
 
     /**
      * 发送消息
@@ -49,11 +48,12 @@ public interface RabbitSendTemplate {
      * @param exchange     交换机
      * @param routingKey   路由键
      * @param message      消息体
+     * @param messageId    消息ID
      * @param businessType 业务类型
      * @param description  描述
      * @param sendMode     发送模式
      */
-    <T extends BaseMassageSend> SendResult send(String exchange, String routingKey, T message, String businessType, String description, SendMode sendMode);
+    SendResult send(String exchange, String routingKey, Object message, String messageId, String businessType, String description, SendMode sendMode);
 
     /**
      * 发送延迟消息
@@ -61,11 +61,12 @@ public interface RabbitSendTemplate {
      * @param exchange     交换机
      * @param routingKey   路由键
      * @param message      消息体
+     * @param messageId    消息id
      * @param delayMillis  延迟时间
      * @param businessType 业务类型
      * @param description  描述
      */
-    <T extends BaseMassageSend> SendResult sendDelay(String exchange, String routingKey, T message, long delayMillis, String businessType, String description);
+     SendResult sendDelay(String exchange, String routingKey, Object message, String messageId, long delayMillis, String businessType, String description);
 
     /**
      * 异步发送消息
@@ -74,7 +75,7 @@ public interface RabbitSendTemplate {
      * @param routingKey 路由键
      * @param message    消息体
      */
-    <T extends BaseMassageSend> void sendAsync(String exchange, String routingKey, T message);
+     void sendAsync(String exchange, String routingKey, Object message);
 
     /**
      * 异步发送消息（带回调）
@@ -84,5 +85,12 @@ public interface RabbitSendTemplate {
      * @param message    消息体
      * @param callback   回调
      */
-    <T extends BaseMassageSend> void sendAsync(String exchange, String routingKey, T message, SendCallback callback);
+     void sendAsync(String exchange, String routingKey, Object message, SendCallback callback);
+
+    /**
+     * 发送消息
+     *
+     * @param param 消息体
+     */
+     SendResult send(MassageSendParam param);
 }

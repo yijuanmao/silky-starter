@@ -1,6 +1,6 @@
 package com.silky.starter.rabbitmq.test.entity;
 
-import com.silky.starter.rabbitmq.core.model.BaseMassageSend;
+import com.silky.starter.rabbitmq.core.model.MassageSendParam;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @Data
 @ToString
 @EqualsAndHashCode(callSuper = true)
-public class TradeOrder extends BaseMassageSend implements Serializable {
+public class TradeOrder extends MassageSendParam implements Serializable {
 
     private static final long serialVersionUID = 5009955102872378736L;
 
