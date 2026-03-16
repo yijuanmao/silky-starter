@@ -65,7 +65,7 @@ public class ExampleSkRabbitMqTemplateTest extends RabbitMqApplicationTest {
         // 4.带参数发送消息，使用对象MassageSendParam参数
         String messageId = IdUtil.fastSimpleUUID();
         MassageSendParam param = MassageSendParam.builder()
-                .msg(order)
+                .body(order)
                 //指定消息id，不给的话，底层默认会生成
                 .messageId(messageId)
                 .exchange(exchange)

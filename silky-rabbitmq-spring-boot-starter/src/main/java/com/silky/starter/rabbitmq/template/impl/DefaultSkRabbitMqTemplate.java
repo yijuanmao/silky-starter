@@ -17,7 +17,6 @@ import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Map;
 import java.util.Objects;
@@ -131,7 +130,7 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
     @Override
     public SendResult send(String exchange, String routingKey, Object message, String businessType, String description, SendMode sendMode) {
         MassageSendParam param = new MassageSendParam();
-        param.setMsg(message);
+        param.setBody(message);
         param.setExchange(exchange);
         param.setRoutingKey(routingKey);
         param.setSendMode(sendMode);
@@ -154,7 +153,7 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
     @Override
     public SendResult sendDelay(String exchange, String routingKey, Object message, long delayMillis, String businessType, String description) {
         MassageSendParam param = new MassageSendParam();
-        param.setMsg(message);
+        param.setBody(message);
         param.setExchange(exchange);
         param.setRoutingKey(routingKey);
         param.setSendMode(SendMode.SYNC);
@@ -217,7 +216,6 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
         String businessType = param.getBusinessType();
         String description = param.getDescription();
 
-        param.setSendTime(Objects.isNull(param.getSendTime()) ? LocalDateTime.now() : param.getSendTime());
         param.setMessageId(messageId);
         // 如果Silky发送功能被禁用，直接使用原生RabbitTemplate
         if (!properties.getSend().isEnabled()) {
@@ -287,7 +285,7 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
      * @return 消息对象
      */
     private Message buildMessage(MassageSendParam param) {
-        byte[] body = messageSerializer.serialize(param.getMsg());
+        byte[] body = messageSerializer.serialize(param.getBody());
         MessageBuilderSupport<Message> builderSupport = MessageBuilder.withBody(body)
                 .setContentType(MessageProperties.CONTENT_TYPE_JSON)
                 .setDeliveryMode(MessageDeliveryMode.PERSISTENT)
@@ -515,7 +513,7 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
         if (Objects.isNull(param)) {
             throw new IllegalStateException("MassageSendParam is null");
         }
-        if (Objects.isNull(param.getMsg()) || (param.getMsg() instanceof String && StrUtil.isBlank((String) param.getMsg()))) {
+        if (Objects.isNull(param.getBody()) || (param.getBody() instanceof String && StrUtil.isBlank((String) param.getBody()))) {
             throw new IllegalStateException("Message body is null");
         }
         if (StrUtil.isBlank(param.getExchange())) {

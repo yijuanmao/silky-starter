@@ -1,6 +1,5 @@
 package com.silky.starter.rabbitmq.aop;
 
-import cn.hutool.core.util.StrUtil;
 import com.silky.starter.rabbitmq.annotation.RabbitMessage;
 import com.silky.starter.rabbitmq.annotation.RabbitPayload;
 import com.silky.starter.rabbitmq.core.model.MassageSendParam;
@@ -18,7 +17,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Parameter;
-import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
@@ -54,13 +52,12 @@ public class RabbitMessageAspect {
         }
 
         MassageSendParam message = MassageSendParam.builder()
-                .msg(payload)
+                .body(payload)
                 .exchange(rabbitMessage.exchange())
                 .routingKey(rabbitMessage.routingKey())
                 .sendDelay(rabbitMessage.delay() > 0)
                 .delayMillis(rabbitMessage.delay())
                 .sendMode(rabbitMessage.sendMode())
-                .sendTime(LocalDateTime.now())
                 .description(rabbitMessage.description())
                 .build();
 
@@ -146,19 +143,19 @@ public class RabbitMessageAspect {
             return skRabbitMqTemplate.sendDelay(
                     rabbitMessage.exchange(),
                     rabbitMessage.routingKey(),
-                    message,
+                    message.getBody(),
                     rabbitMessage.delay(),
-                    getBusinessType(rabbitMessage, message),
-                    getDescription(rabbitMessage, message)
+                    rabbitMessage.businessType(),
+                    rabbitMessage.description()
             );
         } else {
             // 发送普通消息
             return skRabbitMqTemplate.send(
                     rabbitMessage.exchange(),
                     rabbitMessage.routingKey(),
-                    message,
-                    getBusinessType(rabbitMessage, message),
-                    getDescription(rabbitMessage, message),
+                    message.getBody(),
+                    rabbitMessage.businessType(),
+                    rabbitMessage.description(),
                     rabbitMessage.sendMode()
             );
         }
@@ -183,33 +180,6 @@ public class RabbitMessageAspect {
             }
         }
         return null;
-    }
-
-    /**
-     * 获取业务类型
-     *
-     * @param rabbitMessage 注解
-     * @param message       消息体
-     */
-    private String getBusinessType(RabbitMessage rabbitMessage, MassageSendParam message) {
-        if (StrUtil.isNotBlank(rabbitMessage.businessType())) {
-            return rabbitMessage.businessType();
-        }
-        return StrUtil.isBlank(message.getBusinessType()) ? "DEFAULT" : message.getBusinessType();
-    }
-
-    /**
-     * 获取描述
-     *
-     * @param rabbitMessage 注解
-     * @param message       消息体
-     * @return 描述
-     */
-    private String getDescription(RabbitMessage rabbitMessage, MassageSendParam message) {
-        if (!rabbitMessage.description().isEmpty()) {
-            return rabbitMessage.description();
-        }
-        return message.getDescription() != null ? message.getDescription() : "";
     }
 
     /**
