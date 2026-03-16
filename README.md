@@ -143,7 +143,7 @@ public class OrderService {
 
 ``` java
 
-// 📤 AOP注解方式（推荐）
+// 📤 使用mq注解发送消息测试方法,参数必须使用@RabbitPayload注解，暂时只支持单个参数（推荐）
 @Service
 public class OrderService {
     @RabbitMessage(
@@ -153,7 +153,7 @@ public class OrderService {
         sendMode = SendMode.SYNC,
         delay = 30 * 60 * 1000L  // 30分钟延迟消息
     )
-    public OrderResult createOrder(CreateOrderRequest request) {
+    public OrderResult createOrder(@RabbitPayload CreateOrderRequest request) {
         // 业务逻辑处理
         OrderResult result = orderMapper.insert(request);
         // 方法执行成功后自动发送消息
