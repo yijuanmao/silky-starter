@@ -45,28 +45,28 @@ public class ExampleSkRabbitMqTemplateTest extends RabbitMqApplicationTest {
     @Test
     public void testSend() {
 
-        //普通发送消息
         TradeOrder order = new TradeOrder(3L, LocalDateTime.now(), "测试MQ发送3", BigDecimal.ONE);
 
-        //普通发送消息
+        // 1.普通发送消息
         SendResult send1 = skRabbitMqTemplate.send(exchange, routingKey, order);
         log.info("普通发送消息测试方法发送结果：{}", send1);
 
-        //普通发送消息，指定发送模式，支持SYNC、ASYNC、AUTO
+        // 2.普通发送消息，指定发送模式，支持SYNC、ASYNC、AUTO
         SendResult send2 = skRabbitMqTemplate.send(exchange, routingKey, order, SendMode.ASYNC);
         log.info("普通发送消息，指定发送模式测试方法发送结果：{}", send2);
 
-        //业务类型，比如订单、用户等
+        // 3.业务类型，比如订单、用户等
         String businessType = "TRADE";
         String description = "silky-测试描述";
         // 带业务类型发送消息，指定发送模式，支持SYNC、ASYNC、AUTO
         SendResult send3 = skRabbitMqTemplate.send(exchange, routingKey, order, businessType, description, SendMode.ASYNC);
         log.info("带业务类型发送消息，指定发送模式测试方法发送结果：{}", send3);
 
+        // 4.带参数发送消息，使用对象MassageSendParam参数
         String messageId = IdUtil.fastSimpleUUID();
-        // 带参数发送消息
         MassageSendParam param = MassageSendParam.builder()
                 .msg(order)
+                //指定消息id，不给的话，底层默认会生成
                 .messageId(messageId)
                 .exchange(exchange)
                 .routingKey(routingKey)
@@ -76,11 +76,8 @@ public class ExampleSkRabbitMqTemplateTest extends RabbitMqApplicationTest {
                 .businessType(businessType)
                 .description(description)
                 .build();
-
         SendResult send4 = skRabbitMqTemplate.send(param);
         log.info("带参数发送消息，指定发送模式测试方法发送结果：{}", send4);
-
-        ThreadUtil.sleep(200000);
     }
 
     /**
