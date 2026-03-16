@@ -22,15 +22,6 @@ public interface SkRabbitMqTemplate {
      */
     SendResult send(String exchange, String routingKey, Object message);
 
-    /**
-     * 发送消息
-     *
-     * @param exchange   交换机
-     * @param routingKey 路由键
-     * @param message    消息参数
-     * @param messageId  消息id
-     */
-    SendResult send(String exchange, String routingKey, Object message, String messageId);
 
     /**
      * 发送消息（指定发送模式）
@@ -40,7 +31,7 @@ public interface SkRabbitMqTemplate {
      * @param message    消息体
      * @param sendMode   发送模式
      */
-    SendResult send(String exchange, String routingKey, Object message, String messageId, SendMode sendMode);
+    SendResult send(String exchange, String routingKey, Object message, SendMode sendMode);
 
     /**
      * 发送消息
@@ -48,12 +39,11 @@ public interface SkRabbitMqTemplate {
      * @param exchange     交换机
      * @param routingKey   路由键
      * @param message      消息体
-     * @param messageId    消息ID
      * @param businessType 业务类型
      * @param description  描述
      * @param sendMode     发送模式
      */
-    SendResult send(String exchange, String routingKey, Object message, String messageId, String businessType, String description, SendMode sendMode);
+    SendResult send(String exchange, String routingKey, Object message, String businessType, String description, SendMode sendMode);
 
     /**
      * 发送延迟消息
@@ -61,12 +51,11 @@ public interface SkRabbitMqTemplate {
      * @param exchange     交换机
      * @param routingKey   路由键
      * @param message      消息体
-     * @param messageId    消息id
      * @param delayMillis  延迟时间
      * @param businessType 业务类型
      * @param description  描述
      */
-     SendResult sendDelay(String exchange, String routingKey, Object message, String messageId, long delayMillis, String businessType, String description);
+    SendResult sendDelay(String exchange, String routingKey, Object message, long delayMillis, String businessType, String description);
 
     /**
      * 异步发送消息
@@ -75,7 +64,7 @@ public interface SkRabbitMqTemplate {
      * @param routingKey 路由键
      * @param message    消息体
      */
-     void sendAsync(String exchange, String routingKey, Object message);
+    void sendAsync(String exchange, String routingKey, Object message);
 
     /**
      * 异步发送消息（带回调）
@@ -85,12 +74,12 @@ public interface SkRabbitMqTemplate {
      * @param message    消息体
      * @param callback   回调
      */
-     void sendAsync(String exchange, String routingKey, Object message, SendCallback callback);
+    void sendAsync(String exchange, String routingKey, Object message, SendCallback callback);
 
     /**
      * 发送消息
      *
      * @param param 消息体
      */
-     SendResult send(MassageSendParam param);
+    SendResult send(MassageSendParam param);
 }

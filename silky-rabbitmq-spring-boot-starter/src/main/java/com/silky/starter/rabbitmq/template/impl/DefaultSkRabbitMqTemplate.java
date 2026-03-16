@@ -74,8 +74,10 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
 
     private final MessagePersistenceService persistenceService;
 
-    public DefaultSkRabbitMqTemplate(RabbitTemplate rabbitTemplate, RabbitMqMessageSerializer messageSerializer,
-                                     SilkyRabbitMQProperties silkyRabbitMQProperties, MessagePersistenceService persistenceService) {
+    public DefaultSkRabbitMqTemplate(RabbitTemplate rabbitTemplate,
+                                     RabbitMqMessageSerializer messageSerializer,
+                                     SilkyRabbitMQProperties silkyRabbitMQProperties,
+                                     MessagePersistenceService persistenceService) {
         this.rabbitTemplate = rabbitTemplate;
         this.messageSerializer = messageSerializer;
         this.persistenceService = persistenceService;
@@ -100,20 +102,7 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
      */
     @Override
     public SendResult send(String exchange, String routingKey, Object message) {
-        return this.send(exchange, routingKey, message, "", defaultSendMode);
-    }
-
-    /**
-     * 发送消息
-     *
-     * @param exchange   交换机
-     * @param routingKey 路由键
-     * @param message    消息参数
-     * @param messageId  消息id
-     */
-    @Override
-    public SendResult send(String exchange, String routingKey, Object message, String messageId) {
-        return this.send(exchange, routingKey, message, messageId, defaultSendMode);
+        return this.send(exchange, routingKey, message, defaultSendMode);
     }
 
     /**
@@ -125,8 +114,8 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
      * @param sendMode   发送模式
      */
     @Override
-    public SendResult send(String exchange, String routingKey, Object message, String messageId, SendMode sendMode) {
-        return this.send(exchange, routingKey, message, messageId, "DEFAULT", StrUtil.EMPTY, sendMode);
+    public SendResult send(String exchange, String routingKey, Object message, SendMode sendMode) {
+        return this.send(exchange, routingKey, message, StrUtil.EMPTY, StrUtil.EMPTY, sendMode);
     }
 
     /**
@@ -135,16 +124,14 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
      * @param exchange     交换机
      * @param routingKey   路由键
      * @param message      消息体
-     * @param messageId    消息id
      * @param businessType 业务类型
      * @param description  描述
      * @param sendMode     发送模式
      */
     @Override
-    public SendResult send(String exchange, String routingKey, Object message, String messageId, String businessType, String description, SendMode sendMode) {
+    public SendResult send(String exchange, String routingKey, Object message, String businessType, String description, SendMode sendMode) {
         MassageSendParam param = new MassageSendParam();
         param.setMsg(message);
-        param.setMessageId(messageId);
         param.setExchange(exchange);
         param.setRoutingKey(routingKey);
         param.setSendMode(sendMode);
@@ -160,16 +147,14 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
      * @param exchange     交换机
      * @param routingKey   路由键
      * @param message      消息体
-     * @param messageId    消息id
      * @param delayMillis  延迟时间
      * @param businessType 业务类型
      * @param description  描述
      */
     @Override
-    public SendResult sendDelay(String exchange, String routingKey, Object message, String messageId, long delayMillis, String businessType, String description) {
+    public SendResult sendDelay(String exchange, String routingKey, Object message, long delayMillis, String businessType, String description) {
         MassageSendParam param = new MassageSendParam();
         param.setMsg(message);
-        param.setMessageId(messageId);
         param.setExchange(exchange);
         param.setRoutingKey(routingKey);
         param.setSendMode(SendMode.SYNC);
@@ -203,7 +188,7 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
     @Override
     public void sendAsync(String exchange, String routingKey, Object message, SendCallback callback) {
         CompletableFuture.runAsync(() -> {
-            SendResult result = send(exchange, routingKey, message, "", SendMode.ASYNC);
+            SendResult result = send(exchange, routingKey, message, SendMode.ASYNC);
             if (callback != null) {
                 if (result.isSuccess()) {
                     callback.onSuccess(result);
@@ -291,7 +276,7 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
             if (isPersistenceEnabled()) {
                 persistenceService.updateMessageAfterSend(messageId, SendStatus.FAILED, costTime, e.getMessage());
             }
-            return SendResult.failure(e.getMessage(), costTime);
+            return SendResult.failure(messageId, e.getMessage(), costTime);
         }
     }
 
@@ -311,6 +296,8 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
 
         String businessType = param.getBusinessType();
         String description = param.getDescription();
+        String source = param.getSource();
+
         Map<String, Object> extData = param.getExtData();
 
         if (StrUtil.isNotBlank(businessType)) {
@@ -318,6 +305,9 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
         }
         if (StrUtil.isNotBlank(description)) {
             builderSupport.setHeader("description", description);
+        }
+        if (StrUtil.isNotBlank(source)) {
+            builderSupport.setHeader("source", source);
         }
         if (MapUtil.isNotEmpty(extData)) {
             builderSupport.setHeader("extData", extData);
@@ -360,7 +350,7 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
             CorrelationData correlationData = new CorrelationData(messageId);
             // 带重试机制的同步发送
             if (enableRetry) {
-                return doSyncSendWithRetry(exchange, routingKey, message, correlationData, startTime);
+                return doSyncSendWithRetry(exchange, routingKey, message, correlationData, startTime, messageId);
             } else {
                 rabbitTemplate.convertAndSend(exchange, routingKey, message, correlationData);
                 long costTime = System.currentTimeMillis() - startTime;
@@ -368,7 +358,7 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
             }
         } catch (Exception e) {
             long costTime = System.currentTimeMillis() - startTime;
-            return SendResult.failure(e.getMessage(), costTime);
+            return SendResult.failure(messageId, e.getMessage(), costTime);
         }
     }
 
@@ -382,7 +372,7 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
             try {
                 CorrelationData correlationData = new CorrelationData(messageId);
                 if (enableRetry) {
-                    return doSyncSendWithRetry(exchange, routingKey, message, correlationData, startTime);
+                    return doSyncSendWithRetry(exchange, routingKey, message, correlationData, startTime, messageId);
                 } else {
                     rabbitTemplate.convertAndSend(exchange, routingKey, message, correlationData);
                     long costTime = System.currentTimeMillis() - startTime;
@@ -390,7 +380,7 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
                 }
             } catch (Exception e) {
                 long costTime = System.currentTimeMillis() - startTime;
-                return SendResult.failure(e.getMessage(), costTime);
+                return SendResult.failure(messageId, e.getMessage(), costTime);
             }
         }, asyncExecutor);
         try {
@@ -402,15 +392,15 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
             long costTime = System.currentTimeMillis() - startTime;
             String errorMsg = String.format("Send timeout after %dms", timeout);
             log.warn("Message send timeout: exchange={}, routingKey={}, messageId={}", exchange, routingKey, messageId);
-            return SendResult.failure(errorMsg, costTime);
+            return SendResult.failure(messageId, errorMsg, costTime);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             future.cancel(true);
             long costTime = System.currentTimeMillis() - startTime;
-            return SendResult.failure("Send interrupted: " + e.getMessage(), costTime);
+            return SendResult.failure(messageId, "Send interrupted: " + e.getMessage(), costTime);
         } catch (ExecutionException e) {
             long costTime = System.currentTimeMillis() - startTime;
-            return SendResult.failure("Send execution failed: " + e.getMessage(), costTime);
+            return SendResult.failure(messageId, "Send execution failed: " + e.getMessage(), costTime);
         }
     }
 
@@ -423,10 +413,11 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
      * @param message         消息体
      * @param correlationData 唯一标识
      * @param startTime       发送开始时间
+     * @param messageId       消息id
      * @return 发送结果
      */
     private SendResult doSyncSendWithRetry(String exchange, String routingKey, Message message,
-                                           CorrelationData correlationData, long startTime) {
+                                           CorrelationData correlationData, long startTime, String messageId) {
         int retryCount = 0;
         while (retryCount <= maxRetryCount) {
             try {
@@ -438,7 +429,7 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
                 retryCount++;
                 if (retryCount > maxRetryCount) {
                     long costTime = System.currentTimeMillis() - startTime;
-                    return SendResult.failure("Send failed after " + maxRetryCount + " retries: " + e.getMessage(), costTime);
+                    return SendResult.failure(messageId, "Send failed after " + maxRetryCount + " retries: " + e.getMessage(), costTime);
                 }
 
                 log.warn("Send message failed, retry {}/{}, exchange: {}, routingKey: {}",
@@ -449,13 +440,13 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     long costTime = System.currentTimeMillis() - startTime;
-                    return SendResult.failure("Send interrupted: " + ie.getMessage(), costTime);
+                    return SendResult.failure(messageId, "Send interrupted: " + ie.getMessage(), costTime);
                 }
             }
         }
 
         long costTime = System.currentTimeMillis() - startTime;
-        return SendResult.failure("Send failed after all retries", costTime);
+        return SendResult.failure(messageId, "Send failed after all retries", costTime);
     }
 
     /**
@@ -477,7 +468,7 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
                 return SendResult.success(messageId, costTime);
             } catch (Exception e) {
                 long costTime = System.currentTimeMillis() - startTime;
-                return SendResult.failure(e.getMessage(), costTime);
+                return SendResult.failure(messageId, e.getMessage(), costTime);
             }
         }, asyncExecutor);
     }
@@ -498,7 +489,7 @@ public class DefaultSkRabbitMqTemplate implements SkRabbitMqTemplate {
             return SendResult.success(messageId, costTime);
         } catch (Exception e) {
             long costTime = System.currentTimeMillis() - startTime;
-            return SendResult.failure(e.getMessage(), costTime);
+            return SendResult.failure(messageId, e.getMessage(), costTime);
         }
     }
 

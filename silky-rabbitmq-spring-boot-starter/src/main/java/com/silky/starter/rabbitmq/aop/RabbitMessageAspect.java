@@ -1,6 +1,5 @@
 package com.silky.starter.rabbitmq.aop;
 
-import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.rabbitmq.annotation.RabbitMessage;
 import com.silky.starter.rabbitmq.annotation.RabbitPayload;
@@ -56,7 +55,6 @@ public class RabbitMessageAspect {
 
         MassageSendParam message = MassageSendParam.builder()
                 .msg(payload)
-                .messageId(IdUtil.fastSimpleUUID())
                 .exchange(rabbitMessage.exchange())
                 .routingKey(rabbitMessage.routingKey())
                 .sendDelay(rabbitMessage.delay() > 0)
@@ -115,7 +113,7 @@ public class RabbitMessageAspect {
             } catch (Exception e) {
                 log.warn("Message send exception on attempt {}/{}: {}",
                         retryCount + 1, maxRetries + 1, e.getMessage());
-                lastResult = SendResult.failure(e.getMessage(), 0);
+                lastResult = SendResult.failure(Objects.isNull(lastResult) ? "" : lastResult.getMessageId(), e.getMessage(), 0);
             }
 
             // 判断是否继续重试
@@ -149,7 +147,6 @@ public class RabbitMessageAspect {
                     rabbitMessage.exchange(),
                     rabbitMessage.routingKey(),
                     message,
-                    message.getMessageId(),
                     rabbitMessage.delay(),
                     getBusinessType(rabbitMessage, message),
                     getDescription(rabbitMessage, message)
@@ -160,7 +157,6 @@ public class RabbitMessageAspect {
                     rabbitMessage.exchange(),
                     rabbitMessage.routingKey(),
                     message,
-                    message.getMessageId(),
                     getBusinessType(rabbitMessage, message),
                     getDescription(rabbitMessage, message),
                     rabbitMessage.sendMode()

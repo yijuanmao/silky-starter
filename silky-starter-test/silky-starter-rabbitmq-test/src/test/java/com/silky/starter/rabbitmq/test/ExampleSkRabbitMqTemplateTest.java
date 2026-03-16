@@ -45,8 +45,6 @@ public class ExampleSkRabbitMqTemplateTest extends RabbitMqApplicationTest {
     @Test
     public void testSend() {
 
-        String messageId = IdUtil.fastSimpleUUID();
-
         //普通发送消息
         TradeOrder order = new TradeOrder(3L, LocalDateTime.now(), "测试MQ发送3", BigDecimal.ONE);
 
@@ -55,16 +53,17 @@ public class ExampleSkRabbitMqTemplateTest extends RabbitMqApplicationTest {
         log.info("普通发送消息测试方法发送结果：{}", send1);
 
         //普通发送消息，指定发送模式，支持SYNC、ASYNC、AUTO
-        SendResult send2 = skRabbitMqTemplate.send(exchange, routingKey, order, messageId, SendMode.ASYNC);
+        SendResult send2 = skRabbitMqTemplate.send(exchange, routingKey, order, SendMode.ASYNC);
         log.info("普通发送消息，指定发送模式测试方法发送结果：{}", send2);
 
         //业务类型，比如订单、用户等
         String businessType = "TRADE";
         String description = "silky-测试描述";
         // 带业务类型发送消息，指定发送模式，支持SYNC、ASYNC、AUTO
-        SendResult send3 = skRabbitMqTemplate.send(exchange, routingKey, order, messageId, businessType, description, SendMode.ASYNC);
+        SendResult send3 = skRabbitMqTemplate.send(exchange, routingKey, order, businessType, description, SendMode.ASYNC);
         log.info("带业务类型发送消息，指定发送模式测试方法发送结果：{}", send3);
 
+        String messageId = IdUtil.fastSimpleUUID();
         // 带参数发送消息
         MassageSendParam param = MassageSendParam.builder()
                 .msg(order)
@@ -90,8 +89,6 @@ public class ExampleSkRabbitMqTemplateTest extends RabbitMqApplicationTest {
     @Test
     public void testSendDelay() {
 
-        String messageId = IdUtil.fastSimpleUUID();
-
         //业务类型，比如订单、用户等
         String businessType = "TRADE";
         String description = "silky-延迟-测试描述";
@@ -99,7 +96,7 @@ public class ExampleSkRabbitMqTemplateTest extends RabbitMqApplicationTest {
         //普通发送消息
         TradeOrder order = new TradeOrder(5L, LocalDateTime.now(), "测试MQ发送-延迟消息测试", BigDecimal.ONE);
         //普通发送消息
-        SendResult send1 = skRabbitMqTemplate.sendDelay(delayExchange, delayRoutingKey, order, messageId, 7000L, businessType, description);
+        SendResult send1 = skRabbitMqTemplate.sendDelay(delayExchange, delayRoutingKey, order, 7000L, businessType, description);
         log.info("普通发送延迟消息测试方法发送结果：{}", send1);
 
         ThreadUtil.sleep(20300);

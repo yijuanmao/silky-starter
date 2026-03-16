@@ -57,8 +57,9 @@ public class SendResult implements Serializable {
         return result;
     }
 
-    public static SendResult failure(String errorMessage, long costTime) {
+    public static SendResult failure(String messageId, String errorMessage, long costTime) {
         SendResult result = new SendResult();
+        result.setMessageId(messageId);
         result.setSuccess(false);
         result.setErrorMessage(errorMessage);
         result.setSendTime(LocalDateTime.now());
