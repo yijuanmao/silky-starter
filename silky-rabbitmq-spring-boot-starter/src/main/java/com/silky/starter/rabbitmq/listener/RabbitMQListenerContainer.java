@@ -3,7 +3,6 @@ package com.silky.starter.rabbitmq.listener;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.StrUtil;
 import com.rabbitmq.client.Channel;
-import com.silky.starter.rabbitmq.core.model.MassageSendParam;
 import com.silky.starter.rabbitmq.exception.RabbitMessageSendException;
 import com.silky.starter.rabbitmq.listener.registry.ListenerRegistry;
 import com.silky.starter.rabbitmq.persistence.MessagePersistenceService;
@@ -109,7 +108,7 @@ public class RabbitMQListenerContainer implements Ordered {
                               @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag,
                               @Header(AmqpHeaders.CONSUMER_QUEUE) String queueName) {
 
-        logger.info("Received message: queue={}, deliveryTag={}, messageId={}",
+        logger.debug("Received message: queue={}, deliveryTag={}, messageId={}",
                 queueName, deliveryTag, amqpMessage.getMessageProperties().getMessageId());
         ProcessingContext context = new ProcessingContext(amqpMessage, channel, deliveryTag, queueName);
 
@@ -188,14 +187,8 @@ public class RabbitMQListenerContainer implements Ordered {
             logger.debug("Processing message: queue={}, messageId={}, type={}",
                     context.queueName, context.messageId, listener.getMessageType().getSimpleName());
 
-            // 类型检查
-            if (!(message instanceof MassageSendParam)) {
-                logger.error("Message type mismatch: expected BaseMassageSend, actual {}", message.getClass().getName());
-                throw new RabbitMessageSendException("Message type mismatch");
-            }
-
-            ((RabbitMQListener<MassageSendParam>) listener).onMessage(
-                    (MassageSendParam) message, context.channel, context.amqpMessage);
+            // 直接调用监听器的 onMessage 方法，传入反序列化后的业务对象
+            ((RabbitMQListener<Object>) listener).onMessage(message, context.channel, context.amqpMessage);
 
             context.processed = true;
 

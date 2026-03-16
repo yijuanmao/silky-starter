@@ -1,6 +1,6 @@
 package com.silky.starter.rabbitmq.listener;
 
-import com.silky.starter.rabbitmq.core.model.MassageSendParam;
+import cn.hutool.core.util.StrUtil;
 import com.silky.starter.rabbitmq.listener.registry.ListenerRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +16,7 @@ import java.lang.reflect.Type;
  * @author zy
  * @date 2025-10-16 10:43
  **/
-public abstract class AbstractRabbitMQListener<T extends MassageSendParam> implements RabbitMQListener<T>, InitializingBean {
+public abstract class AbstractRabbitMQListener<T> implements RabbitMQListener<T>, InitializingBean {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -29,6 +29,9 @@ public abstract class AbstractRabbitMQListener<T extends MassageSendParam> imple
 
     @SuppressWarnings("unchecked")
     public AbstractRabbitMQListener(String queueName) {
+        if (StrUtil.isBlank(queueName)) {
+            throw new IllegalArgumentException("Queue name cannot be blank");
+        }
         this.queueName = queueName;
 
         // 通过反射获取泛型类型

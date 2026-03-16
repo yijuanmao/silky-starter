@@ -1,17 +1,16 @@
 package com.silky.starter.rabbitmq.listener;
 
 import com.rabbitmq.client.Channel;
-import com.silky.starter.rabbitmq.core.model.MassageSendParam;
 import org.springframework.amqp.core.Message;
 
 /**
  * RabbitMQ 消息监听器接口
  *
- * @param <T> 消息类型，必须继承 BaseMassageSend
+ * @param <T> 消息类型
  * @author zy
  * @date 2025-10-16 10:39
  **/
-public interface RabbitMQListener<T extends MassageSendParam> {
+public interface RabbitMQListener<T> {
 
     /**
      * 处理消息
