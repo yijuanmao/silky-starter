@@ -133,17 +133,22 @@ public class OrderService {
 
 #### ✨ 核心特性
 
--   **注解驱动**：`@RabbitMessage` 零侵入发送
--   **延迟消息**：毫秒级精度的定时消息
--   **多维度持久化**：数据库、Redis、MongoDB全支持
--   **智能重试**：可配置次数与间隔，支持指数退避
+| 能力 | 说明 |
+|---|---|
+| **多种发送方式** | 模板类调用 + `@RabbitMessage` 注解驱动，支持同步/异步/延迟发送 |
+| **消息头元数据** | 自动将业务类型、描述、来源等写入消息头 |
+| **智能重试** | 发送端与消费端均支持可配置的重试机制，消费端支持指数退避 |
+| **死信队列** | 消费失败超过阈值后自动转发到 DLX，附加完整链路信息 |
+| **消息持久化** | 提供 `MessagePersistenceService` 接口，可接入 DB/Redis 等任意存储 |
+| **高性能序列化** | 内置 FastJson2，默认忽略 null 字段，消息体更小 |
+| **自动装配** | Spring Boot 自动配置，引入依赖即可零侵入生效 |
 
 #### 🚀 使用示例
 
+**① 注解驱动发送（推荐）**
 
-``` java
-
-// 📤 使用mq注解发送消息测试方法,参数必须使用@RabbitPayload注解，暂时只支持单个参数（推荐）
+```java
+// 方法执行成功后，自动将 @RabbitPayload 参数作为消息体发送（目前仅支持单个参数）
 @Service
 public class OrderService {
     @RabbitMessage(
@@ -151,50 +156,76 @@ public class OrderService {
         routingKey = "order.create",
         businessType = "ORDER_CREATE",
         sendMode = SendMode.SYNC,
-        delay = 30 * 60 * 1000L  // 30分钟延迟消息
+        delay = 30 * 60 * 1000L  // 30分钟延迟消息（需开启 RabbitMQ 延迟插件）
     )
     public OrderResult createOrder(@RabbitPayload CreateOrderRequest request) {
-        // 业务逻辑处理
-        OrderResult result = orderMapper.insert(request);
-        // 方法执行成功后自动发送消息
-        return result;
+        // 业务逻辑处理，方法返回后自动发送消息
+        return orderMapper.insert(request);
     }
 }
+```
 
-// 📥 消费监听
+**② 模板类发送**
+
+```java
+@Autowired
+private SkRabbitMqTemplate skRabbitMqTemplate;
+
+// 普通发送（使用配置默认模式）
+skRabbitMqTemplate.send("order.exchange", "order.create", order);
+
+// 携带业务元数据发送
+skRabbitMqTemplate.send("order.exchange", "order.create", order, "ORDER_CREATE", "订单创建", SendMode.SYNC);
+```
+
+**③ 消费端监听**
+
+```java
 @Slf4j
 @Component
 public class OrderCreateListener extends AbstractRabbitMQListener<TradeOrder> {
     public OrderCreateListener() {
         super("order.create.queue");
     }
-    
+
     @Override
     public void onMessage(TradeOrder message, Channel channel, Message amqpMessage) {
-        log.info("收到订单创建消息: {}", message.getOrderId());
+        log.info("收到订单消息: {}", message.getOrderId());
         orderProcessService.processOrder(message);
-        // 自动异常处理和重试机制
+        // 异常自动触发重试，超过阈值后转入死信队列
     }
 }
 ```
 
-#### 🔧 高级特性
+#### 🔧 关键配置
 
-``` yaml
-
+```yaml
 spring:
   rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin
     silky:
       send:
-        default-send-mode: SYNC
+        default-send-mode: SYNC     # SYNC | ASYNC | AUTO
         enable-retry: true
         max-retry-count: 3
+        retry-interval: 1000
       persistence:
-        enabled: true
-        type: DATABASE  # 支持DATABASE/REDIS/MONGODB
+        enabled: false              # 开启后需实现 MessagePersistenceService 接口
+    listener:
+      silky:
+        enable-dlx: false           # 开启死信队列
+      simple:
+        acknowledge-mode: manual
+        retry:
+          enabled: true
+          max-attempts: 5
+          initial-interval: 3000
 ```
 
--   👉 **[查看 RabbitMQ 完整文档](./silky-rabbitmq-spring-boot-starter/README.md)**
+-   👉 **[查看 RabbitMQ 完整使用手册](./silky-rabbitmq-spring-boot-starter/README.md)**
 
 * * *
 
