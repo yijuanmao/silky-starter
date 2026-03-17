@@ -194,7 +194,11 @@ spring:
         type: DATABASE  # 支持DATABASE/REDIS/MONGODB
 ```
 
+-   👉 **[查看 RabbitMQ 完整文档](./silky-rabbitmq-spring-boot-starter/README.md)**
+
 * * *
+
+
 
 ### 3. ⚡ Silky Redis：一站式高性能缓存解决方案
 
