@@ -879,8 +879,17 @@ mvn spring-boot:run
 
 📢 **关注SilkyStarter**公众号获取最新源码和技术动态！  
 💬 **加入silky-starter技术交流群**，与众多开发者一起探讨技术问题！
-
-[//]: # (添加微信 `824414828` 或扫描公众号二维码，备注"技术交流"邀请进群)
+<div align="center" style="margin: 20px 0;">
+  <img src="./.image/wechat_group_qr.jpg" 
+       height="280px" 
+       alt="Silky技术交流群二维码" 
+       style="border-radius: 12px; box-shadow: 0 6px 12px rgba(0,0,0,0.15); border: 1px solid #eaeef2;">
+  <br>
+  <span style="font-size: 0.95em; color: #666;">
+    👆 长按扫码，备注「<strong>技术交流</strong>」即可入群<br>
+    （或搜索微信号：<code>824414828</code>）
+  </span>
+</div>
 
 ⭐ **如果这个项目帮助了你，请给我们一个Star！**
 
