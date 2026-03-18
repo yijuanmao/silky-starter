@@ -125,6 +125,17 @@ public class OrderService {
 -   **订单创建到支付完成**：从156ms优化到62ms（⏩ 60%更快）
 -   **高并发状态转换**：从280 TPS提升到850 TPS（📈 200%更高吞吐）
 
+<div style="margin: 30px 0 20px 0; border-top: 1px solid #eaeef2; padding-top: 20px;">
+  <a href="./silky-statemachine-spring-boot-starter/README.md" 
+     style="display: inline-block; padding: 10px 20px; 
+            background: linear-gradient(135deg, #6c5ce7, #a463f5); 
+            color: white; border-radius: 40px; text-decoration: none; 
+            font-weight: 500; font-size: 0.95rem; box-shadow: 0 2px 5px rgba(108,92,231,0.3);">
+    📘 查看 StateMachine 完整使用手册 →
+  </a>
+</div>
+
+
 * * *
 
 ### 2. 🔥 Silky RabbitMQ：企业级消息队列解决方案
@@ -225,10 +236,18 @@ spring:
           initial-interval: 3000
 ```
 
--   👉 **[查看 RabbitMQ 完整使用手册](./silky-rabbitmq-spring-boot-starter/README.md)**
+<div style="margin: 30px 0 20px 0; border-top: 1px solid #eaeef2; padding-top: 20px;">
+  <a href="./silky-rabbitmq-spring-boot-starter/README.md" 
+     style="display: inline-block; padding: 10px 20px; 
+            background: linear-gradient(135deg, #6c5ce7, #a463f5); 
+            color: white; border-radius: 40px; text-decoration: none; 
+            font-weight: 500; font-size: 0.95rem; box-shadow: 0 2px 5px rgba(108,92,231,0.3);">
+    📘 查看 RabbitMQ 完整使用手册 →
+  </a>
+</div>
+
 
 * * *
-
 
 
 ### 3. ⚡ Silky Redis：一站式高性能缓存解决方案
@@ -288,6 +307,16 @@ public ApiResponse<User> userRegister(UserRegisterRequest request) {
     // 令牌桶限流，平滑控制流量
 }
 ```
+
+<div style="margin: 30px 0 20px 0; border-top: 1px solid #eaeef2; padding-top: 20px;">
+  <a href="./silky-redis-spring-boot-starter/README.md" 
+     style="display: inline-block; padding: 10px 20px; 
+            background: linear-gradient(135deg, #6c5ce7, #a463f5); 
+            color: white; border-radius: 40px; text-decoration: none; 
+            font-weight: 500; font-size: 0.95rem; box-shadow: 0 2px 5px rgba(108,92,231,0.3);">
+    📘 查看 Redis 完整使用手册 →
+  </a>
+</div>
 
 * * *
 
@@ -358,6 +387,16 @@ public class MultiDataSourceService {
 
 -   **批量插入1万条**：从1250ms优化到280ms（🚀 77%性能提升）
 -   **复杂条件查询**：从45ms优化到22ms（🚀 51%性能提升）
+
+<div style="margin: 30px 0 20px 0; border-top: 1px solid #eaeef2; padding-top: 20px;">
+  <a href="./silky-mongodb-spring-boot-starter/README.md" 
+     style="display: inline-block; padding: 10px 20px; 
+            background: linear-gradient(135deg, #6c5ce7, #a463f5); 
+            color: white; border-radius: 40px; text-decoration: none; 
+            font-weight: 500; font-size: 0.95rem; box-shadow: 0 2px 5px rgba(108,92,231,0.3);">
+    📘 查看 MongoDb 完整使用手册 →
+  </a>
+</div>
 
 * * *
 
@@ -539,6 +578,17 @@ public class CloudSwitchService {
 | **大文件上传** | 容易失败，无断点续传    | 自动分片，断点续传  | 稳定可靠   |
 | **进度监控**  | 需要手动实现        | 内置进度回调机制   | 用户体验好  |
 | **安全性**   | 需要自行处理加密和权限   | 内置安全机制     | 开箱即用   |
+
+
+<div style="margin: 30px 0 20px 0; border-top: 1px solid #eaeef2; padding-top: 20px;">
+  <a href="./silky-oss-spring-boot-starter/README.md" 
+     style="display: inline-block; padding: 10px 20px; 
+            background: linear-gradient(135deg, #6c5ce7, #a463f5); 
+            color: white; border-radius: 40px; text-decoration: none; 
+            font-weight: 500; font-size: 0.95rem; box-shadow: 0 2px 5px rgba(108,92,231,0.3);">
+    📘 查看 OSS 完整使用手册 →
+  </a>
+</div>
 
 * * *
 
