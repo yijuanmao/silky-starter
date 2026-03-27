@@ -930,7 +930,7 @@ mvn spring-boot:run
 📢 **关注SilkyStarter**公众号获取最新源码和技术动态！  
 💬 **加入silky-starter技术交流群**，与众多开发者一起探讨技术问题！
 <div align="center" style="margin: 20px 0;">
-  <img src="./.image/wechat_group_qr.jpg" 
+  <img src=".image/wechat_group_qr.jpg" 
        height="280px" 
        alt="Silky技术交流群二维码" 
        style="border-radius: 12px; box-shadow: 0 6px 12px rgba(0,0,0,0.15); border: 1px solid #eaeef2;">
