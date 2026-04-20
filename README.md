@@ -937,7 +937,8 @@ mvn spring-boot:run
   <br>
   <span style="font-size: 0.95em; color: #666;">
     👆 长按扫码，备注「<strong>技术交流</strong>」即可入群<br>
-    （或搜索微信号：<code>824414828</code>）
+
+[//]: # (    （或搜索微信号：<code>824414828</code>）)
   </span>
 </div>
 
