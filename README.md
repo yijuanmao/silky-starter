@@ -891,7 +891,7 @@ public class DemoController {
 
 ## 📚 学习资源
 
--   **🌐 官方网站**：[https://silky-ecosystem.github.io](https://github.com/yijuanmao/silky-starter)
+-   **🌐 官方网站**：[http://www.silky.top/silky-doc/](https://github.com/yijuanmao/silky-starter)
 -   **📖 完整文档**：[GitHub Wiki](https://github.com/yijuanmao/silky-starter/wiki)
 -   **💻 示例项目**：[silky-demo](https://github.com/yijuanmao/silky-starter/tree/master/silky-starter-test)
 
