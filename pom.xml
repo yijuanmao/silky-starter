@@ -27,12 +27,12 @@
     <properties>
         <version>1.0.0</version>
         <silky.core.version>1.0.5</silky.core.version>
-        <silky.redis.version>1.0.4</silky.redis.version>
-        <silky.mongodb.version>1.0.4</silky.mongodb.version>
-        <silky.rabbitmq.version>1.0.4</silky.rabbitmq.version>
-        <silky.excel.version>1.0.4</silky.excel.version>
-        <silky.oss.version>1.0.4</silky.oss.version>
-        <silky.statemachine.version>1.0.4</silky.statemachine.version>
+        <silky.redis.version>1.0.5</silky.redis.version>
+        <silky.mongodb.version>1.0.5</silky.mongodb.version>
+        <silky.rabbitmq.version>1.0.5</silky.rabbitmq.version>
+        <silky.excel.version>1.0.5</silky.excel.version>
+        <silky.oss.version>1.0.5</silky.oss.version>
+        <silky.statemachine.version>1.0.5</silky.statemachine.version>
         <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
