@@ -10,8 +10,9 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
+    <name>silky-starter-core</name>
     <artifactId>silky-starter-core</artifactId>
-    <description>silky核心公共模块</description>
+    <description>Silky framework core utilities</description>
     <version>${silky.core.version}</version>
     <packaging>jar</packaging>
 
