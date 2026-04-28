@@ -18,6 +18,7 @@ import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFacto
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.boot.autoconfigure.amqp.RabbitProperties;
+import org.springframework.boot.autoconfigure.amqp.SimpleRabbitListenerContainerFactoryConfigurer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -144,9 +145,13 @@ public class SilkyRabbitMQAutoConfiguration {
     @ConditionalOnMissingBean
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
             ConnectionFactory connectionFactory,
-            RabbitMqMessageSerializer messageSerializer) {
+            RabbitMqMessageSerializer messageSerializer,
+            SimpleRabbitListenerContainerFactoryConfigurer configurer) {
+
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
-        factory.setConnectionFactory(connectionFactory);
+        // 全量读取 yml 中 spring.rabbitmq.listener.simple.* 所有配置
+        configurer.configure(factory, connectionFactory);
+        // 覆盖为自定义 FastJson2 序列化器
         factory.setMessageConverter(new FastJson2MessageConverter(messageSerializer));
         return factory;
     }
