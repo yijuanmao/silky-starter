@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.yijuanmao</groupId>
+        <artifactId>silky-starter</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>silky-starter-bom</artifactId>
+    <name>silky-starter-bom</name>
+    <description>Silky Starter Bill of Materials - 统一管理所有组件版本</description>
+    <version>${silky.bom.version}</version>
+    <packaging>pom</packaging>
+
+    <properties>
+        <silky.bom.version>1.0.0</silky.bom.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- 核心模块 -->
+            <dependency>
+                <groupId>io.github.yijuanmao</groupId>
+                <artifactId>silky-starter-core</artifactId>
+                <version>${silky.core.version}</version>
+            </dependency>
+
+            <!-- Redis 全能组件 -->
+            <dependency>
+                <groupId>io.github.yijuanmao</groupId>
+                <artifactId>silky-redis-spring-boot-starter</artifactId>
+                <version>${silky.redis.version}</version>
+            </dependency>
+
+            <!-- RabbitMQ 消息队列组件 -->
+            <dependency>
+                <groupId>io.github.yijuanmao</groupId>
+                <artifactId>silky-rabbitmq-spring-boot-starter</artifactId>
+                <version>${silky.rabbitmq.version}</version>
+            </dependency>
+
+            <!-- MongoDB 增强组件 -->
+            <dependency>
+                <groupId>io.github.yijuanmao</groupId>
+                <artifactId>silky-mongodb-spring-boot-starter</artifactId>
+                <version>${silky.mongodb.version}</version>
+            </dependency>
+
+            <!-- 云存储 OSS 组件 -->
+            <dependency>
+                <groupId>io.github.yijuanmao</groupId>
+                <artifactId>silky-oss-spring-boot-starter</artifactId>
+                <version>${silky.oss.version}</version>
+            </dependency>
+
+            <!-- 状态机组件 -->
+            <dependency>
+                <groupId>io.github.yijuanmao</groupId>
+                <artifactId>silky-statemachine-spring-boot-starter</artifactId>
+                <version>${silky.statemachine.version}</version>
+            </dependency>
+
+            <!-- Excel 导入导出组件 -->
+            <dependency>
+                <groupId>io.github.yijuanmao</groupId>
+                <artifactId>silky-excel-spring-boot-starter</artifactId>
+                <version>${silky.excel.version}</version>
+            </dependency>
+
+            <!-- 第三方依赖 - 统一版本管理 -->
+            
+            <!-- hutool 工具类 -->
+            <dependency>
+                <groupId>cn.hutool</groupId>
+                <artifactId>hutool-all</artifactId>
+                <version>${cn.hutool.version}</version>
+            </dependency>
+
+            <!-- commons-io -->
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons-io.version}</version>
+            </dependency>
+
+            <!-- 阿里云 OSS -->
+            <dependency>
+                <groupId>com.aliyun.oss</groupId>
+                <artifactId>aliyun-sdk-oss</artifactId>
+                <version>${aliyun.oss.version}</version>
+            </dependency>
+
+            <!-- 华为云 OBS -->
+            <dependency>
+                <groupId>com.huaweicloud</groupId>
+                <artifactId>esdk-obs-java</artifactId>
+                <version>${com.huaweicloud.version}</version>
+            </dependency>
+
+            <!-- FastJson2 -->
+            <dependency>
+                <groupId>com.alibaba.fastjson2</groupId>
+                <artifactId>fastjson2</artifactId>
+                <version>${fastjson2.version}</version>
+            </dependency>
+
+            <!-- 日志框架 -->
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j-api.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-core</artifactId>
+                <version>${logback-core.version}</version>
+            </dependency>
+
+            <!-- Redisson -->
+            <dependency>
+                <groupId>org.redisson</groupId>
+                <artifactId>redisson-spring-boot-starter</artifactId>
+                <version>${redisson.version}</version>
+            </dependency>
+
+            <!-- FastExcel -->
+            <dependency>
+                <groupId>cn.idev.excel</groupId>
+                <artifactId>fastexcel</artifactId>
+                <version>${fastexcel.version}</version>
+            </dependency>
+
+            <!-- Servlet API -->
+            <dependency>
+                <groupId>javax.servlet</groupId>
+                <artifactId>javax.servlet-api</artifactId>
+                <version>${javax.servlet.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <!-- Lombok -->
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- BOM 模块自身不需要任何运行时依赖 -->
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 禁止发布源码和 javadoc -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <configuration>
+                    <skipSource>true</skipSource>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>${maven-javadoc-plugin.version}</version>
+                <configuration>
+                    <skipJavadoc>true</skipJavadoc>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

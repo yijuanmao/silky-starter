@@ -686,7 +686,89 @@ public class FileProcessingPipeline {
 
 ## 📦 快速开始：5分钟集成整个生态
 
-### 1️⃣ 添加依赖
+### 💎 使用 BOM 一键引入所有组件（推荐）
+
+为了简化依赖管理，我们提供了 **BOM (Bill of Materials)** 模块。只需引入 BOM，即可统一管理所有组件版本！
+
+```xml
+<properties>
+    <silky.version>1.0.0</silky.version>
+</properties>
+
+<dependencyManagement>
+    <dependencies>
+        <!-- 引入 Silky Starter BOM -->
+        <dependency>
+            <groupId>io.github.yijuanmao</groupId>
+            <artifactId>silky-starter-bom</artifactId>
+            <version>${silky.version}</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+
+<dependencies>
+    <!-- 引入所有组件，版本自动管理！ -->
+    <dependency>
+        <groupId>io.github.yijuanmao</groupId>
+        <artifactId>silky-statemachine-spring-boot-starter</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>io.github.yijuanmao</groupId>
+        <artifactId>silky-rabbitmq-spring-boot-starter</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>io.github.yijuanmao</groupId>
+        <artifactId>silky-redis-spring-boot-starter</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>io.github.yijuanmao</groupId>
+        <artifactId>silky-mongodb-spring-boot-starter</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>io.github.yijuanmao</groupId>
+        <artifactId>silky-oss-spring-boot-starter</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>io.github.yijuanmao</groupId>
+        <artifactId>silky-excel-spring-boot-starter</artifactId>
+    </dependency>
+</dependencies>
+```
+
+**Gradle 方式：**
+
+```groovy
+dependencies {
+    implementation platform('io.github.yijuanmao:silky-starter-bom:1.0.0')
+    
+    // 引入组件时无需指定版本
+    implementation 'io.github.yijuanmao:silky-redis-spring-boot-starter'
+    implementation 'io.github.yijuanmao:silky-rabbitmq-spring-boot-starter'
+    implementation 'io.github.yijuanmao:silky-mongodb-spring-boot-starter'
+    implementation 'io.github.yijuanmao:silky-oss-spring-boot-starter'
+    implementation 'io.github.yijuanmao:silky-statemachine-spring-boot-starter'
+    implementation 'io.github.yijuanmao:silky-excel-spring-boot-starter'
+}
+```
+
+### 📦 按需引入单独组件
+
+如果你只需要特定功能，也可以单独引入某个组件：
+
+```xml
+<!-- 单独引入某个组件 -->
+<dependency>
+    <groupId>io.github.yijuanmao</groupId>
+    <artifactId>silky-redis-spring-boot-starter</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
+
+---
+
+### 1️⃣ 添加依赖（传统方式）
 
 
 ``` xml
