@@ -46,7 +46,7 @@
         <aliyun.oss.version>3.18.3</aliyun.oss.version>
         <com.huaweicloud.version>3.25.7</com.huaweicloud.version>
         <commons-io.version>2.20.0</commons-io.version>
-        <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
+        <maven-javadoc-plugin.version>3.6.3</maven-javadoc-plugin.version>
         <maven-gpg-plugin.version>1.6</maven-gpg-plugin.version>
         <fastjson2.version>2.0.61</fastjson2.version>
         <slf4j-api.version>1.7.36</slf4j-api.version>
@@ -64,15 +64,6 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
                 <version>${spring.boot.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-
-            <!-- Silky Starter BOM - 统一管理所有组件版本 -->
-            <dependency>
-                <groupId>io.github.yijuanmao</groupId>
-                <artifactId>silky-starter-bom</artifactId>
-                <version>${silky.bom.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
