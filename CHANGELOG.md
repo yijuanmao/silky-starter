@@ -1,3 +1,13 @@
+## v1.0.6 (2026-04-29)
+### 💎 功能优化
+* 增加 `silky-starter-bom`模块
+
+### 🐛 Bug Fixes
+
+- **silky-rabbitmq**: 修复 `RabbitMQListenerContainer#sendToDeadLetterExchange()` 死信队列发送消息，序列化异常
+    - 关联 Issue：[#5](https://github.com/yijuanmao/silky-starter/issues/5)
+
+
 ## v1.0.5 (2026-04-28)
 ### 💎 功能优化
 * 所有组件 hutool工具类 =》 5.8.44版本
@@ -6,7 +16,6 @@
 
 - **silky-rabbitmq**: 修复 `SimpleRabbitListenerContainerFactory` 未加载 yml 手动确认配置，导致重复消费及 `PRECONDITION_FAILED - unknown delivery tag` 报错
     - 关联 Issue：[#4](https://github.com/yijuanmao/silky-starter/issues/4)
-
 
 
 ## v1.0.4 (2026-03-14)

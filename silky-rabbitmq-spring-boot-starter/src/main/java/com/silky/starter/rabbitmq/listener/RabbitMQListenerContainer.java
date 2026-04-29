@@ -399,9 +399,6 @@ public class RabbitMQListenerContainer implements Ordered {
         return 2;
     }
 
-
-    // ========== 工具方法 ==========
-
     /**
      * 消息处理上下文
      */
