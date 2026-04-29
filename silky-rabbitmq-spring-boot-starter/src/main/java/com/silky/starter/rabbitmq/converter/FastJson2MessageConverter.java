@@ -27,7 +27,12 @@ public class FastJson2MessageConverter implements SmartMessageConverter {
 
     @Override
     public Message toMessage(Object object, MessageProperties messageProperties) throws MessageConversionException {
-        byte[] body = serializer.serialize(object);
+        byte[] body;
+        if (object instanceof byte[]) {
+            body = (byte[]) object;
+        } else {
+            body = serializer.serialize(object);
+        }
         messageProperties.setContentType(MessageProperties.CONTENT_TYPE_JSON);
         return new Message(body, messageProperties);
     }

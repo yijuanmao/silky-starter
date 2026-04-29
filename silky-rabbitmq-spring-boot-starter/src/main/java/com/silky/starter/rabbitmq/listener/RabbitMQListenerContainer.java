@@ -332,13 +332,12 @@ public class RabbitMQListenerContainer implements Ordered {
             return;
         }
 
+        // 构建死信消息，使用 send() 直接发送已构造好的 Message，避免 Converter 二次序列化
         Message dlqMessage = prepareDeadLetterMessage(context.amqpMessage, context.queueName, exception);
+        enhanceDeadLetterMessageProperties(dlqMessage.getMessageProperties(), context, exception);
 
-        rabbitTemplate.convertAndSend(dlxExchange, dlxRoutingKey, dlqMessage.getBody(), message -> {
-            MessageProperties properties = message.getMessageProperties();
-            enhanceDeadLetterMessageProperties(properties, context, exception);
-            return message;
-        });
+        // 使用 send() 而非 convertAndSend()：死信消息体已是 byte[]，无需 Converter 介入
+        rabbitTemplate.send(dlxExchange, dlxRoutingKey, dlqMessage);
 
         recordDLQSendSuccess(context.messageId, context.queueName, dlxExchange, dlxRoutingKey);
     }
