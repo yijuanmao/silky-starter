@@ -37,10 +37,12 @@ public class RabbitMessageSendException extends RuntimeException {
     public RabbitMessageSendException(String message, SendResult sendResult) {
         super(message);
         this.sendResult = sendResult;
+        this.message = message;
     }
 
     public RabbitMessageSendException(String message, Throwable cause) {
         super(message, cause);
+        this.message = message;
     }
 
 }
