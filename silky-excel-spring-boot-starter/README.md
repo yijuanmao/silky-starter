@@ -168,17 +168,40 @@ public class UserTest {
 
 ### @ExcelDict - 字典翻译
 
-将字典 code 值自动转换为字典 label：
+将字典 code 值自动转换为字典 label，支持两种模式：
+
+**方式一：字典查询模式**（需实现 `DictionaryProvider`）
 
 ```java
-@Data
-public class UserTest {
-
-    @ExcelProperty(value = "性别")
-    @ExcelDict(dictCode = "gender")
-    private Integer gender;  // 1 -> 男, 0 -> 女
-}
+@ExcelProperty(value = "性别")
+@ExcelDict(dictCode = "sys_user_sex")
+private Integer gender;  // 1 -> 男, 0 -> 女
 ```
+
+**方式二：表达式模式**（无需 `DictionaryProvider`，直接通过表达式翻译）
+
+```java
+@ExcelProperty(value = "性别")
+@ExcelDict(readConverterExp = "0=女,1=男")
+private Integer gender;  // 1 -> 男, 0 -> 女
+
+@ExcelProperty(value = "状态")
+@ExcelDict(readConverterExp = "0=禁用,1=启用,2=锁定")
+private Integer status;  // 1 -> 启用
+
+// 多值分隔符模式
+@ExcelProperty(value = "技能标签")
+@ExcelDict(readConverterExp = "1=Java,2=Python,3=Go", separator = ",")
+private String tags;  // "1,2" -> "Java,Python"
+```
+
+| 属性 | 说明 | 默认值 |
+|------|------|--------|
+| `dictCode` | 字典编码，配合 DictionaryProvider 使用 | "" |
+| `readConverterExp` | 读取内容转表达式，格式：`code=label`，多个用逗号分隔 | "" |
+| `separator` | 多值分隔符，字段值含多个编码时按此分隔符拆分后逐个翻译 | "," |
+| `onMiss` | 未匹配时的处理：KEEP_ORIGINAL / BLANK / PLACEHOLDER | KEEP_ORIGINAL |
+| `placeholder` | onMiss=PLACEHOLDER 时的占位文本 | "" |
 
 ### 字段转换管道
 
@@ -994,23 +1017,27 @@ public class ExportProgressListener {
 
 ### 4. DictionaryProvider 字典数据提供者
 
-实现 DictionaryProvider 接口提供字典数据：
+实现 DictionaryProvider 接口提供字典数据。支持批量查询和单条查询，开发者可自行选择实现：
 
 ```java
 @Component
 public class CustomDictionaryProvider implements DictionaryProvider {
-    
+
     @Override
-    public Map<String, Map<String, String>> getDictionaries(Set<String> dictCodes) {
-        // 批量查询字典数据
-        Map<String, Map<String, String>> result = new HashMap<>();
-        for (String dictCode : dictCodes) {
-            result.put(dictCode, dictService.getDictMap(dictCode));
-        }
-        return result;
+    public Map<String, String> batchQuery(String dictCode, List<String> codes) {
+        // 批量查询字典数据（推荐方式，性能更好）
+        return dictService.batchGetLabels(dictCode, codes);
+    }
+
+    @Override
+    public String query(String dictCode, String code) {
+        // 单条查询字典数据（可选实现，不实现则默认委托到 batchQuery）
+        return dictService.getLabel(dictCode, code);
     }
 }
 ```
+
+> 如果不需要查库，可以直接使用 `@ExcelDict(readConverterExp = "0=男,1=女")` 表达式模式，无需实现 DictionaryProvider。
 
 ## 配置属性详解
 

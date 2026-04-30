@@ -88,10 +88,7 @@ public class MaskFieldResolver implements ExcelFieldResolver {
             case EMAIL:
                 return DesensitizedUtil.email(value);
             case NAME:
-                if (value.length() <= 1) {
-                    return String.valueOf(maskChar);
-                }
-                return value.charAt(0) + repeat(maskChar, value.length() - 1);
+                return DesensitizedUtil.chineseName(value);
             case BANK_CARD:
                 return DesensitizedUtil.bankCard(value);
             case PARTIAL:

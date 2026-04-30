@@ -3,12 +3,16 @@ package com.silky.starter.excel.core.resolve;
 import com.silky.starter.excel.core.annotation.ExcelDict;
 import com.silky.starter.excel.core.annotation.ExcelEnum;
 import com.silky.starter.excel.core.annotation.ExcelMask;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.annotation.Annotation;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,6 +22,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * 统一调度 ExcelFieldResolver，按优先级顺序执行
  * <p>
  * 执行顺序：原值 -> 枚举翻译 -> 字典翻译 -> 脱敏 -> 输出
+ * <p>
+ * 对于类型兼容的字段（如 String），直接修改原字段值；
+ * 对于类型不兼容的字段（如 Integer -> String），将转换值存储到 resolvedValueStore 中，
+ * 由 {@link ResolveCellWriteHandler} 在 Excel 单元格写入时替换。
  *
  * @author zy
  * @since 1.1.0
@@ -27,6 +35,15 @@ public class ExcelFieldResolverPipeline {
 
     private final List<ExcelFieldResolver> resolvers;
     private final Map<Class<?>, List<FieldAnnotationInfo>> classFieldCache = new ConcurrentHashMap<>();
+
+    /**
+     * 解析值旁路存储
+     * Key: 数据对象（IdentityHashMap 保证同一引用）
+     * Value: 字段名 -> 解析后的值（用于类型不兼容的场景）
+     * <p>
+     * 使用 WeakReference 避免内存泄漏
+     */
+    private final Map<Object, Map<String, Object>> resolvedValueStore = new IdentityHashMap<>();
 
     /**
      * 构造函数
@@ -41,6 +58,8 @@ public class ExcelFieldResolverPipeline {
 
     /**
      * 对数据对象进行字段转换处理
+     * <p>
+     * 类型兼容时直接修改原字段；类型不兼容时存入 resolvedValueStore。
      *
      * @param data    数据对象列表
      * @param clazz   数据类
@@ -63,6 +82,7 @@ public class ExcelFieldResolverPipeline {
             if (item == null) {
                 continue;
             }
+            Map<String, Object> itemResolvedValues = null;
             for (FieldAnnotationInfo info : fieldInfos) {
                 try {
                     Object fieldValue = info.field.get(item);
@@ -79,7 +99,17 @@ public class ExcelFieldResolverPipeline {
                         }
                     }
                     if (resolvedValue != null && !resolvedValue.equals(fieldValue)) {
-                        info.field.set(item, resolvedValue);
+                        // 类型兼容检查：直接 set 或存入旁路存储
+                        if (isTypeCompatible(info.field, resolvedValue)) {
+                            info.field.set(item, resolvedValue);
+                        } else {
+                            // 类型不兼容（如 Integer 字段 set String 值），存入旁路存储
+                            if (itemResolvedValues == null) {
+                                itemResolvedValues = new ConcurrentHashMap<>();
+                                resolvedValueStore.put(item, itemResolvedValues);
+                            }
+                            itemResolvedValues.put(info.field.getName(), resolvedValue);
+                        }
                     }
                 } catch (IllegalAccessException e) {
                     log.warn("字段访问失败: field={}", info.field.getName(), e);
@@ -88,6 +118,68 @@ public class ExcelFieldResolverPipeline {
         }
 
         return data;
+    }
+
+    /**
+     * 获取对象的解析值存储
+     *
+     * @param item 数据对象
+     * @return 字段名 -> 解析值映射，不存在返回 null
+     */
+    public Map<String, Object> getResolvedValues(Object item) {
+        return resolvedValueStore.get(item);
+    }
+
+    /**
+     * 获取指定对象的指定字段的解析值
+     *
+     * @param item      数据对象
+     * @param fieldName 字段名
+     * @return 解析后的值，不存在返回 null
+     */
+    public Object getResolvedValue(Object item, String fieldName) {
+        Map<String, Object> values = resolvedValueStore.get(item);
+        return values != null ? values.get(fieldName) : null;
+    }
+
+    /**
+     * 判断解析值是否可以安全地 set 到字段上
+     *
+     * @param field         目标字段
+     * @param resolvedValue 解析后的值
+     * @return 是否类型兼容
+     */
+    private boolean isTypeCompatible(Field field, Object resolvedValue) {
+        Class<?> fieldType = field.getType();
+        // null 值不需要 set
+        if (resolvedValue == null) {
+            return false;
+        }
+        // 字段是 Object 类型，任何值都可以
+        if (fieldType == Object.class) {
+            return true;
+        }
+        // 精确类型匹配
+        return fieldType.isInstance(resolvedValue);
+    }
+
+    /**
+     * 清理指定对象的解析值存储
+     * 在一页数据写入完成后调用，防止内存泄漏
+     *
+     * @param items 数据对象列表
+     */
+    public void clearResolvedValues(List<?> items) {
+        for (Object item : items) {
+            resolvedValueStore.remove(item);
+        }
+    }
+
+    /**
+     * 清理所有解析值存储
+     */
+    public void clearAllResolvedValues() {
+        resolvedValueStore.clear();
     }
 
     /**
@@ -131,7 +223,7 @@ public class ExcelFieldResolverPipeline {
     /**
      * 字段注解信息
      */
-    private static class FieldAnnotationInfo {
+    static class FieldAnnotationInfo {
         final Field field;
         final Annotation annotation;
 

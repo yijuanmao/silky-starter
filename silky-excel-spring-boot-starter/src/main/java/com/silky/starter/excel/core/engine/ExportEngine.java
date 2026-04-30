@@ -8,6 +8,7 @@ import com.silky.starter.excel.core.exception.ExcelExportException;
 import com.silky.starter.excel.core.model.DataProcessor;
 import com.silky.starter.excel.core.model.export.*;
 import com.silky.starter.excel.core.resolve.ExcelFieldResolverPipeline;
+import com.silky.starter.excel.core.resolve.ResolveCellWriteHandler;
 import com.silky.starter.excel.core.resolve.ResolveContext;
 import com.silky.starter.excel.core.storage.StorageObject;
 import com.silky.starter.excel.core.storage.factory.StorageStrategyFactory;
@@ -189,8 +190,10 @@ public class ExportEngine {
      */
     private <T> ExportResult executeMultiSheetExport(ExportRequest<T> request, String taskId,
                                                      File tempFile, AsyncType asyncType) {
+        ResolveCellWriteHandler resolveHandler = (fieldResolverPipeline != null)
+                ? new ResolveCellWriteHandler() : null;
         try (EnhancedWriterWrapper writer = new EnhancedWriterWrapper(tempFile.getAbsolutePath(),
-                getMaxRowsPerSheet(request))) {
+                getMaxRowsPerSheet(request), resolveHandler)) {
             ResolveContext resolveContext = new ResolveContext();
             long totalRows = 0;
             for (ExportSheet<T> sheet : request.getSheets()) {
@@ -204,9 +207,14 @@ public class ExportEngine {
                     }
                     if (fieldResolverPipeline != null) {
                         fieldResolverPipeline.resolve(pageData.getData(), sheet.getDataClass(), resolveContext);
+                        resolveHandler.setCurrentPageData(pageData.getData(), fieldResolverPipeline);
                     }
                     List<T> processedData = processPageData(pageData.getData(), request.getProcessors(), pageNum);
                     writer.write(processedData, sheet.getDataClass(), sheet.getSheetName());
+                    // 写入完成后清理旁路存储
+                    if (fieldResolverPipeline != null) {
+                        fieldResolverPipeline.clearResolvedValues(processedData);
+                    }
                     totalRows += processedData.size();
                     pageNum++;
                     if (request.isEnableProgress()) {
@@ -235,8 +243,10 @@ public class ExportEngine {
      */
     private <T> ExportResult executeSingleExport(ExportRequest<T> request, String taskId,
                                                  File tempFile, AsyncType asyncType) {
+        ResolveCellWriteHandler resolveHandler = (fieldResolverPipeline != null)
+                ? new ResolveCellWriteHandler() : null;
         try (EnhancedWriterWrapper writer = new EnhancedWriterWrapper(tempFile.getAbsolutePath(),
-                getMaxRowsPerSheet(request))) {
+                getMaxRowsPerSheet(request), resolveHandler)) {
             ExportContext<T> context = new ExportContext<>(taskId, request);
             ResolveContext resolveContext = new ResolveContext();
             while (context.isHasNext()) {
@@ -247,9 +257,14 @@ public class ExportEngine {
                 }
                 if (fieldResolverPipeline != null) {
                     fieldResolverPipeline.resolve(pageData.getData(), request.getDataClass(), resolveContext);
+                    resolveHandler.setCurrentPageData(pageData.getData(), fieldResolverPipeline);
                 }
                 List<T> processedData = processPageData(pageData.getData(), request.getProcessors(), context.getCurrentPage());
                 writePageData(writer, processedData, request, context.getCurrentPage());
+                // 写入完成后清理旁路存储，防止内存泄漏
+                if (fieldResolverPipeline != null) {
+                    fieldResolverPipeline.clearResolvedValues(processedData);
+                }
                 if (request.isEnableProgress()) {
                     updateSingleExportProgress(context, processedData.size(), pageData.isHasNext());
                 }

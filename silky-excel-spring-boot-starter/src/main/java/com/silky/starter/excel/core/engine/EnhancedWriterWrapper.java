@@ -3,6 +3,7 @@ package com.silky.starter.excel.core.engine;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.idev.excel.EasyExcel;
 import cn.idev.excel.ExcelWriter;
+import cn.idev.excel.write.handler.WriteHandler;
 import cn.idev.excel.write.metadata.WriteSheet;
 import com.silky.starter.excel.core.exception.ExcelExportException;
 import lombok.Getter;
@@ -56,13 +57,27 @@ public class EnhancedWriterWrapper implements Closeable {
     private static final String DEFAULT_SHEET_NAME = "数据";
 
     public EnhancedWriterWrapper(String filePath, long maxRowsPerSheet) {
+        this(filePath, maxRowsPerSheet, null);
+    }
+
+    /**
+     * 构造函数（支持自定义 WriteHandler）
+     *
+     * @param filePath       文件路径
+     * @param maxRowsPerSheet 每个Sheet最大行数
+     * @param writeHandler   自定义写入处理器（可为 null）
+     */
+    public EnhancedWriterWrapper(String filePath, long maxRowsPerSheet, WriteHandler writeHandler) {
         this.filePath = filePath;
         this.maxRowsPerSheet = maxRowsPerSheet;
 
         try {
-            this.writer = EasyExcel.write(filePath)
-                    .autoCloseStream(true)  // 设置为true让EasyExcel管理流
-                    .build();
+            cn.idev.excel.write.builder.ExcelWriterBuilder builder = EasyExcel.write(filePath)
+                    .autoCloseStream(true);
+            if (writeHandler != null) {
+                builder.registerWriteHandler(writeHandler);
+            }
+            this.writer = builder.build();
 
             log.info("Excel写入器初始化成功: {}, 每Sheet最大行数: {}", filePath, maxRowsPerSheet);
         } catch (Exception e) {
