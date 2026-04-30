@@ -281,6 +281,9 @@ public class RabbitMQListenerContainer implements Ordered {
     private void handleMaxRetriesExceeded(ProcessingContext context, Exception exception) {
         if (enableDlx) {
             handleDeadLetterQueue(context, exception);
+            recordPersistenceFailure(context.messageId,
+                    "Max retries exceeded, message sent to DLX: " + exception.getMessage(),
+                    context.startTime);
             safeReject(context.channel, context.deliveryTag, false, "Max retries exceeded - Sent to DLX");
         } else {
             logger.error("Message consume failed after {} retries, discarding, queue: {}, messageId: {}",
