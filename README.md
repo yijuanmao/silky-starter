@@ -419,7 +419,7 @@ public class MultiDataSourceService {
 ``` xml
 
 <dependency>
-    <groupId>io.github.yijuanmao</groupId>
+    <groupId>top.silky</groupId>
     <artifactId>silky-oss-spring-boot-starter</artifactId>
     <version>最新版本</version>
 </dependency>
@@ -699,7 +699,7 @@ public class FileProcessingPipeline {
     <dependencies>
         <!-- 引入 Silky Starter BOM -->
         <dependency>
-            <groupId>io.github.yijuanmao</groupId>
+            <groupId>top.silky</groupId>
             <artifactId>silky-starter-bom</artifactId>
             <version>${silky.version}</version>
             <type>pom</type>
@@ -711,27 +711,27 @@ public class FileProcessingPipeline {
 <dependencies>
     <!-- 引入所有组件，版本自动管理！ -->
     <dependency>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-statemachine-spring-boot-starter</artifactId>
     </dependency>
     <dependency>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-rabbitmq-spring-boot-starter</artifactId>
     </dependency>
     <dependency>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-redis-spring-boot-starter</artifactId>
     </dependency>
     <dependency>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-mongodb-spring-boot-starter</artifactId>
     </dependency>
     <dependency>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-oss-spring-boot-starter</artifactId>
     </dependency>
 <dependency>
-    <groupId>io.github.yijuanmao</groupId>
+    <groupId>top.silky</groupId>
     <artifactId>silky-excel-spring-boot-starter</artifactId>
     <version>1.0.6</version>
 </dependency>
@@ -742,15 +742,15 @@ public class FileProcessingPipeline {
 
 ```groovy
 dependencies {
-    implementation platform('io.github.yijuanmao:silky-starter-bom:1.0.0')
+    implementation platform('top.silky:silky-starter-bom:1.0.0')
     
     // 引入组件时无需指定版本
-    implementation 'io.github.yijuanmao:silky-redis-spring-boot-starter'
-    implementation 'io.github.yijuanmao:silky-rabbitmq-spring-boot-starter'
-    implementation 'io.github.yijuanmao:silky-mongodb-spring-boot-starter'
-    implementation 'io.github.yijuanmao:silky-oss-spring-boot-starter'
-    implementation 'io.github.yijuanmao:silky-statemachine-spring-boot-starter'
-    implementation 'io.github.yijuanmao:silky-excel-spring-boot-starter'
+    implementation 'top.silky:silky-redis-spring-boot-starter'
+    implementation 'top.silky:silky-rabbitmq-spring-boot-starter'
+    implementation 'top.silky:silky-mongodb-spring-boot-starter'
+    implementation 'top.silky:silky-oss-spring-boot-starter'
+    implementation 'top.silky:silky-statemachine-spring-boot-starter'
+    implementation 'top.silky:silky-excel-spring-boot-starter'
 }
 ```
 
@@ -761,7 +761,7 @@ dependencies {
 ```xml
 <!-- 单独引入某个组件 -->
 <dependency>
-    <groupId>io.github.yijuanmao</groupId>
+    <groupId>top.silky</groupId>
     <artifactId>silky-redis-spring-boot-starter</artifactId>
     <version>1.0.0</version>
 </dependency>
@@ -778,35 +778,35 @@ dependencies {
 <dependencies>
     <!-- 状态管理 -->
     <dependency>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-statemachine-spring-boot-starter</artifactId>
         <version>最新版本</version>
     </dependency>
     
     <!-- 消息队列 -->
     <dependency>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-rabbitmq-spring-boot-starter</artifactId>
         <version>最新版本</version>
     </dependency>
     
     <!-- Redis全能组件 -->
     <dependency>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-redis-spring-boot-starter</artifactId>
         <version>最新版本</version>
     </dependency>
     
     <!-- MongoDB增强 -->
     <dependency>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-mongodb-spring-boot-starter</artifactId>
         <version>最新版本</version>
     </dependency>
     
     <!-- OSS云存储 -->
     <dependency>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-oss-spring-boot-starter</artifactId>
         <version>最新版本</version>
     </dependency>

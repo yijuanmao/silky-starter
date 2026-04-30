@@ -62,7 +62,7 @@ silky-rabbitmq-spring-boot-starter
 
 ```xml
 <dependency>
-    <groupId>io.github.yijuanmao</groupId>
+    <groupId>top.silky</groupId>
     <artifactId>silky-rabbitmq-spring-boot-starter</artifactId>
     <version>1.0.4</version>
 </dependency>

@@ -28,7 +28,7 @@
 
 ```xml
 <dependency>
-    <groupId>io.github.yijuanmao</groupId>
+    <groupId>top.silky</groupId>
     <artifactId>silky-excel-spring-boot-starter</artifactId>
     <version>1.0.7</version>
 </dependency>

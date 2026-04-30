@@ -26,7 +26,7 @@
 
 ```xml
 <dependency>
-    <groupId>io.github.yijuanmao</groupId>
+    <groupId>top.silky</groupId>
     <artifactId>silky-oss-spring-boot-starter</artifactId>
     <version>1.0.0</version>
 </dependency>

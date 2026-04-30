@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-starter-test</artifactId>
 <!--        <version>${revision}</version>-->
         <version>1.0.0</version>
@@ -30,12 +30,12 @@
         </dependency>
 
         <dependency>
-            <groupId>io.github.yijuanmao</groupId>
+            <groupId>top.silky</groupId>
             <artifactId>silky-starter-core</artifactId>
         </dependency>
 
         <dependency>
-            <groupId>io.github.yijuanmao</groupId>
+            <groupId>top.silky</groupId>
             <artifactId>silky-excel-spring-boot-starter</artifactId>
         </dependency>
 

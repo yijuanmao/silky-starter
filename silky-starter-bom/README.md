@@ -22,7 +22,7 @@
     <dependencies>
         <!-- 引入 Silky Starter BOM -->
         <dependency>
-            <groupId>io.github.yijuanmao</groupId>
+            <groupId>top.silky</groupId>
             <artifactId>silky-starter-bom</artifactId>
             <version>${silky.version}</version>
             <type>pom</type>
@@ -34,32 +34,32 @@
 <dependencies>
     <!-- 现在引入任何 silky 组件时，无需指定版本号 -->
     <dependency>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-redis-spring-boot-starter</artifactId>
     </dependency>
     
     <dependency>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-rabbitmq-spring-boot-starter</artifactId>
     </dependency>
     
     <dependency>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-mongodb-spring-boot-starter</artifactId>
     </dependency>
     
     <dependency>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-oss-spring-boot-starter</artifactId>
     </dependency>
     
     <dependency>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-statemachine-spring-boot-starter</artifactId>
     </dependency>
     
     <dependency>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-excel-spring-boot-starter</artifactId>
     </dependency>
 </dependencies>
@@ -73,7 +73,7 @@
 <dependencyManagement>
     <dependencies>
         <dependency>
-            <groupId>io.github.yijuanmao</groupId>
+            <groupId>top.silky</groupId>
             <artifactId>silky-starter-bom</artifactId>
             <version>${silky.version}</version>
             <type>pom</type>
@@ -85,7 +85,7 @@
 <dependencies>
     <!-- 只需要 Redis 功能 -->
     <dependency>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-redis-spring-boot-starter</artifactId>
     </dependency>
 </dependencies>
@@ -95,11 +95,11 @@
 
 ```groovy
 dependencies {
-    implementation platform('io.github.yijuanmao:silky-starter-bom:1.0.0')
+    implementation platform('top.silky:silky-starter-bom:1.0.0')
     
     // 引入组件时无需指定版本
-    implementation 'io.github.yijuanmao:silky-redis-spring-boot-starter'
-    implementation 'io.github.yijuanmao:silky-rabbitmq-spring-boot-starter'
+    implementation 'top.silky:silky-redis-spring-boot-starter'
+    implementation 'top.silky:silky-rabbitmq-spring-boot-starter'
 }
 ```
 
@@ -143,7 +143,7 @@ dependencies {
         
         <!-- Silky Starter BOM -->
         <dependency>
-            <groupId>io.github.yijuanmao</groupId>
+            <groupId>top.silky</groupId>
             <artifactId>silky-starter-bom</artifactId>
             <version>1.0.0</version>
             <type>pom</type>
@@ -167,7 +167,7 @@ dependencies {
 <dependencyManagement>
     <dependencies>
         <dependency>
-            <groupId>io.github.yijuanmao</groupId>
+            <groupId>top.silky</groupId>
             <artifactId>silky-starter-bom</artifactId>
             <version>1.0.0</version>
             <type>pom</type>
@@ -176,7 +176,7 @@ dependencies {
         
         <!-- 覆盖 Redis 组件版本 -->
         <dependency>
-            <groupId>io.github.yijuanmao</groupId>
+            <groupId>top.silky</groupId>
             <artifactId>silky-redis-spring-boot-starter</artifactId>
             <version>1.0.1</version>
         </dependency>

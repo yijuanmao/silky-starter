@@ -24,7 +24,7 @@
 
 ```xml
 <dependency>
-    <groupId>io.github.yijuanmao</groupId>
+    <groupId>top.silky</groupId>
     <artifactId>silky-mongodb-spring-boot-starter</artifactId>
     <version>1.0.0</version>  <!-- 建议使用最新版本 -->
 </dependency>

@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>io.github.yijuanmao</groupId>
+        <groupId>top.silky</groupId>
         <artifactId>silky-starter</artifactId>
         <version>1.0.0</version>
         <relativePath>../pom.xml</relativePath>
@@ -25,49 +25,49 @@
         <dependencies>
             <!-- 核心模块 -->
             <dependency>
-                <groupId>io.github.yijuanmao</groupId>
+                <groupId>top.silky</groupId>
                 <artifactId>silky-starter-core</artifactId>
                 <version>${silky.core.version}</version>
             </dependency>
 
             <!-- Redis 全能组件 -->
             <dependency>
-                <groupId>io.github.yijuanmao</groupId>
+                <groupId>top.silky</groupId>
                 <artifactId>silky-redis-spring-boot-starter</artifactId>
                 <version>${silky.redis.version}</version>
             </dependency>
 
             <!-- RabbitMQ 消息队列组件 -->
             <dependency>
-                <groupId>io.github.yijuanmao</groupId>
+                <groupId>top.silky</groupId>
                 <artifactId>silky-rabbitmq-spring-boot-starter</artifactId>
                 <version>${silky.rabbitmq.version}</version>
             </dependency>
 
             <!-- MongoDB 增强组件 -->
             <dependency>
-                <groupId>io.github.yijuanmao</groupId>
+                <groupId>top.silky</groupId>
                 <artifactId>silky-mongodb-spring-boot-starter</artifactId>
                 <version>${silky.mongodb.version}</version>
             </dependency>
 
             <!-- 云存储 OSS 组件 -->
             <dependency>
-                <groupId>io.github.yijuanmao</groupId>
+                <groupId>top.silky</groupId>
                 <artifactId>silky-oss-spring-boot-starter</artifactId>
                 <version>${silky.oss.version}</version>
             </dependency>
 
             <!-- 状态机组件 -->
             <dependency>
-                <groupId>io.github.yijuanmao</groupId>
+                <groupId>top.silky</groupId>
                 <artifactId>silky-statemachine-spring-boot-starter</artifactId>
                 <version>${silky.statemachine.version}</version>
             </dependency>
 
             <!-- Excel 导入导出组件 -->
             <dependency>
-                <groupId>io.github.yijuanmao</groupId>
+                <groupId>top.silky</groupId>
                 <artifactId>silky-excel-spring-boot-starter</artifactId>
                 <version>${silky.excel.version}</version>
             </dependency>
