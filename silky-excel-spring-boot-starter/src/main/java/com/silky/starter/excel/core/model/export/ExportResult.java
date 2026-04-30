@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -274,9 +275,15 @@ public class ExportResult {
         return failedCount != null ? (double) failedCount / totalCount : 0.0;
     }
 
+    /**
+     * 添加导出错误信息
+     *
+     * @param error 错误信息
+     * @return this
+     */
     public ExportResult addError(ExportError error) {
-        if (this.errors == null) {
-            this.errors = Collections.emptyList();
+        if (this.errors == null || this.errors.isEmpty()) {
+            this.errors = new ArrayList<>();
         }
         this.errors.add(error);
         return this;

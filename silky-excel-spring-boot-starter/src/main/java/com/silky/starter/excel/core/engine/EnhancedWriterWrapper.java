@@ -54,6 +54,9 @@ public class EnhancedWriterWrapper implements Closeable {
      */
     private WriteSheet currentWriteSheet;
 
+    /** 基础Sheet名称（用于 getCurrentSheetName） */
+    private String currentBaseSheetName = DEFAULT_SHEET_NAME;
+
     private static final String DEFAULT_SHEET_NAME = "数据";
 
     public EnhancedWriterWrapper(String filePath, long maxRowsPerSheet) {
@@ -156,6 +159,7 @@ public class EnhancedWriterWrapper implements Closeable {
     private <T> void createNewSheet(String baseSheetName, Class<T> clazz) {
         currentSheetIndex++;
         currentSheetRows.set(0);
+        currentBaseSheetName = baseSheetName;
 
         String sheetName = getSheetName(baseSheetName, currentSheetIndex);
 
@@ -187,8 +191,13 @@ public class EnhancedWriterWrapper implements Closeable {
         return currentWriteSheet == null || currentSheetRows.get() >= maxRowsPerSheet;
     }
 
+    /**
+     * 获取当前Sheet名称
+     *
+     * @return 当前Sheet名称
+     */
     public String getCurrentSheetName() {
-        return getSheetName(DEFAULT_SHEET_NAME, currentSheetIndex);
+        return getSheetName(currentBaseSheetName, currentSheetIndex);
     }
 
     private String getSheetName(String baseName, int sheetIndex) {

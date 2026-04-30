@@ -32,11 +32,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ScheduledExecutorService;
 
 /**
  * 导出引擎，负责协调导出任务的整个生命周期
@@ -45,54 +46,80 @@ import java.util.concurrent.atomic.AtomicLong;
  * @since 1.1.0
  */
 @Slf4j
-public class ExportEngine {
+public class ExportEngine extends AbstractExcelEngine {
 
     private static final String TEMP_FILE_PREFIX = "silky_export_";
-    private static final int CACHE_CLEANUP_DELAY_MINUTES = 5;
     private static final long EXCEL_MAX_ROWS_PER_SHEET = 1048576;
 
-    private final AtomicLong totalProcessedTasks = new AtomicLong(0);
-    private final AtomicLong successTasks = new AtomicLong(0);
-    private final AtomicLong failedTasks = new AtomicLong(0);
-    private final ConcurrentMap<String, ExportTask<?>> taskCache = new ConcurrentHashMap<>();
+    /**
+     * 导出任务缓存
+     */
+    private final ConcurrentMap<String, ExportTask<?>> taskCache = new java.util.concurrent.ConcurrentHashMap<>();
 
+    /**
+     * 存储策略工厂
+     */
     private final StorageStrategyFactory storageStrategyFactory;
+    /**
+     * 导出记录服务
+     */
     private final ExportRecordService recordService;
+    /**
+     * 配置属性
+     */
     private final SilkyExcelProperties properties;
+    /**
+     * 异步任务线程池
+     */
     private final ThreadPoolTaskExecutor taskExecutor;
+    /**
+     * 压缩服务
+     */
     private final CompressionService compressionService;
+    /**
+     * 字段解析管道
+     */
     private final ExcelFieldResolverPipeline fieldResolverPipeline;
 
+    /**
+     * 默认存储类型
+     */
     private final StorageType defaultStorageType;
+    /**
+     * 默认异步类型
+     */
     private final AsyncType defaultAsyncType;
+    /**
+     * 默认超时时间（分钟）
+     */
     private final long defaultTimeout;
-    private final ScheduledExecutorService cleanupExecutor;
-    private final long engineStartTime = System.currentTimeMillis();
 
+    /**
+     * 构造函数（使用共享清理执行器）
+     */
     public ExportEngine(StorageStrategyFactory storageStrategyFactory,
                         ExportRecordService recordService,
                         SilkyExcelProperties properties,
                         ThreadPoolTaskExecutor taskExecutor,
                         CompressionService compressionService,
-                        ExcelFieldResolverPipeline fieldResolverPipeline) {
+                        ExcelFieldResolverPipeline fieldResolverPipeline,
+                        ScheduledExecutorService sharedCleanupExecutor) {
+        super("导出引擎", sharedCleanupExecutor);
         this.storageStrategyFactory = storageStrategyFactory;
         this.recordService = recordService;
         this.properties = properties;
         this.taskExecutor = taskExecutor;
         this.compressionService = compressionService;
         this.fieldResolverPipeline = fieldResolverPipeline;
-        this.cleanupExecutor = Executors.newSingleThreadScheduledExecutor(
-                r -> new Thread(r, "export-engine-cleanup"));
         this.defaultStorageType = properties.getStorage().getStorageType();
         this.defaultAsyncType = properties.getAsync().getAsyncType();
         this.defaultTimeout = properties.getExport().getTimeoutMinutes();
-        startCacheCleanupTask();
     }
 
     /**
      * 同步导出
      *
-     * @param task 任务
+     * @param task 导出任务
      * @param <T>  数据类型
      * @return 导出结果
      */
@@ -100,13 +127,12 @@ public class ExportEngine {
         return processExportTask(task);
     }
 
-
     /**
-     * 异步导出
+     * 异步导出（提交到线程池执行）
      *
-     * @param task 任务
+     * @param task 导出任务
      * @param <T>  数据类型
-     * @return 导出结果
+     * @return 提交结果
      */
     public <T> ExportResult exportAsync(ExportTask<T> task) {
         try {
@@ -119,33 +145,11 @@ public class ExportEngine {
     }
 
     /**
-     * 处理压缩
+     * 处理导出任务主流程
      *
-     * @param sourceFile 源文件
-     * @param request    请求
-     * @return 压缩后的文件
-     * @throws IOException IO异常
-     */
-    private <T> File processCompression(File sourceFile, ExportRequest<T> request) throws IOException {
-        if (!request.isCompressionEnabled()) {
-            return sourceFile;
-        }
-        SilkyExcelProperties.CompressionConfig compressionConfig = SilkyExcelProperties.CompressionConfig.builder()
-                .enabled(true)
-                .type(request.getCompressionType())
-                .compressionLevel(request.getCompressionLevel())
-                .splitLargeFiles(request.isSplitLargeFiles())
-                .splitSize(request.getSplitSize())
-                .build();
-        String compressedPath = sourceFile.getAbsolutePath() + "_compressed";
-        return compressionService.compressFile(sourceFile, compressionConfig, compressedPath);
-    }
-
-    /**
-     * 创建临时文件
-     *
-     * @param task 任务
-     * @return 临时文件
+     * @param task 导出任务
+     * @param <T>  数据类型
+     * @return 导出结果
      */
     private <T> ExportResult processExportTask(ExportTask<T> task) {
         ExportRequest<T> request = task.getRequest();
@@ -155,164 +159,154 @@ public class ExportEngine {
         File finalFile = null;
         try {
             validateExportRequest(request);
-            cacheTask(task);
+            taskCache.put(taskId, task);
             createAndSaveExportRecord(task);
             prepareExportData(request);
             tempFile = createTempFile(request.getFileName());
-            ExportResult exportResult;
-            if (CollUtil.isNotEmpty(request.getSheets())) {
-                exportResult = executeMultiSheetExport(request, taskId, tempFile, task.getAsyncType());
-            } else {
-                exportResult = executeSingleExport(request, taskId, tempFile, task.getAsyncType());
+
+            // 统一导出：单Sheet和多Sheet共用同一方法
+            ExportResult exportResult = executeExport(request, taskId, tempFile, task.getAsyncType());
+
+            // 处理压缩
+            if (request.isCompressionEnabled()) {
+                finalFile = compressFile(tempFile, request);
             }
-            finalFile = processCompression(tempFile, request);
-            StorageObject storageObject = uploadExportFile(finalFile, request);
+            StorageObject storageObject = uploadExportFile(finalFile != null ? finalFile : tempFile, request);
             String fileUrl = storageObject.getUrl();
             long fileSize = storageObject.getSize();
             updateRecordOnSuccess(taskId, fileUrl, fileSize, exportResult);
             long costTime = System.currentTimeMillis() - startTime;
-            successTasks.incrementAndGet();
+            incrementSuccess();
             log.debug("导出任务完成: {}, 文件URL: {}, 耗时: {}ms", taskId, fileUrl, costTime);
             return exportResult.setFileUrl(fileUrl).setFileSize(fileSize).setCostTime(costTime);
         } catch (Exception e) {
             log.error("导出任务失败: {}", taskId, e);
-            failedTasks.incrementAndGet();
+            incrementFailed();
             recordService.updateFailed(taskId, "导出失败: " + e.getMessage());
             return ExportResult.fail(taskId, "导出失败: " + e.getMessage());
         } finally {
-            cleanupExportResources(request, tempFile, finalFile, taskId);
-            totalProcessedTasks.incrementAndGet();
+            cleanupExportResources(request, tempFile, finalFile);
+            incrementTotalProcessed();
         }
     }
 
     /**
-     * 执行多 Sheet 导出（不同数据源/表头）
+     * 统一执行导出（合并单Sheet和多Sheet逻辑）
+     *
+     * @param request   导出请求
+     * @param taskId    任务ID
+     * @param tempFile  临时文件
+     * @param asyncType 异步类型
+     * @param <T>       数据类型
+     * @return 导出结果
      */
-    private <T> ExportResult executeMultiSheetExport(ExportRequest<T> request, String taskId,
-                                                     File tempFile, AsyncType asyncType) {
+    private <T> ExportResult executeExport(ExportRequest<T> request, String taskId,
+                                           File tempFile, AsyncType asyncType) {
         ResolveCellWriteHandler resolveHandler = (fieldResolverPipeline != null)
                 ? new ResolveCellWriteHandler() : null;
         try (EnhancedWriterWrapper writer = new EnhancedWriterWrapper(tempFile.getAbsolutePath(),
                 getMaxRowsPerSheet(request), resolveHandler)) {
             ResolveContext resolveContext = new ResolveContext();
+
+            // 构建统一的Sheet列表
+            List<SheetExportContext<T>> sheetContexts = buildSheetContexts(request);
             long totalRows = 0;
-            for (ExportSheet<T> sheet : request.getSheets()) {
+
+            for (SheetExportContext<T> sheetCtx : sheetContexts) {
                 int pageNum = 1;
                 while (true) {
                     checkTaskTimeout(taskId, request.getTimeout());
-                    ExportPageData<T> pageData = sheet.getDataSupplier().getPageData(
+                    ExportPageData<T> pageData = sheetCtx.dataSupplier.getPageData(
                             pageNum, request.getPageSize(), request.getParams());
                     if (CollUtil.isEmpty(pageData.getData())) {
                         break;
                     }
+                    // 字段解析
                     if (fieldResolverPipeline != null) {
-                        fieldResolverPipeline.resolve(pageData.getData(), sheet.getDataClass(), resolveContext);
+                        fieldResolverPipeline.resolve(pageData.getData(), sheetCtx.dataClass, resolveContext);
                         resolveHandler.setCurrentPageData(pageData.getData(), fieldResolverPipeline);
                     }
-                    List<T> processedData = processPageData(pageData.getData(), request.getProcessors(), pageNum);
-                    writer.write(processedData, sheet.getDataClass(), sheet.getSheetName());
-                    // 写入完成后清理旁路存储
+                    // 数据处理器
+                    List<T> processedData = processPageData(pageData.getData(), request.getProcessors());
+                    // 写入Excel
+                    writer.write(processedData, sheetCtx.dataClass, sheetCtx.sheetName);
+                    // 清理旁路存储
                     if (fieldResolverPipeline != null) {
                         fieldResolverPipeline.clearResolvedValues(processedData);
                     }
                     totalRows += processedData.size();
-                    pageNum++;
+
+                    // 更新进度
                     if (request.isEnableProgress()) {
                         recordService.updateProgress(taskId, totalRows, processedData.size(), 0);
                     }
+                    pageNum++;
                     if (!pageData.isHasNext()) {
                         break;
                     }
                 }
             }
-            if (asyncType.isAsync()) {
-                return ExportResult.asyncSuccess(taskId);
-            } else {
-                return ExportResult.success(taskId)
-                        .setTotalCount(totalRows).setSuccessCount(totalRows)
-                        .setFailedCount(0L).setSheetCount(writer.getCurrentSheetIndex());
-            }
-        } catch (Exception e) {
-            log.error("多Sheet导出失败: {}", taskId, e);
-            throw new ExcelExportException("多Sheet导出失败: " + e.getMessage(), e);
-        }
-    }
 
-    /**
-     * 执行单数据源导出
-     */
-    private <T> ExportResult executeSingleExport(ExportRequest<T> request, String taskId,
-                                                 File tempFile, AsyncType asyncType) {
-        ResolveCellWriteHandler resolveHandler = (fieldResolverPipeline != null)
-                ? new ResolveCellWriteHandler() : null;
-        try (EnhancedWriterWrapper writer = new EnhancedWriterWrapper(tempFile.getAbsolutePath(),
-                getMaxRowsPerSheet(request), resolveHandler)) {
-            ExportContext<T> context = new ExportContext<>(taskId, request);
-            ResolveContext resolveContext = new ResolveContext();
-            while (context.isHasNext()) {
-                checkTaskTimeout(taskId, request.getTimeout());
-                ExportPageData<T> pageData = fetchPageData(request, context.getCurrentPage());
-                if (CollUtil.isEmpty(pageData.getData())) {
-                    break;
-                }
-                if (fieldResolverPipeline != null) {
-                    fieldResolverPipeline.resolve(pageData.getData(), request.getDataClass(), resolveContext);
-                    resolveHandler.setCurrentPageData(pageData.getData(), fieldResolverPipeline);
-                }
-                List<T> processedData = processPageData(pageData.getData(), request.getProcessors(), context.getCurrentPage());
-                writePageData(writer, processedData, request, context.getCurrentPage());
-                // 写入完成后清理旁路存储，防止内存泄漏
-                if (fieldResolverPipeline != null) {
-                    fieldResolverPipeline.clearResolvedValues(processedData);
-                }
-                if (request.isEnableProgress()) {
-                    updateSingleExportProgress(context, processedData.size(), pageData.isHasNext());
-                }
-            }
-            if (asyncType.isAsync()) {
+            // 返回结果
+            if (asyncType != null && asyncType.isAsync()) {
                 return ExportResult.asyncSuccess(taskId);
-            } else {
-                return ExportResult.success(taskId)
-                        .setTotalCount(writer.getTotalRows().get())
-                        .setSuccessCount(writer.getTotalRows().get())
-                        .setFailedCount(0L).setSheetCount(writer.getCurrentSheetIndex());
             }
+            return ExportResult.success(taskId)
+                    .setTotalCount(totalRows).setSuccessCount(totalRows)
+                    .setFailedCount(0L).setSheetCount(writer.getCurrentSheetIndex());
         } catch (Exception e) {
             log.error("导出执行失败: {}", taskId, e);
             throw new ExcelExportException("导出执行失败: " + e.getMessage(), e);
         }
     }
 
-    private <T> void updateSingleExportProgress(ExportContext<T> context, int batchSize, boolean hasNext) {
-        context.addProcessedCount(batchSize);
-        context.setHasNext(hasNext);
-        context.nextPage();
-        recordService.updateProgress(context.getTaskId(), context.getProcessedCount(), batchSize, 0);
-    }
-
-    private void startCacheCleanupTask() {
-        cleanupExecutor.scheduleAtFixedRate(() -> {
-            try {
-                cleanupExpiredCaches();
-            } catch (Exception e) {
-                log.error("缓存清理任务执行失败", e);
+    /**
+     * 构建Sheet导出上下文列表（统一单Sheet和多Sheet）
+     *
+     * @param request 导出请求
+     * @param <T>     数据类型
+     * @return Sheet上下文列表
+     */
+    private <T> List<SheetExportContext<T>> buildSheetContexts(ExportRequest<T> request) {
+        List<SheetExportContext<T>> contexts = new ArrayList<>();
+        if (CollUtil.isNotEmpty(request.getSheets())) {
+            // 多Sheet模式
+            for (ExportSheet<T> sheet : request.getSheets()) {
+                contexts.add(new SheetExportContext<>(
+                        sheet.getSheetName(), sheet.getDataClass(), sheet.getDataSupplier()));
             }
-        }, 10, 10, TimeUnit.MINUTES);
+        } else {
+            // 单Sheet模式
+            contexts.add(new SheetExportContext<>(
+                    "数据", request.getDataClass(), request.getDataSupplier()));
+        }
+        return contexts;
     }
 
-    private void cleanupExpiredCaches() {
-        long expireTime = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(CACHE_CLEANUP_DELAY_MINUTES);
-        int before = taskCache.size();
-        taskCache.entrySet().removeIf(entry -> {
-            ExportTask<?> task = entry.getValue();
-            return task.getFinishTime() != null && task.getFinishTime() < expireTime;
-        });
-        if (before != taskCache.size()) {
-            log.debug("缓存清理完成: 任务缓存 {}->{}", before, taskCache.size());
+    /**
+     * Sheet导出上下文
+     */
+    private static class SheetExportContext<T> {
+        final String sheetName;
+        final Class<T> dataClass;
+        final ExportDataSupplier<T> dataSupplier;
+
+        SheetExportContext(String sheetName, Class<T> dataClass, ExportDataSupplier<T> dataSupplier) {
+            this.sheetName = sheetName;
+            this.dataClass = dataClass;
+            this.dataSupplier = dataSupplier;
         }
     }
 
-    private <T> List<T> processPageData(List<T> data, List<DataProcessor<T>> processors, int pageNum) {
+    /**
+     * 处理页面数据（执行数据处理器链）
+     *
+     * @param data       原始数据
+     * @param processors 处理器列表
+     * @param <T>        数据类型
+     * @return 处理后的数据
+     */
+    private <T> List<T> processPageData(List<T> data, List<DataProcessor<T>> processors) {
         if (CollUtil.isEmpty(processors)) {
             return data;
         }
@@ -324,13 +318,39 @@ public class ExportEngine {
     }
 
     /**
-     * 创建临时文件
+     * 压缩导出文件
+     *
+     * @param sourceFile 源文件
+     * @param request    导出请求
+     * @return 压缩后的文件
+     */
+    private <T> File compressFile(File sourceFile, ExportRequest<T> request) throws IOException {
+        SilkyExcelProperties.CompressionConfig config = SilkyExcelProperties.CompressionConfig.builder()
+                .enabled(true)
+                .type(request.getCompressionType())
+                .compressionLevel(request.getCompressionLevel())
+                .splitLargeFiles(request.isSplitLargeFiles())
+                .splitSize(request.getSplitSize())
+                .build();
+        String compressedPath = sourceFile.getAbsolutePath() + "_compressed";
+        return compressionService.compressFile(sourceFile, config, compressedPath);
+    }
+
+    /**
+     * 准备导出数据（调用数据供应器和处理器的prepare方法）
+     *
+     * @param request 导出请求
      */
     private <T> void prepareExportData(ExportRequest<T> request) {
         Optional.ofNullable(request.getDataSupplier()).ifPresent(s -> s.prepare(request.getParams()));
         Optional.ofNullable(request.getProcessors()).ifPresent(ps -> ps.forEach(DataProcessor::prepare));
     }
 
+    /**
+     * 清理导出数据资源
+     *
+     * @param request 导出请求
+     */
     private <T> void cleanupExportData(ExportRequest<T> request) {
         Optional.ofNullable(request.getDataSupplier()).ifPresent(s -> {
             try {
@@ -348,6 +368,12 @@ public class ExportEngine {
         }));
     }
 
+    /**
+     * 创建临时导出文件
+     *
+     * @param fileName 文件名
+     * @return 临时文件
+     */
     private File createTempFile(String fileName) {
         try {
             Path tempDir = Paths.get(System.getProperty("java.io.tmpdir"));
@@ -368,11 +394,23 @@ public class ExportEngine {
         }
     }
 
+    /**
+     * 上传导出文件到存储
+     *
+     * @param tempFile 临时文件
+     * @param request  导出请求
+     * @return 存储对象
+     */
     private <T> StorageObject uploadExportFile(File tempFile, ExportRequest<T> request) {
         StorageType storageType = request.getStorageType() == null ? defaultStorageType : request.getStorageType();
         return storageStrategyFactory.getStrategy(storageType).storeFile(tempFile, request.getFileName(), request.getFileMetadata());
     }
 
+    /**
+     * 清理临时文件
+     *
+     * @param tempFile 临时文件
+     */
     private void cleanupTempFile(File tempFile) {
         if (tempFile != null && tempFile.exists()) {
             try {
@@ -383,7 +421,14 @@ public class ExportEngine {
         }
     }
 
-    private void cleanupExportResources(ExportRequest<?> request, File tempFile, File finalFile, String taskId) {
+    /**
+     * 清理所有导出资源
+     *
+     * @param request   导出请求
+     * @param tempFile  临时文件
+     * @param finalFile 最终文件（压缩后）
+     */
+    private void cleanupExportResources(ExportRequest<?> request, File tempFile, File finalFile) {
         cleanupTempFile(tempFile);
         if (finalFile != null && !finalFile.equals(tempFile)) {
             cleanupTempFile(finalFile);
@@ -391,6 +436,14 @@ public class ExportEngine {
         cleanupExportData(request);
     }
 
+    /**
+     * 更新导出记录为成功状态
+     *
+     * @param taskId       任务ID
+     * @param fileUrl      文件URL
+     * @param fileSize     文件大小
+     * @param exportResult 导出结果
+     */
     private void updateRecordOnSuccess(String taskId, String fileUrl, long fileSize, ExportResult exportResult) {
         recordService.update(taskId, record -> {
             record.setFileUrl(fileUrl);
@@ -402,6 +455,8 @@ public class ExportEngine {
 
     /**
      * 校验导出请求参数
+     *
+     * @param request 导出请求
      */
     private <T> void validateExportRequest(ExportRequest<T> request) {
         if (request == null) {
@@ -413,8 +468,17 @@ public class ExportEngine {
         if (StrUtil.isBlank(request.getFileName())) {
             throw new IllegalArgumentException("文件名不能为空");
         }
+        // 单Sheet模式下数据供应器不能为空
         if (CollUtil.isEmpty(request.getSheets()) && request.getDataSupplier() == null) {
             throw new IllegalArgumentException("数据供应器不能为null");
+        }
+        // 多Sheet模式下各Sheet数据供应器不能为空
+        if (CollUtil.isNotEmpty(request.getSheets())) {
+            for (ExportSheet<T> sheet : request.getSheets()) {
+                if (sheet.getDataSupplier() == null) {
+                    throw new IllegalArgumentException("Sheet[" + sheet.getSheetName() + "]的数据供应器不能为null");
+                }
+            }
         }
         long maxRows = getMaxRowsPerSheet(request);
         if (maxRows <= 0) {
@@ -429,6 +493,9 @@ public class ExportEngine {
 
     /**
      * 创建并保存导出记录
+     *
+     * @param task 导出任务
+     * @return 导出记录
      */
     private <T> ExportRecord createAndSaveExportRecord(ExportTask<T> task) {
         String taskId = task.getTaskId();
@@ -453,9 +520,10 @@ public class ExportEngine {
     }
 
     /**
-     * 获取最大行数限制
+     * 获取最大行数限制（优先使用请求中的值，其次使用全局配置）
      *
      * @param request 导出请求
+     * @return 每Sheet最大行数
      */
     private <T> long getMaxRowsPerSheet(ExportRequest<T> request) {
         return Objects.isNull(request.getMaxRowsPerSheet()) ? properties.getExport().getMaxRowsPerSheet() : request.getMaxRowsPerSheet();
@@ -465,7 +533,7 @@ public class ExportEngine {
      * 检查任务是否超时
      *
      * @param taskId  任务ID
-     * @param timeout 超时时间
+     * @param timeout 超时时间（分钟）
      */
     private void checkTaskTimeout(String taskId, Long timeout) {
         ExportTask<?> task = taskCache.get(taskId);
@@ -474,72 +542,49 @@ public class ExportEngine {
         }
     }
 
-    /**
-     * 缓存任务
-     *
-     * @param task 任务
-     * @param <T>  数据类型
-     */
-    private <T> void cacheTask(ExportTask<T> task) {
-        taskCache.put(task.getTaskId(), task);
+    @Override
+    protected void cleanupExpiredCaches() {
+        long expireTime = System.currentTimeMillis() - java.util.concurrent.TimeUnit.MINUTES.toMillis(5);
+        cleanExpiredEntries(taskCache, task -> {
+            Long finishTime = ((ExportTask<?>) task).getFinishTime();
+            return finishTime != null && finishTime < expireTime;
+        });
     }
 
-    /**
-     * 写入页面数据
-     *
-     * @param writer  写入器
-     * @param data    数据
-     * @param request 请求
-     * @param pageNum 页码
-     * @param <T>
-     */
-    private <T> void writePageData(EnhancedWriterWrapper writer, List<T> data,
-                                   ExportRequest<T> request, int pageNum) {
-        long startTime = System.currentTimeMillis();
-        writer.write(data, request.getDataClass());
-        log.debug("第{}页数据写入完成, 数据量: {}, 当前Sheet: {}, 耗时: {}ms",
-                pageNum, data.size(), writer.getCurrentSheetIndex(), System.currentTimeMillis() - startTime);
+    @Override
+    protected int getCacheSize() {
+        return taskCache.size();
     }
 
-    /**
-     * 获取页面数据
-     *
-     * @param request 请求
-     * @param pageNum 页码
-     * @param <T>     数据类型
-     * @return 页面数据
-     */
-    private <T> ExportPageData<T> fetchPageData(ExportRequest<T> request, int pageNum) {
-        return request.getDataSupplier().getPageData(pageNum, request.getPageSize(), request.getParams());
-    }
-
+    @Override
     public void shutdown() {
         log.info("开始关闭导出引擎...");
-        cleanupExecutor.shutdown();
-        try {
-            if (!cleanupExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
-                cleanupExecutor.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            cleanupExecutor.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
+        shutdownCleanupExecutor();
         taskCache.clear();
         log.info("导出引擎已关闭, 统计: 总={}, 成功={}, 失败={}",
-                totalProcessedTasks.get(), successTasks.get(), failedTasks.get());
+                totalProcessed.get(), successCount.get(), failedCount.get());
     }
 
+    /**
+     * 获取引擎状态信息
+     *
+     * @return 引擎状态
+     */
     public EngineStatus getEngineStatus() {
+        Object[] data = buildStatusData();
         return EngineStatus.builder()
-                .engineStartTime(LocalDateTime.now())
-                .totalProcessedTasks(totalProcessedTasks.get())
-                .successTasks(successTasks.get())
-                .failedTasks(failedTasks.get())
-                .cachedTasks(taskCache.size())
-                .uptime(System.currentTimeMillis() - engineStartTime)
+                .engineStartTime((LocalDateTime) data[0])
+                .totalProcessedTasks((long) data[1])
+                .successTasks((long) data[2])
+                .failedTasks((long) data[3])
+                .cachedTasks((int) data[4])
+                .uptime((long) data[5])
                 .build();
     }
 
+    /**
+     * 导出上下文（单Sheet模式翻页控制）
+     */
     @Getter
     private static class ExportContext<T> {
         private final String taskId;
@@ -550,34 +595,61 @@ public class ExportEngine {
         @Setter
         private boolean hasNext = true;
 
-        public ExportContext(String taskId, ExportRequest<T> request) {
+        ExportContext(String taskId, ExportRequest<T> request) {
             this.taskId = taskId;
             this.request = request;
         }
 
-        public void nextPage() {
+        void nextPage() {
             currentPage++;
         }
 
-        public void addProcessedCount(int count) {
+        void addProcessedCount(int count) {
             processedCount += count;
         }
     }
 
+    /**
+     * 引擎状态
+     */
     @Data
     @Builder
     public static class EngineStatus {
+        /**
+         * 引擎启动时间
+         */
         private LocalDateTime engineStartTime;
+        /**
+         * 总处理任务数
+         */
         private long totalProcessedTasks;
+        /**
+         * 成功任务数
+         */
         private long successTasks;
+        /**
+         * 失败任务数
+         */
         private long failedTasks;
+        /**
+         * 当前缓存任务数
+         */
         private int cachedTasks;
+        /**
+         * 运行时长（毫秒）
+         */
         private long uptime;
 
+        /**
+         * 计算成功率
+         */
         public double getSuccessRate() {
             return totalProcessedTasks > 0 ? (double) successTasks / totalProcessedTasks : 0.0;
         }
 
+        /**
+         * 计算平均处理时间
+         */
         public long getAverageProcessTime() {
             return totalProcessedTasks > 0 ? uptime / totalProcessedTasks : 0;
         }

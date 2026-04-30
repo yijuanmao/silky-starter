@@ -3,18 +3,11 @@ package com.silky.starter.excel.core.resolve;
 import com.silky.starter.excel.core.annotation.ExcelDict;
 import com.silky.starter.excel.core.annotation.ExcelEnum;
 import com.silky.starter.excel.core.annotation.ExcelMask;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.annotation.Annotation;
-import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -22,6 +15,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * 统一调度 ExcelFieldResolver，按优先级顺序执行
  * <p>
  * 执行顺序：原值 -> 枚举翻译 -> 字典翻译 -> 脱敏 -> 输出
+ * <p>
+ * 支持组合注解：同一字段可同时标注多个解析注解（如 @ExcelEnum + @ExcelMask），
+ * 管道会按优先级依次执行所有匹配的解析器。
  * <p>
  * 对于类型兼容的字段（如 String），直接修改原字段值；
  * 对于类型不兼容的字段（如 Integer -> String），将转换值存储到 resolvedValueStore 中，
@@ -33,15 +29,19 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class ExcelFieldResolverPipeline {
 
+    /**
+     * 解析器列表（按优先级排序）
+     */
     private final List<ExcelFieldResolver> resolvers;
+    /**
+     * 类字段注解缓存
+     */
     private final Map<Class<?>, List<FieldAnnotationInfo>> classFieldCache = new ConcurrentHashMap<>();
 
     /**
      * 解析值旁路存储
      * Key: 数据对象（IdentityHashMap 保证同一引用）
      * Value: 字段名 -> 解析后的值（用于类型不兼容的场景）
-     * <p>
-     * 使用 WeakReference 避免内存泄漏
      */
     private final Map<Object, Map<String, Object>> resolvedValueStore = new IdentityHashMap<>();
 
@@ -59,7 +59,7 @@ public class ExcelFieldResolverPipeline {
     /**
      * 对数据对象进行字段转换处理
      * <p>
-     * 类型兼容时直接修改原字段；类型不兼容时存入 resolvedValueStore。
+     * 支持组合注解：同一字段的多个注解会依次经过匹配的解析器处理。
      *
      * @param data    数据对象列表
      * @param clazz   数据类
@@ -73,7 +73,6 @@ public class ExcelFieldResolverPipeline {
         }
 
         List<FieldAnnotationInfo> fieldInfos = classFieldCache.computeIfAbsent(clazz, this::parseFields);
-
         if (fieldInfos.isEmpty()) {
             return data;
         }
@@ -90,6 +89,7 @@ public class ExcelFieldResolverPipeline {
                         continue;
                     }
                     Object resolvedValue = fieldValue;
+                    // 遍历所有解析器，支持组合注解
                     for (ExcelFieldResolver resolver : resolvers) {
                         if (resolver.supports(info.field, info.annotation)) {
                             resolvedValue = resolver.resolve(info.field, info.annotation, resolvedValue, context);
@@ -99,11 +99,11 @@ public class ExcelFieldResolverPipeline {
                         }
                     }
                     if (resolvedValue != null && !resolvedValue.equals(fieldValue)) {
-                        // 类型兼容检查：直接 set 或存入旁路存储
+                        // 类型兼容：直接 set
                         if (isTypeCompatible(info.field, resolvedValue)) {
                             info.field.set(item, resolvedValue);
                         } else {
-                            // 类型不兼容（如 Integer 字段 set String 值），存入旁路存储
+                            // 类型不兼容：存入旁路存储
                             if (itemResolvedValues == null) {
                                 itemResolvedValues = new ConcurrentHashMap<>();
                                 resolvedValueStore.put(item, itemResolvedValues);
@@ -124,7 +124,7 @@ public class ExcelFieldResolverPipeline {
      * 获取对象的解析值存储
      *
      * @param item 数据对象
-     * @return 字段名 -> 解析值映射，不存在返回 null
+     * @return 字段名 -> 解析值映射
      */
     public Map<String, Object> getResolvedValues(Object item) {
         return resolvedValueStore.get(item);
@@ -135,7 +135,7 @@ public class ExcelFieldResolverPipeline {
      *
      * @param item      数据对象
      * @param fieldName 字段名
-     * @return 解析后的值，不存在返回 null
+     * @return 解析后的值
      */
     public Object getResolvedValue(Object item, String fieldName) {
         Map<String, Object> values = resolvedValueStore.get(item);
@@ -144,28 +144,20 @@ public class ExcelFieldResolverPipeline {
 
     /**
      * 判断解析值是否可以安全地 set 到字段上
-     *
-     * @param field         目标字段
-     * @param resolvedValue 解析后的值
-     * @return 是否类型兼容
      */
     private boolean isTypeCompatible(Field field, Object resolvedValue) {
-        Class<?> fieldType = field.getType();
-        // null 值不需要 set
         if (resolvedValue == null) {
             return false;
         }
-        // 字段是 Object 类型，任何值都可以
+        Class<?> fieldType = field.getType();
         if (fieldType == Object.class) {
             return true;
         }
-        // 精确类型匹配
         return fieldType.isInstance(resolvedValue);
     }
 
     /**
-     * 清理指定对象的解析值存储
-     * 在一页数据写入完成后调用，防止内存泄漏
+     * 清理指定对象的解析值存储（防止内存泄漏）
      *
      * @param items 数据对象列表
      */
@@ -184,14 +176,16 @@ public class ExcelFieldResolverPipeline {
 
     /**
      * 解析类上带有注解的字段
+     * 支持组合注解：一个字段可返回多个 FieldAnnotationInfo
      */
     private List<FieldAnnotationInfo> parseFields(Class<?> clazz) {
         List<FieldAnnotationInfo> infos = new ArrayList<>();
         Class<?> current = clazz;
         while (current != null && current != Object.class) {
             for (Field field : current.getDeclaredFields()) {
-                Annotation annotation = findResolverAnnotation(field);
-                if (annotation != null) {
+                // 收集字段上所有解析器注解
+                List<Annotation> annotations = findResolverAnnotations(field);
+                for (Annotation annotation : annotations) {
                     field.setAccessible(true);
                     infos.add(new FieldAnnotationInfo(field, annotation));
                 }
@@ -202,22 +196,26 @@ public class ExcelFieldResolverPipeline {
     }
 
     /**
-     * 查找字段上的解析器注解
-     * 如果同时存在多个注解，优先返回 ExcelEnum > ExcelDict > ExcelMask
+     * 查找字段上的所有解析器注解（支持组合注解）
+     * 按优先级排序：ExcelEnum > ExcelDict > ExcelMask
      */
-    private Annotation findResolverAnnotation(Field field) {
-        ExcelEnum excelEnum = field.getAnnotation(ExcelEnum.class);
-        ExcelDict excelDict = field.getAnnotation(ExcelDict.class);
-        ExcelMask excelMask = field.getAnnotation(ExcelMask.class);
+    private List<Annotation> findResolverAnnotations(Field field) {
+        List<Annotation> annotations = new ArrayList<>();
 
-        // 优先级：ExcelEnum > ExcelDict > ExcelMask
+        ExcelEnum excelEnum = field.getAnnotation(ExcelEnum.class);
         if (excelEnum != null) {
-            return excelEnum;
+            annotations.add(excelEnum);
         }
+        ExcelDict excelDict = field.getAnnotation(ExcelDict.class);
         if (excelDict != null) {
-            return excelDict;
+            annotations.add(excelDict);
         }
-        return excelMask;
+        ExcelMask excelMask = field.getAnnotation(ExcelMask.class);
+        if (excelMask != null) {
+            annotations.add(excelMask);
+        }
+
+        return annotations;
     }
 
     /**

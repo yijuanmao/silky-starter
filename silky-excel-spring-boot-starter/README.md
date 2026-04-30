@@ -17,8 +17,10 @@
 - **数据压缩**：支持 ZIP 压缩，减少存储空间占用
 - **进度追踪**：实时导出/导入进度监控
 - **注解驱动转换**：@ExcelEnum、@ExcelDict、@ExcelMask 自动完成枚举翻译、字典翻译、数据脱敏
+- **组合注解**：同一字段可同时标注多个解析注解，管道按优先级依次执行
 - **多 Sheet 导出**：支持业务多 Sheet，通过 ExportSheet 定义
 - **线程安全**：内置线程池管理，支持并发处理
+- **共享清理器**：导出/导入引擎共享缓存清理线程，减少资源占用
 
 ## 快速开始
 
@@ -206,6 +208,25 @@ private String tags;  // "1,2" -> "Java,Python"
 ### 字段转换管道
 
 字段转换按以下顺序执行：原值 -> 枚举翻译 -> 字典翻译 -> 脱敏 -> 输出
+
+#### 组合注解
+
+同一字段可同时标注多个解析注解，管道会按优先级依次执行所有匹配的解析器：
+
+```java
+@Data
+public class UserTest {
+    // 先枚举翻译(1->"启用")，再脱敏(无效果，因为非敏感字段)
+    @ExcelProperty(value = "状态")
+    @ExcelEnum(enumClass = UserStatus.class, codeField = "code", labelField = "label")
+    @ExcelMask(strategy = ExcelMask.MaskStrategy.PHONE)
+    private Integer status;  // 1 -> "启用"
+
+    // 先枚举翻译，再脱敏
+    @ExcelProperty(value = "性别")
+    @ExcelEnum(enumClass = GenderEnum.class, codeField = "code", labelField = "label")
+    private Integer gender;  // 1 -> "女"
+}
 
 ```java
 // 完整示例

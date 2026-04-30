@@ -26,13 +26,15 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * Silky Excel 自动配置类
  *
  * @author zy
- * @date 2025-10-24 11:14
+ * @since 1.0.0
  */
 @Slf4j
 @AutoConfiguration
@@ -40,6 +42,22 @@ import java.util.concurrent.ThreadPoolExecutor;
 @ConditionalOnProperty(prefix = "silky.excel", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class SilkyExcelAutoConfiguration {
 
+    /**
+     * 共享的缓存清理定时器
+     * 导出引擎和导入引擎共用，避免各自创建线程
+     */
+    @Bean(name = "silkyExcelCleanupExecutor", destroyMethod = "shutdown")
+    @ConditionalOnMissingBean(name = "silkyExcelCleanupExecutor")
+    public ScheduledExecutorService silkyExcelCleanupExecutor() {
+        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(
+                r -> new Thread(r, "silky-excel-cleanup"));
+        log.info("Silky Excel 共享缓存清理器初始化完成");
+        return executor;
+    }
+
+    /**
+     * 异步任务线程池
+     */
     @Bean("silkyExcelTaskExecutor")
     @ConditionalOnMissingBean(name = "silkyExcelTaskExecutor")
     public ThreadPoolTaskExecutor silkyExcelTaskExecutor(SilkyExcelProperties properties) {
@@ -62,29 +80,44 @@ public class SilkyExcelAutoConfiguration {
         return executor;
     }
 
+    /**
+     * 本地存储策略
+     */
     @Bean
     @ConditionalOnMissingBean
     public StorageStrategy localStorageStrategy(SilkyExcelProperties properties) {
         return new LocalStorageStrategy(properties);
     }
 
+    /**
+     * 存储策略工厂
+     */
     @Bean
     public StorageStrategyFactory storageStrategyFactory(List<StorageStrategy> storageStrategies) {
         return new StorageStrategyFactory(storageStrategies);
     }
 
+    /**
+     * 导出记录服务（内存实现）
+     */
     @Bean
     @ConditionalOnMissingBean
     public ExportRecordService exportRecordService() {
         return new InMemoryExportRecordService();
     }
 
+    /**
+     * 导入记录服务（内存实现）
+     */
     @Bean
     @ConditionalOnMissingBean
     public ImportRecordService importRecordService() {
         return new InMemoryImportRecordService();
     }
 
+    /**
+     * 压缩服务
+     */
     @Bean
     @ConditionalOnMissingBean
     public CompressionService compressionService(SilkyExcelProperties properties) {
@@ -113,6 +146,9 @@ public class SilkyExcelAutoConfiguration {
         return new ExcelFieldResolverPipeline(resolvers);
     }
 
+    /**
+     * 导出引擎
+     */
     @Bean
     @ConditionalOnMissingBean
     public ExportEngine exportEngine(StorageStrategyFactory storageStrategyFactory,
@@ -120,22 +156,30 @@ public class SilkyExcelAutoConfiguration {
                                      SilkyExcelProperties properties,
                                      ThreadPoolTaskExecutor silkyExcelTaskExecutor,
                                      CompressionService compressionService,
-                                     ExcelFieldResolverPipeline fieldResolverPipeline) {
+                                     ExcelFieldResolverPipeline fieldResolverPipeline,
+                                     ScheduledExecutorService silkyExcelCleanupExecutor) {
         return new ExportEngine(storageStrategyFactory, recordService, properties,
-                silkyExcelTaskExecutor, compressionService, fieldResolverPipeline);
+                silkyExcelTaskExecutor, compressionService, fieldResolverPipeline, silkyExcelCleanupExecutor);
     }
 
+    /**
+     * 导入引擎
+     */
     @Bean
     @ConditionalOnMissingBean
     public ImportEngine importEngine(ImportRecordService recordService,
                                      ThreadPoolTaskExecutor silkyExcelTaskExecutor,
                                      CompressionService compressionService,
                                      StorageStrategyFactory storageStrategyFactory,
-                                     SilkyExcelProperties properties) {
+                                     SilkyExcelProperties properties,
+                                     ScheduledExecutorService silkyExcelCleanupExecutor) {
         return new ImportEngine(recordService, silkyExcelTaskExecutor, compressionService,
-                storageStrategyFactory, properties);
+                storageStrategyFactory, properties, silkyExcelCleanupExecutor);
     }
 
+    /**
+     * Excel模板（门面）
+     */
     @Bean
     @ConditionalOnMissingBean
     public ExcelTemplate excelTemplate(ExportEngine exportEngine,
