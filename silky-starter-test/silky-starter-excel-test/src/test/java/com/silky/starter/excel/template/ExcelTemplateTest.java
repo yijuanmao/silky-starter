@@ -1,4 +1,4 @@
-﻿package com.silky.starter.excel.template;
+package com.silky.starter.excel.template;
 
 import cn.hutool.core.collection.ListUtil;
 import com.silky.starter.excel.ExcelApplicationTest;
