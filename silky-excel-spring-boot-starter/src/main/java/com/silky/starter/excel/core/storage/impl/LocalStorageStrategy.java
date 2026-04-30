@@ -3,6 +3,7 @@ package com.silky.starter.excel.core.storage.impl;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.IdUtil;
 import com.silky.starter.excel.core.exception.ExcelExportException;
+import com.silky.starter.excel.core.storage.StorageObject;
 import com.silky.starter.excel.core.storage.StorageStrategy;
 import com.silky.starter.excel.enums.StorageType;
 import com.silky.starter.excel.properties.SilkyExcelProperties;
@@ -33,10 +34,10 @@ public class LocalStorageStrategy implements StorageStrategy {
      * @param file     文件对象
      * @param fileName 文件名称
      * @param metadata 文件元数据
-     * @return 文件唯一标识
+     * @return 存储对象
      */
     @Override
-    public String storeFile(File file, String fileName, Map<String, Object> metadata) {
+    public StorageObject storeFile(File file, String fileName, Map<String, Object> metadata) {
         try {
             String exportPath = properties.getStorage().getLocal().getBasePath();
             String fileKey = generateFileKey(fileName);
@@ -47,8 +48,16 @@ public class LocalStorageStrategy implements StorageStrategy {
             // 复制文件
             FileUtil.copy(file, targetFile, true);
 
-            log.info("文件已保存到本地: {}", targetFile.getAbsolutePath());
-            return fileKey;
+            long fileSize = targetFile.length();
+            String fileUrl = exportPath + File.separator + fileKey;
+
+            log.info("文件已保存到本地: {}, 大小: {} bytes", targetFile.getAbsolutePath(), fileSize);
+
+            return StorageObject.builder()
+                    .key(fileKey)
+                    .url(fileUrl)
+                    .size(fileSize)
+                    .build();
         } catch (Exception e) {
             log.error("本地文件存储失败", e);
             throw new ExcelExportException("本地文件存储失败: " + e.getMessage());
@@ -58,31 +67,26 @@ public class LocalStorageStrategy implements StorageStrategy {
     /**
      * 下载文件
      *
-     * @param fileKey 文件唯一标识
+     * @param key 文件唯一标识
      */
     @Override
-    public File downloadFile(String fileKey) {
+    public File downloadFile(String key) {
         try {
-            // 检查原文件是否存在
-            File sourceFile = new File(fileKey);
+            String exportPath = properties.getStorage().getLocal().getBasePath();
+            File sourceFile = new File(exportPath, key);
             if (!sourceFile.exists()) {
-                throw new ExcelExportException("文件不存在: " + fileKey);
+                throw new ExcelExportException("文件不存在: " + key);
             }
-            // 获取原始文件名（用于响应头）
-            String originalFileName = FileUtil.getName(fileKey);
-            // 生成安全的临时文件名（避免特殊字符问题）
+            String originalFileName = FileUtil.getName(key);
             String safeFileName = FileUtil.cleanInvalid(originalFileName);
             String tempFileName = "silky_import_" + System.currentTimeMillis() + "_" + safeFileName;
 
-            // 创建临时文件（使用系统临时目录）
             File tempFile = new File(System.getProperty("java.io.tmpdir"), tempFileName);
+            FileUtil.copy(sourceFile, tempFile, true);
 
-            // 安全复制文件到临时目录（使用Hutool的原子复制）
-            FileUtil.copy(sourceFile, tempFile, true); // true表示覆盖
-
-            // 返回临时文件供调用方清理（关键优化点！）
             return tempFile;
-
+        } catch (ExcelExportException e) {
+            throw e;
         } catch (Exception e) {
             log.error("从本地下载文件失败", e);
             throw new ExcelExportException("文件下载失败: " + e.getMessage());
@@ -92,24 +96,23 @@ public class LocalStorageStrategy implements StorageStrategy {
     /**
      * 获取文件访问URL
      *
-     * @param fileKey 文件唯一标识
+     * @param key 文件唯一标识
      */
     @Override
-    public String getFileUrl(String fileKey) {
-        // 本地存储返回相对路径，实际项目中可能需要配置域名
-        return properties.getStorage().getLocal().getBasePath() + fileKey;
+    public String getFileUrl(String key) {
+        return properties.getStorage().getLocal().getBasePath() + File.separator + key;
     }
 
     /**
      * 删除文件
      *
-     * @param fileKey 文件唯一标识
+     * @param key 文件唯一标识
      */
     @Override
-    public boolean deleteFile(String fileKey) {
+    public boolean deleteFile(String key) {
         try {
             String exportPath = properties.getStorage().getLocal().getBasePath();
-            File file = new File(exportPath, fileKey);
+            File file = new File(exportPath, key);
             return file.exists() && file.delete();
         } catch (Exception e) {
             log.error("删除本地文件失败", e);
@@ -119,8 +122,6 @@ public class LocalStorageStrategy implements StorageStrategy {
 
     /**
      * 存储类型
-     *
-     * @return 存储类型
      */
     @Override
     public StorageType getStorageType() {
@@ -128,14 +129,30 @@ public class LocalStorageStrategy implements StorageStrategy {
     }
 
     /**
+     * 检查文件是否存在
+     */
+    @Override
+    public boolean exists(String key) {
+        String exportPath = properties.getStorage().getLocal().getBasePath();
+        File file = new File(exportPath, key);
+        return file.exists();
+    }
+
+    /**
+     * 获取文件大小
+     */
+    @Override
+    public long getFileSize(String key) {
+        String exportPath = properties.getStorage().getLocal().getBasePath();
+        File file = new File(exportPath, key);
+        return file.exists() ? file.length() : -1;
+    }
+
+    /**
      * 生成文件唯一标识
-     *
-     * @param fileName 文件名称
-     * @return 文件唯一标识
      */
     private String generateFileKey(String fileName) {
         String uuid = IdUtil.fastSimpleUUID();
         return uuid + "_" + fileName;
     }
-
 }

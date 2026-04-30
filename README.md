@@ -730,10 +730,11 @@ public class FileProcessingPipeline {
         <groupId>io.github.yijuanmao</groupId>
         <artifactId>silky-oss-spring-boot-starter</artifactId>
     </dependency>
-    <dependency>
-        <groupId>io.github.yijuanmao</groupId>
-        <artifactId>silky-excel-spring-boot-starter</artifactId>
-    </dependency>
+<dependency>
+    <groupId>io.github.yijuanmao</groupId>
+    <artifactId>silky-excel-spring-boot-starter</artifactId>
+    <version>1.0.6</version>
+</dependency>
 </dependencies>
 ```
 

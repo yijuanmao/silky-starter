@@ -123,6 +123,12 @@ public class ExportRequest<T> {
     private Long maxRowsPerSheet;
 
     /**
+     * 多 Sheet 导出定义（可选）
+     * 当设置此字段时，将忽略 dataClass/dataSupplier，使用各 Sheet 独立的数据源
+     */
+    private List<ExportSheet<T>> sheets;
+
+    /**
      * 是否启用压缩
      */
     private boolean compressionEnabled;

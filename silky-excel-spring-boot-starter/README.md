@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/badge/License-Apache%202.0-green" alt="License"/>
 </p>
 
-> 高性能、易用的 Excel 导入导出组件，支持百万级数据异步处理、多存储策略、数据压缩等功能。
+> 高性能、易用的 Excel 导入导出组件，支持百万级数据异步处理、多存储策略、数据压缩、注解驱动字段转换等功能。
 
 ## 特性
 
@@ -16,6 +16,8 @@
 - **多存储策略**：支持本地存储、Redis、MongoDB、OSS 等多种存储方式
 - **数据压缩**：支持 ZIP 压缩，减少存储空间占用
 - **进度追踪**：实时导出/导入进度监控
+- **注解驱动转换**：@ExcelEnum、@ExcelDict、@ExcelMask 自动完成枚举翻译、字典翻译、数据脱敏
+- **多 Sheet 导出**：支持业务多 Sheet，通过 ExportSheet 定义
 - **线程安全**：内置线程池管理，支持并发处理
 
 ## 快速开始
@@ -26,7 +28,7 @@
 <dependency>
     <groupId>io.github.yijuanmao</groupId>
     <artifactId>silky-excel-spring-boot-starter</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.7</version>
 </dependency>
 ```
 
@@ -101,6 +103,193 @@ public class UserData {
     @ExcelProperty("创建时间")
     private String createTime;
 }
+```
+
+## 注解驱动字段转换
+
+组件提供三大注解，导出时自动完成数据转换，无需手动处理。
+
+### @ExcelMask - 数据脱敏
+
+支持多种脱敏策略，保护敏感信息安全：
+
+```java
+@Data
+public class UserTest {
+
+    @ExcelProperty(value = "姓名")
+    @ExcelMask(strategy = ExcelMask.MaskStrategy.NAME)
+    private String name;  // 张三丰 -> 张**
+
+    @ExcelProperty(value = "手机号")
+    @ExcelMask(strategy = ExcelMask.MaskStrategy.PHONE)
+    private String phone;  // 13812345678 -> 138****5678
+
+    @ExcelProperty(value = "邮箱")
+    @ExcelMask(strategy = ExcelMask.MaskStrategy.EMAIL)
+    private String email;  // zhangsan@example.com -> zh****@example.com
+
+    @ExcelProperty(value = "身份证号")
+    @ExcelMask(strategy = ExcelMask.MaskStrategy.ID_CARD)
+    private String idCard;  // 110101199001011234 -> 110101********5234
+
+    @ExcelProperty(value = "银行卡号")
+    @ExcelMask(strategy = ExcelMask.MaskStrategy.BANK_CARD)
+    private String bankCard;  // 6222021234567890123 -> 6222*******0123
+}
+```
+
+### @ExcelEnum - 枚举翻译
+
+将枚举的 code 值自动转换为 label 文本：
+
+```java
+// 定义状态枚举
+@Getter
+@AllArgsConstructor
+public enum UserStatus {
+    ACTIVE(1, "启用"),
+    DISABLED(0, "禁用"),
+    LOCKED(2, "锁定");
+
+    private final int code;
+    private final String label;
+}
+
+// 实体类使用
+@Data
+public class UserTest {
+
+    @ExcelProperty(value = "状态")
+    @ExcelEnum(enumClass = UserStatus.class, codeField = "code", labelField = "label")
+    private Integer status;  // 1 -> 启用
+}
+```
+
+### @ExcelDict - 字典翻译
+
+将字典 code 值自动转换为字典 label：
+
+```java
+@Data
+public class UserTest {
+
+    @ExcelProperty(value = "性别")
+    @ExcelDict(dictCode = "gender")
+    private Integer gender;  // 1 -> 男, 0 -> 女
+}
+```
+
+### 字段转换管道
+
+字段转换按以下顺序执行：原值 -> 枚举翻译 -> 字典翻译 -> 脱敏 -> 输出
+
+```java
+// 完整示例
+@Data
+public class UserTest {
+    @ExcelProperty(value = "姓名")
+    @ExcelMask(strategy = ExcelMask.MaskStrategy.NAME)
+    private String name;
+
+    @ExcelProperty(value = "手机号")
+    @ExcelMask(strategy = ExcelMask.MaskStrategy.PHONE)
+    private String phone;
+
+    @ExcelProperty(value = "邮箱")
+    @ExcelMask(strategy = ExcelMask.MaskStrategy.EMAIL)
+    private String email;
+
+    @ExcelProperty(value = "状态")
+    @ExcelEnum(enumClass = UserStatus.class, codeField = "code", labelField = "label")
+    private Integer status;
+
+    @ExcelProperty(value = "性别")
+    @ExcelDict(dictCode = "gender")
+    private Integer gender;
+
+    @ExcelProperty(value = "身份证号")
+    @ExcelMask(strategy = ExcelMask.MaskStrategy.ID_CARD)
+    private String idCard;
+}
+```
+
+## 多 Sheet 导出
+
+支持业务多 Sheet（不同数据源/表头），通过 ExportSheet 定义：
+
+```java
+@GetMapping("/export/multi-sheet")
+public ExportResult exportMultiSheet() {
+    ExportRequest<Object> request = ExportRequest.builder()
+            .fileName("用户数据.xlsx")
+            .sheets(List.of(
+                    ExportSheet.of("用户基本信息", UserBasicInfo.class,
+                            (pageNum, pageSize, params) -> userService.getBasicInfoPage(pageNum, pageSize)),
+                    ExportSheet.of("用户账户信息", UserAccountInfo.class,
+                            (pageNum, pageSize, params) -> userService.getAccountInfoPage(pageNum, pageSize)),
+                    ExportSheet.of("用户订单信息", UserOrderInfo.class,
+                            (pageNum, pageSize, params) -> userService.getOrderInfoPage(pageNum, pageSize))
+            ))
+            .build();
+
+    return excelTemplate.export(request, AsyncType.SYNC);
+}
+```
+
+### 自动分 Sheet
+
+当数据量超过 maxRowsPerSheet 时，自动创建新 Sheet：
+
+```java
+ExportRequest<UserData> request = ExportRequest.<UserData>builder()
+        .dataClass(UserData.class)
+        .fileName("大数据导出.xlsx")
+        .maxRowsPerSheet(100000L)  // 每 Sheet 10 万行
+        .pageSize(5000)
+        .dataSupplier((pageNum, pageSize, params) -> userService.getPage(pageNum, pageSize))
+        .build();
+
+ExportResult result = excelTemplate.export(request, AsyncType.SYNC);
+// 如果数据超过 10 万行，会自动创建 Sheet2、Sheet3...
+```
+
+### maxRowsPerSheet 参数校验
+
+- 必须大于 0
+- 不能超过 Excel 限制 1,048,576
+
+```java
+// 以下会抛出 IllegalArgumentException
+ExportRequest.<UserData>builder()
+        .maxRowsPerSheet(0L)  // IllegalArgumentException
+        // ...
+
+ExportRequest.<UserData>builder()
+        .maxRowsPerSheet(2000000L)  // IllegalArgumentException
+        // ...
+```
+
+## StorageObject
+
+存储策略 `storeFile` 返回 `StorageObject`，包含完整的文件元信息：
+
+```java
+// StorageObject 包含以下字段：
+public class StorageObject {
+    private String key;      // 文件存储键
+    private String url;      // 访问 URL
+    private Long size;      // 文件大小（字节）
+    private String etag;    // 文件 ETag
+    private LocalDateTime expireAt;  // 过期时间
+}
+
+// 使用示例
+ExportResult result = excelTemplate.exportSync(request);
+StorageObject storageObject = result.getStorageObject();
+log.info("文件key: {}", storageObject.getKey());
+log.info("访问URL: {}", storageObject.getUrl());
+log.info("文件大小: {} bytes", storageObject.getSize());
 ```
 
 ## 核心API详解
@@ -236,10 +425,16 @@ public class ExportRequest<T> {
     private String fileName;
     
     /**
-     * 数据供应器（必填）
+     * 数据供应器（必填，单数据源模式）
      * 负责分页获取要导出的数据
      */
     private ExportDataSupplier<T> dataSupplier;
+    
+    /**
+     * 多 Sheet 配置（必填，多数据源模式）
+     * 通过 ExportSheet 定义每个 Sheet 的数据源和表头
+     */
+    private List<ExportSheet> sheets;
     
     // ========== 可选参数 ==========
     
@@ -292,6 +487,7 @@ public class ExportRequest<T> {
     /**
      * 每个 Sheet 的最大行数
      * 超过该行数会自动创建新 Sheet
+     * 必须大于 0 且不超过 1,048,576
      * 默认值：200000
      */
     private Long maxRowsPerSheet;
@@ -311,6 +507,79 @@ public class ExportRequest<T> {
      * 压缩类型：ZIP
      */
     private CompressionType compressionType;
+}
+```
+
+### ExportSheet 多 Sheet 定义
+
+```java
+@Data
+@Builder
+public class ExportSheet {
+    
+    /**
+     * Sheet 名称
+     */
+    private String sheetName;
+    
+    /**
+     * 数据类类型
+     */
+    private Class<?> dataClass;
+    
+    /**
+     * 数据供应器
+     */
+    private ExportDataSupplier<?> dataSupplier;
+    
+    // 静态工厂方法
+    public static ExportSheet of(String sheetName, Class<?> dataClass, ExportDataSupplier<?> dataSupplier) {
+        return ExportSheet.builder()
+                .sheetName(sheetName)
+                .dataClass(dataClass)
+                .dataSupplier(dataSupplier)
+                .build();
+    }
+}
+```
+
+### ExportResult 导出结果
+
+```java
+@Data
+public class ExportResult {
+    
+    /**
+     * 是否成功
+     */
+    private boolean success;
+    
+    /**
+     * 文件访问 URL
+     */
+    private String fileUrl;
+    
+    /**
+     * 存储对象（包含 key、url、size、etag 等信息）
+     */
+    private StorageObject storageObject;
+    
+    /**
+     * Sheet 数量
+     */
+    private Integer sheetCount;
+    
+    /**
+     * 任务 ID
+     */
+    private String taskId;
+    
+    /**
+     * 错误信息
+     */
+    private String errorMessage;
+    
+    // ... 其他字段和方法
 }
 ```
 
@@ -449,6 +718,73 @@ public class ExportController {
 }
 ```
 
+### 带注解的导出示例
+
+```java
+// 实体类定义（包含脱敏和枚举翻译）
+@Data
+public class UserExportData {
+    
+    @ExcelProperty(value = "姓名")
+    @ExcelMask(strategy = ExcelMask.MaskStrategy.NAME)
+    private String name;
+    
+    @ExcelProperty(value = "手机号")
+    @ExcelMask(strategy = ExcelMask.MaskStrategy.PHONE)
+    private String phone;
+    
+    @ExcelProperty(value = "邮箱")
+    @ExcelMask(strategy = ExcelMask.MaskStrategy.EMAIL)
+    private String email;
+    
+    @ExcelProperty(value = "状态")
+    @ExcelEnum(enumClass = UserStatus.class, codeField = "code", labelField = "label")
+    private Integer status;
+    
+    @ExcelProperty(value = "性别")
+    @ExcelDict(dictCode = "gender")
+    private Integer gender;
+}
+
+@GetMapping("/export/users-annotated")
+public ExportResult exportUsersAnnotated() {
+    ExportDataSupplier<UserExportData> dataSupplier = (pageNum, pageSize, params) -> {
+        return userService.getUserPage(pageNum, pageSize);
+    };
+    
+    ExportRequest<UserExportData> request = ExportRequest.<UserExportData>builder()
+            .dataClass(UserExportData.class)
+            .fileName("用户列表_脱敏.xlsx")
+            .dataSupplier(dataSupplier)
+            .build();
+    
+    return excelTemplate.exportSync(request);
+}
+```
+
+### 多 Sheet 导出示例
+
+```java
+@GetMapping("/export/users-multi-sheet")
+public ExportResult exportUsersMultiSheet() {
+    ExportRequest<Object> request = ExportRequest.builder()
+            .fileName("用户综合数据.xlsx")
+            .sheets(List.of(
+                    ExportSheet.of("基本信息", UserBasicInfo.class,
+                            (pageNum, pageSize, params) -> userService.getBasicInfoPage(pageNum, pageSize)),
+                    ExportSheet.of("账户信息", UserAccountInfo.class,
+                            (pageNum, pageSize, params) -> userService.getAccountInfoPage(pageNum, pageSize)),
+                    ExportSheet.of("订单信息", UserOrderInfo.class,
+                            (pageNum, pageSize, params) -> userService.getOrderInfoPage(pageNum, pageSize))
+            ))
+            .build();
+    
+    ExportResult result = excelTemplate.export(request, AsyncType.SYNC);
+    log.info("导出 {} 个 Sheet", result.getSheetCount());
+    return result;
+}
+```
+
 ### 大数据量导出示例
 
 ```java
@@ -484,41 +820,6 @@ public ExportResult exportUsersLarge() {
     
     // 返回异步提交结果
     return ExportResult.asyncSuccess("任务已提交");
-}
-```
-
-### 带数据处理器的导出
-
-```java
-@GetMapping("/export/users-processed")
-public ExportResult exportUsersWithProcessor() {
-    
-    // 创建数据处理器（如数据脱敏）
-    DataProcessor<UserData> maskProcessor = data -> {
-        // 手机号脱敏
-        if (data.getPhone() != null) {
-            data.setPhone(data.getPhone().replaceAll("(\\d{3})\\d{4}(\\d{4})", "$1****$2"));
-        }
-        // 邮箱脱敏
-        if (data.getEmail() != null) {
-            data.setEmail(data.getEmail().replaceAll("(\\w{2})\\w+(@\\w+)", "$1****$2"));
-        }
-        return data;
-    };
-    
-    ExportDataSupplier<UserData> dataSupplier = (pageNum, pageSize, params) -> {
-        return userService.getUserPage(pageNum, pageSize);
-    };
-    
-    ExportRequest<UserData> request = ExportRequest.<UserData>builder()
-            .dataClass(UserData.class)
-            .fileName("用户列表_脱敏.xlsx")
-            .dataSupplier(dataSupplier)
-            .businessType("user_export_masked")
-            .processors(Arrays.asList(maskProcessor))
-            .build();
-    
-    return excelTemplate.exportAsync(request);
 }
 ```
 
@@ -691,6 +992,26 @@ public class ExportProgressListener {
 }
 ```
 
+### 4. DictionaryProvider 字典数据提供者
+
+实现 DictionaryProvider 接口提供字典数据：
+
+```java
+@Component
+public class CustomDictionaryProvider implements DictionaryProvider {
+    
+    @Override
+    public Map<String, Map<String, String>> getDictionaries(Set<String> dictCodes) {
+        // 批量查询字典数据
+        Map<String, Map<String, String>> result = new HashMap<>();
+        for (String dictCode : dictCodes) {
+            result.put(dictCode, dictService.getDictMap(dictCode));
+        }
+        return result;
+    }
+}
+```
+
 ## 配置属性详解
 
 | 属性 | 默认值 | 说明 |
@@ -762,6 +1083,47 @@ DataProcessor<UserData> deduplicateProcessor = data -> {
     }
     return data;
 };
+```
+
+### Q4: maxRowsPerSheet 参数校验失败？
+
+A: 确保 `maxRowsPerSheet` 满足以下条件：
+- 必须大于 0
+- 不能超过 Excel 限制 1,048,576
+
+```java
+// 错误示例
+request.setMaxRowsPerSheet(0L);        // IllegalArgumentException
+request.setMaxRowsPerSheet(-1L);      // IllegalArgumentException
+request.setMaxRowsPerSheet(2000000L);  // IllegalArgumentException (超过限制)
+
+// 正确示例
+request.setMaxRowsPerSheet(100000L);   // OK
+request.setMaxRowsPerSheet(500000L);   // OK
+```
+
+### Q5: 如何实现自定义脱敏策略？
+
+A: 实现 `ExcelFieldResolver` 接口并注册到 `ExcelFieldResolverPipeline`：
+
+```java
+@Component
+public class CustomMaskResolver implements ExcelFieldResolver {
+    
+    @Override
+    public Object resolve(Object value, Field field, ResolveContext context) {
+        CustomMask annotation = field.getAnnotation(CustomMask.class);
+        if (annotation != null && value != null) {
+            return customMask((String) value, annotation.pattern());
+        }
+        return value;
+    }
+    
+    @Override
+    public boolean supports(Field field) {
+        return field.isAnnotationPresent(CustomMask.class);
+    }
+}
 ```
 
 ## 相关链接

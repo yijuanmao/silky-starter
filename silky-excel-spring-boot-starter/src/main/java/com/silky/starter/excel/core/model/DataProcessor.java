@@ -67,21 +67,6 @@ public interface DataProcessor<T> {
     }
 
     /**
-     * 创建数据转换处理器，将数据从一种类型转换为另一种类型
-     *
-     * @param converter 数据转换函数
-     * @param <T>       原始数据类型
-     * @param <R>       目标数据类型
-     * @return 数据转换处理器实例
-     */
-    static <T, R> DataProcessor<T> converting(Function<T, R> converter) {
-        return (data) -> data.stream()
-                .map(converter)
-                .map(item -> (T) item) // 类型擦除，实际使用中需要确保类型安全
-                .collect(Collectors.toList());
-    }
-
-    /**
      * 创建数据排序处理器，对数据进行排序
      *
      * @param comparator 比较器
@@ -94,16 +79,5 @@ public interface DataProcessor<T> {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * 创建数据分页统计处理器，对每页数据进行统计，并记录日志
-     *
-     * @param <T> 数据类型
-     * @return 数据统计处理器实例
-     */
-    static <T> DataProcessor<T> statistics() {
-        return (data) -> {
-            // 记录每页数据的统计信息
-            return data;
-        };
-    }
+
 }

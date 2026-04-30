@@ -171,7 +171,6 @@ public class DefaultExcelTemplate implements ExcelTemplate, InitializingBean {
                     .successTasks(0L)
                     .failedTasks(0L)
                     .cachedTasks(0)
-                    .batchTasks(0)
                     .uptime(0L)
                     .build();
         }
@@ -191,7 +190,6 @@ public class DefaultExcelTemplate implements ExcelTemplate, InitializingBean {
                     .successTasks(0L)
                     .failedTasks(0L)
                     .cachedTasks(0)
-                    .batchTasks(0)
                     .uptime(0L)
                     .build();
         }

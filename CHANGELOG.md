@@ -1,3 +1,12 @@
+
+## v1.0.7 (2026-04-30)
+### 💎 功能优化
+* **silky-excel-spring-boot-starter**: v1.0.5 => v1.0.6
+  - 新增 `@ExcelEnum`、`@ExcelDict`、`@ExcelMask` 注解驱动字段转换
+  - 支持多 Sheet 导出
+  - StorageStrategy 返回 StorageObject
+  - maxRowsPerSheet 参数校验
+
 ## v1.0.6 (2026-04-29)
 ### 💎 功能优化
 * 增加 `silky-starter-bom`模块
@@ -63,4 +72,3 @@
 * 新增 silky-statemachine-spring-boot-starter 状态机组件
 * 新增 silky-oss-spring-boot-starter oss 组件
 * 新增 silky-mongodb-spring-boot-starter mongodb 组件
-

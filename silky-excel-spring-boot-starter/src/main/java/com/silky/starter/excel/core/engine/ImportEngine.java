@@ -6,7 +6,6 @@ import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.silky.starter.excel.core.exception.ExcelExportException;
 import com.silky.starter.excel.core.model.AnalysisListenersContext;
-import com.silky.starter.excel.core.model.BatchTask;
 import com.silky.starter.excel.core.model.DataProcessor;
 import com.silky.starter.excel.core.model.imports.ImportRequest;
 import com.silky.starter.excel.core.model.imports.ImportResult;
@@ -50,7 +49,6 @@ public class ImportEngine {
 
     // 缓存管理
     private final ConcurrentMap<String, ImportTask<?>> taskCache = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, BatchTask<?>> batchTaskCache = new ConcurrentHashMap<>();
 
     // 依赖服务
     private final ImportRecordService recordService;
@@ -202,17 +200,9 @@ public class ImportEngine {
             return task.getFinishTime() != null && task.getFinishTime() < expireTime;
         });
 
-        // 清理批次任务缓存
-        int batchCacheSizeBefore = batchTaskCache.size();
-        batchTaskCache.entrySet().removeIf(entry -> {
-            BatchTask<?> task = entry.getValue();
-            return task.getStartTime() < expireTime;
-        });
-
-        if (taskCacheSizeBefore != taskCache.size() || batchCacheSizeBefore != batchTaskCache.size()) {
-            log.debug("导入缓存清理完成: 任务缓存 {}->{}, 批次缓存 {}->{}",
-                    taskCacheSizeBefore, taskCache.size(),
-                    batchCacheSizeBefore, batchTaskCache.size());
+        if (taskCacheSizeBefore != taskCache.size()) {
+            log.debug("导入缓存清理完成: 任务缓存 {}->{}",
+                    taskCacheSizeBefore, taskCache.size());
         }
     }
 
@@ -507,7 +497,6 @@ public class ImportEngine {
 
         // 清理所有缓存
         taskCache.clear();
-        batchTaskCache.clear();
 
         log.info("导入引擎已关闭, 统计信息: 总任务={}, 成功={}, 失败={}",
                 totalProcessedImports.get(), successImports.get(), failedImports.get());
@@ -523,7 +512,6 @@ public class ImportEngine {
                 .successTasks(successImports.get())
                 .failedTasks(failedImports.get())
                 .cachedTasks(taskCache.size())
-                .batchTasks(batchTaskCache.size())
                 .uptime(System.currentTimeMillis() - engineStartTime)
                 .build();
     }
@@ -536,7 +524,6 @@ public class ImportEngine {
         private long successTasks;
         private long failedTasks;
         private int cachedTasks;
-        private int batchTasks;
         private long uptime;
 
         public double getSuccessRate() {
