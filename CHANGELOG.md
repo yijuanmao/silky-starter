@@ -1,5 +1,8 @@
 
 ## v1.0.7 (2026-04-30)
+### ⚡ 重要变更
+* **groupId 迁移**: `io.github.yijuanmao` → `top.silky`，涉及所有模块 pom.xml 及文档
+
 ### 💎 功能优化
 * **silky-excel-spring-boot-starter**: v1.0.5 => v1.0.6
   - 新增 `@ExcelEnum`、`@ExcelDict`、`@ExcelMask` 注解驱动字段转换
