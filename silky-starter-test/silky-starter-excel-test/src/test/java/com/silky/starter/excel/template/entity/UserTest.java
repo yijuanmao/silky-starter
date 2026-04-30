@@ -49,4 +49,14 @@ public class UserTest {
         this.name = name;
         this.phone = phone;
     }
+
+    public UserTest(String name, String phone, String email, Integer status, Integer gender, String idCard, String bankCard) {
+        this.name = name;
+        this.phone = phone;
+        this.email = email;
+        this.status = status;
+        this.gender = gender;
+        this.idCard = idCard;
+        this.bankCard = bankCard;
+    }
 }

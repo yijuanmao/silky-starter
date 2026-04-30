@@ -378,7 +378,14 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         int size = 500;
         List<UserTest> list = new ArrayList<>(size);
         for (int i = 1; i <= size; i++) {
-            list.add(new UserTest("用户" + i, "1380013" + String.format("%04d", i)));
+            String name = "用户" + i;
+            String phone = "1380013" + String.format("%04d", i);
+            String email = 824412345 + i + "@silky.com";
+            Integer status = i % 2 == 0 ? 1 : 2;
+            Integer gender = i % 2 == 0 ? 1 : 2;
+            String idCard = "320106" + String.format("%016d", i);
+            String bankCard = "622202" + String.format("%014d", i);
+            list.add(new UserTest(name, phone, email, status, gender, idCard, bankCard));
         }
         return list;
     }
