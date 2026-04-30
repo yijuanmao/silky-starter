@@ -79,7 +79,7 @@ public class EnhancedWriterWrapper implements Closeable {
             }
             this.writer = builder.build();
 
-            log.info("Excel写入器初始化成功: {}, 每Sheet最大行数: {}", filePath, maxRowsPerSheet);
+            log.debug("Excel写入器初始化成功: {}, 每Sheet最大行数: {}", filePath, maxRowsPerSheet);
         } catch (Exception e) {
             log.error("Excel写入器初始化失败: {}", filePath, e);
             throw new ExcelExportException("Excel写入器初始化失败: " + e.getMessage(), e);
@@ -201,7 +201,7 @@ public class EnhancedWriterWrapper implements Closeable {
             try {
                 writer.finish();  // 修复：先调用finish确保数据写入完成
                 writer.close();
-                log.info("Excel写入器关闭成功: {}, 总Sheet数: {}, 总写入行数: {}",
+                log.debug("Excel写入器关闭成功: {}, 总Sheet数: {}, 总写入行数: {}",
                         filePath, currentSheetIndex, totalRows.get());
             } catch (Exception e) {
                 log.error("关闭Excel写入器失败: {}", filePath, e);

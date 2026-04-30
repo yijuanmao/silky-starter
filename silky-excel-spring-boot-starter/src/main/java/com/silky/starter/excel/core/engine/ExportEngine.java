@@ -172,7 +172,7 @@ public class ExportEngine {
             updateRecordOnSuccess(taskId, fileUrl, fileSize, exportResult);
             long costTime = System.currentTimeMillis() - startTime;
             successTasks.incrementAndGet();
-            log.info("导出任务完成: {}, 文件URL: {}, 耗时: {}ms", taskId, fileUrl, costTime);
+            log.debug("导出任务完成: {}, 文件URL: {}, 耗时: {}ms", taskId, fileUrl, costTime);
             return exportResult.setFileUrl(fileUrl).setFileSize(fileSize).setCostTime(costTime);
         } catch (Exception e) {
             log.error("导出任务失败: {}", taskId, e);
