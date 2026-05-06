@@ -2,10 +2,8 @@ package com.silky.starter.redis.cache.template;
 
 import cn.hutool.core.map.MapUtil;
 import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONArray;
-import org.springframework.data.redis.core.HashOperations;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.*;
+import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.util.CollectionUtils;
 
 import java.util.*;
@@ -13,106 +11,120 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
- * redis缓存操作模板类
+ * Redis 缓存操作模板，封装 String、List、Set、Hash 及批量操作能力。
  *
  * @author zy
  * @date 2025-10-22 11:35
- **/
+ */
 @SuppressWarnings(value = {"unchecked", "rawtypes"})
 public class RedisCacheTemplate {
 
     private final RedisTemplate redisTemplate;
 
+    /**
+     * 构造 Redis 缓存模板。
+     *
+     * @param redisTemplate RedisTemplate 实例
+     */
     public RedisCacheTemplate(RedisTemplate<String, Object> redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
 
     /**
-     * 设置缓存（支持泛型）
+     * 设置缓存对象（不指定过期时间）。
      *
-     * @param key   缓存的键值
-     * @param value 缓存的值
+     * @param key   缓存键
+     * @param value 缓存值
+     * @param <T>   值类型
      */
     public <T> void setObject(String key, T value) {
         redisTemplate.opsForValue().set(key, value);
     }
 
     /**
-     * 设置缓存（带过期时间）
+     * 设置缓存对象（指定过期时间）。
      *
-     * @param key      缓存的键值
-     * @param value    缓存的值
-     * @param timeout  过期时间
+     * @param key      缓存键
+     * @param value    缓存值
+     * @param timeout  过期时长
      * @param timeUnit 时间单位
+     * @param <T>      值类型
      */
     public <T> void setObject(String key, T value, long timeout, TimeUnit timeUnit) {
         redisTemplate.opsForValue().set(key, value, timeout, timeUnit);
     }
 
     /**
-     * 设置缓存（如果不存在）
+     * 仅当键不存在时设置缓存对象。
      *
-     * @param key      缓存的键值
-     * @param value    缓存的值
-     * @param timeout  过期时间
+     * @param key      缓存键
+     * @param value    缓存值
+     * @param timeout  过期时长
      * @param timeUnit 时间单位
+     * @param <T>      值类型
+     * @return true 表示设置成功，false 表示键已存在
      */
     public <T> Boolean setIfAbsent(String key, T value, long timeout, TimeUnit timeUnit) {
         return redisTemplate.opsForValue().setIfAbsent(key, value, timeout, timeUnit);
     }
 
     /**
-     * 设置有效时间
+     * 设置键的过期时间（默认秒）。
      *
-     * @param key     键
-     * @param timeout 超时时间，单位秒
+     * @param key     缓存键
+     * @param timeout 过期时长（秒）
+     * @return true 表示设置成功
      */
     public boolean expire(String key, long timeout) {
         return expire(key, timeout, TimeUnit.SECONDS);
     }
 
     /**
-     * 设置有效时间
+     * 设置键的过期时间。
      *
-     * @param key     键
-     * @param timeout 超时时间
+     * @param key     缓存键
+     * @param timeout 过期时长
      * @param unit    时间单位
+     * @return true 表示设置成功
      */
     public boolean expire(String key, long timeout, TimeUnit unit) {
         return redisTemplate.expire(key, timeout, unit);
     }
 
     /**
-     * 获取有效时间
+     * 获取键的剩余过期时间。
      *
-     * @return 时间，单位秒；返回-2表示key不存在，返回-1表示key永久有效
+     * @param key 缓存键
+     * @return 剩余时间（单位由 RedisTemplate 默认行为决定）
      */
     public Long getExpire(String key) {
         return redisTemplate.getExpire(key);
     }
 
     /**
-     * 判断key是否存在
+     * 判断键是否存在。
      *
-     * @param key 键
+     * @param key 缓存键
+     * @return true 表示存在
      */
     public Boolean hasKey(String key) {
         return redisTemplate.hasKey(key);
     }
 
     /**
-     * 删除单个对象
+     * 删除单个键。
      *
-     * @param key 键
+     * @param key 缓存键
      */
     public void delete(String key) {
         redisTemplate.delete(key);
     }
 
     /**
-     * 批量删除对象
+     * 批量删除键。
      *
      * @param keys 键集合
+     * @return 实际删除数量
      */
     public long delete(Collection<String> keys) {
         if (CollectionUtils.isEmpty(keys)) {
@@ -122,26 +134,45 @@ public class RedisCacheTemplate {
     }
 
     /**
-     * 根据模式匹配删除
+     * 按模式批量删除键（基于 SCAN，避免 KEYS 全量阻塞）。
      *
-     * @param pattern 模式
+     * @param pattern 匹配模式，例如 user:*
+     * @return 实际删除数量
      */
     public long deleteByPattern(String pattern) {
-        Set<String> keys = redisTemplate.keys(pattern);
-        if (!CollectionUtils.isEmpty(keys)) {
-            return delete(keys);
+        if (pattern == null || pattern.trim().isEmpty()) {
+            return 0L;
         }
-        return 0L;
+
+        Set<String> keys = new HashSet<>();
+        ScanOptions scanOptions = ScanOptions.scanOptions().match(pattern).count(1000).build();
+        RedisSerializer keySerializer = redisTemplate.getKeySerializer();
+
+        redisTemplate.execute((RedisCallback<Void>) connection -> {
+            try (Cursor<byte[]> cursor = connection.scan(scanOptions)) {
+                while (cursor.hasNext()) {
+                    byte[] rawKey = cursor.next();
+                    Object key = keySerializer.deserialize(rawKey);
+                    if (key != null) {
+                        keys.add(key.toString());
+                    }
+                }
+            }
+            return null;
+        });
+
+        if (CollectionUtils.isEmpty(keys)) {
+            return 0L;
+        }
+        return delete(keys);
     }
 
     /**
-     * 获取缓存对象
-     * <p>
-     * 注意：去除 WriteClassName 后，返回值可能为 JSONObject/JSONArray，
-     * 如需类型安全的反序列化，请使用 {@link #getObject(String, Class)}
-     * </p>
+     * 获取缓存对象（不做强类型转换）。
      *
-     * @param key 键
+     * @param key 缓存键
+     * @param <T> 目标类型
+     * @return 缓存对象
      */
     public <T> T getObject(String key) {
         ValueOperations<String, T> operation = redisTemplate.opsForValue();
@@ -149,34 +180,32 @@ public class RedisCacheTemplate {
     }
 
     /**
-     * 获取缓存对象（指定类型）
-     * <p>
-     * 推荐使用此方法，确保反序列化时能正确还原为原始类型
-     * </p>
+     * 获取缓存对象并按指定类型转换。
      *
-     * @param key   键
+     * @param key   缓存键
      * @param clazz 目标类型
+     * @param <T>   目标类型
+     * @return 转换后的对象
      */
     public <T> T getObject(String key, Class<T> clazz) {
         Object value = redisTemplate.opsForValue().get(key);
         if (value == null) {
             return null;
         }
-        if (clazz.isInstance(value)) {
-            return clazz.cast(value);
-        }
-        return JSON.parseObject(JSON.toJSONString(value), clazz);
+        return convertValue(value, clazz);
     }
 
     /**
-     * 获取缓存对象，如果不存在则设置
+     * 获取缓存对象；若不存在则回源并写入缓存。
      *
-     * @param key      键
-     * @param supplier 供应者
-     * @param timeout  过期时间
+     * @param key      缓存键
+     * @param supplier 回源函数
+     * @param timeout  过期时长
      * @param timeUnit 时间单位
+     * @param <T>      目标类型
+     * @return 缓存值或回源值
      */
-    public <T> T getOrSet(String key, Supplier<T> supplier, long timeout, TimeUnit timeUnit) {
+    public <T> T getOrSet(String key, java.util.function.Supplier<T> supplier, long timeout, TimeUnit timeUnit) {
         T value = this.getObject(key);
         if (value == null && supplier != null) {
             value = supplier.get();
@@ -187,12 +216,13 @@ public class RedisCacheTemplate {
         return value;
     }
 
-
     /**
-     * 缓存List数据
+     * 写入 List 数据。
      *
-     * @param key      键
-     * @param dataList 数据列表
+     * @param key      缓存键
+     * @param dataList 列表数据
+     * @param <T>      元素类型
+     * @return 写入后的列表长度
      */
     public <T> long setList(String key, List<T> dataList) {
         if (CollectionUtils.isEmpty(dataList)) {
@@ -203,12 +233,14 @@ public class RedisCacheTemplate {
     }
 
     /**
-     * 缓存List数据
+     * 写入 List 数据并设置过期时间。
      *
-     * @param key      键
-     * @param dataList 数据列表
-     * @param timeout  过期时间
+     * @param key      缓存键
+     * @param dataList 列表数据
+     * @param timeout  过期时长
      * @param timeUnit 时间单位
+     * @param <T>      元素类型
+     * @return 写入后的列表长度
      */
     public <T> long setList(String key, List<T> dataList, long timeout, TimeUnit timeUnit) {
         if (CollectionUtils.isEmpty(dataList)) {
@@ -219,30 +251,26 @@ public class RedisCacheTemplate {
     }
 
     /**
-     * 获取缓存的list对象
-     * <p>
-     * 注意：去除 WriteClassName 后，List 中的元素可能为 JSONObject，
-     * 如需类型安全的反序列化，请使用 {@link #getList(String, Class)}
-     * </p>
+     * 读取完整 List。
      *
-     * @param key 键
+     * @param key 缓存键
+     * @param <T> 元素类型
+     * @return 列表数据
      */
-    @SuppressWarnings("unchecked")
     public <T> List<T> getList(String key) {
         return (List<T>) redisTemplate.opsForList().range(key, 0, -1);
     }
 
     /**
-     * 获取缓存的list对象（指定元素类型）
-     * <p>
-     * 推荐使用此方法，确保 List 中每个元素能正确还原为原始类型
-     * </p>
+     * 读取完整 List 并按元素类型转换。
      *
-     * @param key   键
+     * @param key   缓存键
      * @param clazz 元素目标类型
+     * @param <T>   元素类型
+     * @return 转换后的列表数据
      */
     public <T> List<T> getList(String key, Class<T> clazz) {
-        List<T> rawList = redisTemplate.opsForList().range(key, 0, -1);
+        List<Object> rawList = this.getListRange(key, 0, -1);
         if (CollectionUtils.isEmpty(rawList)) {
             return Collections.emptyList();
         }
@@ -253,27 +281,30 @@ public class RedisCacheTemplate {
     }
 
     /**
-     * 获取List指定范围数据
+     * 按范围读取 List 数据。
      *
-     * @param key   键
-     * @param start 起始位置
-     * @param end   结束位置
+     * @param key   缓存键
+     * @param start 起始索引
+     * @param end   结束索引
+     * @param <T>   元素类型
+     * @return 列表数据
      */
-    @SuppressWarnings("unchecked")
     public <T> List<T> getListRange(String key, long start, long end) {
         return (List<T>) redisTemplate.opsForList().range(key, start, end);
     }
 
     /**
-     * 获取List指定范围数据（指定元素类型）
+     * 按范围读取 List 数据并按元素类型转换。
      *
-     * @param key   键
-     * @param start 起始位置
-     * @param end   结束位置
+     * @param key   缓存键
+     * @param start 起始索引
+     * @param end   结束索引
      * @param clazz 元素目标类型
+     * @param <T>   元素类型
+     * @return 转换后的列表数据
      */
     public <T> List<T> getListRange(String key, long start, long end, Class<T> clazz) {
-        List<Object> rawList = redisTemplate.opsForList().range(key, start, end);
+        List<Object> rawList = this.getListRange(key, start, end);
         if (CollectionUtils.isEmpty(rawList)) {
             return Collections.emptyList();
         }
@@ -283,12 +314,13 @@ public class RedisCacheTemplate {
                 .collect(Collectors.toList());
     }
 
-
     /**
-     * 缓存Set
+     * 写入 Set 数据。
      *
-     * @param key     键
-     * @param dataSet 数据集合
+     * @param key     缓存键
+     * @param dataSet 集合数据
+     * @param <T>     元素类型
+     * @return 实际新增元素数量
      */
     public <T> long setSet(String key, Set<T> dataSet) {
         if (CollectionUtils.isEmpty(dataSet)) {
@@ -299,24 +331,23 @@ public class RedisCacheTemplate {
     }
 
     /**
-     * 获取缓存的set
-     * <p>
-     * 注意：去除 WriteClassName 后，Set 中的元素可能为 JSONObject，
-     * 如需类型安全的反序列化，请使用 {@link #getSet(String, Class)}
-     * </p>
+     * 读取 Set 数据。
      *
-     * @param key 键
+     * @param key 缓存键
+     * @param <T> 元素类型
+     * @return 集合数据
      */
-    @SuppressWarnings("unchecked")
     public <T> Set<T> getSet(String key) {
         return (Set<T>) redisTemplate.opsForSet().members(key);
     }
 
     /**
-     * 获取缓存的set（指定元素类型）
+     * 读取 Set 数据并按元素类型转换。
      *
-     * @param key   键
+     * @param key   缓存键
      * @param clazz 元素目标类型
+     * @param <T>   元素类型
+     * @return 转换后的集合数据
      */
     public <T> Set<T> getSet(String key, Class<T> clazz) {
         Set<Object> rawSet = redisTemplate.opsForSet().members(key);
@@ -329,9 +360,12 @@ public class RedisCacheTemplate {
                 .collect(Collectors.toSet());
     }
 
-
     /**
-     * 缓存Map
+     * 写入 Hash 全量字段。
+     *
+     * @param key     缓存键
+     * @param dataMap 字段映射
+     * @param <T>     值类型
      */
     public <T> void setHash(String key, Map<String, T> dataMap) {
         if (MapUtil.isEmpty(dataMap)) {
@@ -341,10 +375,12 @@ public class RedisCacheTemplate {
     }
 
     /**
-     * 获取缓存的Map
+     * 读取 Hash 全量字段并按值类型转换。
      *
-     * @param key       Redis键
-     * @param valueType Map值类型
+     * @param key       缓存键
+     * @param valueType 值目标类型
+     * @param <T>       值类型
+     * @return 转换后的字段映射
      */
     public <T> Map<String, T> getHash(String key, Class<T> valueType) {
         Map<Object, Object> entries = redisTemplate.opsForHash().entries(key);
@@ -360,17 +396,24 @@ public class RedisCacheTemplate {
     }
 
     /**
-     * 往Hash中存入数据
+     * 写入 Hash 单个字段。
+     *
+     * @param key   缓存键
+     * @param hKey  Hash 字段键
+     * @param value 字段值
+     * @param <T>   值类型
      */
     public <T> void setHashValue(String key, String hKey, T value) {
         redisTemplate.opsForHash().put(key, hKey, value);
     }
 
     /**
-     * 获取Hash中的数据
+     * 读取 Hash 单个字段值。
      *
-     * @param key  Redis键
-     * @param hKey Hash键
+     * @param key  缓存键
+     * @param hKey Hash 字段键
+     * @param <T>  值类型
+     * @return 字段值
      */
     public <T> T getHashValue(String key, String hKey) {
         HashOperations<String, String, T> hashOps = redisTemplate.opsForHash();
@@ -378,11 +421,13 @@ public class RedisCacheTemplate {
     }
 
     /**
-     * 获取Hash中的数据（指定类型）
+     * 读取 Hash 单个字段值并按类型转换。
      *
-     * @param key   Redis键
-     * @param hKey  Hash键
-     * @param clazz 目标类型
+     * @param key   缓存键
+     * @param hKey  Hash 字段键
+     * @param clazz 值目标类型
+     * @param <T>   值类型
+     * @return 转换后的字段值
      */
     public <T> T getHashValue(String key, String hKey, Class<T> clazz) {
         Object value = redisTemplate.opsForHash().get(key, hKey);
@@ -393,7 +438,12 @@ public class RedisCacheTemplate {
     }
 
     /**
-     * 获取多个Hash中的数据
+     * 批量读取 Hash 多个字段值。
+     *
+     * @param key   缓存键
+     * @param hKeys Hash 字段键集合
+     * @param <T>   值类型
+     * @return 字段值列表
      */
     @SuppressWarnings("unchecked")
     public <T> List<T> getMultiHashValue(String key, Collection<String> hKeys) {
@@ -404,11 +454,13 @@ public class RedisCacheTemplate {
     }
 
     /**
-     * 获取多个Hash中的数据（指定类型）
+     * 批量读取 Hash 多个字段值并按类型转换。
      *
-     * @param key   Redis键
-     * @param hKeys Hash键集合
-     * @param clazz 目标类型
+     * @param key   缓存键
+     * @param hKeys Hash 字段键集合
+     * @param clazz 值目标类型
+     * @param <T>   值类型
+     * @return 转换后的字段值列表
      */
     public <T> List<T> getMultiHashValue(String key, Collection<String> hKeys, Class<T> clazz) {
         if (CollectionUtils.isEmpty(hKeys)) {
@@ -425,7 +477,11 @@ public class RedisCacheTemplate {
     }
 
     /**
-     * 删除Hash中的某条数据
+     * 删除 Hash 单个字段。
+     *
+     * @param key  缓存键
+     * @param hKey Hash 字段键
+     * @return true 表示删除成功
      */
     public boolean deleteHashValue(String key, String hKey) {
         Long result = redisTemplate.opsForHash().delete(key, hKey);
@@ -433,7 +489,12 @@ public class RedisCacheTemplate {
     }
 
     /**
-     * 批量获取缓存
+     * 批量读取多个键值并按类型转换。
+     *
+     * @param keys  键集合
+     * @param clazz 值目标类型
+     * @param <T>   值类型
+     * @return 键值映射
      */
     public <T> Map<String, T> multiGet(Collection<String> keys, Class<T> clazz) {
         if (CollectionUtils.isEmpty(keys)) {
@@ -449,11 +510,7 @@ public class RedisCacheTemplate {
             if (index < values.size()) {
                 Object value = values.get(index);
                 if (value != null) {
-                    if (clazz.isInstance(value)) {
-                        result.put(key, clazz.cast(value));
-                    } else {
-                        result.put(key, JSON.parseObject(JSON.toJSONString(value), clazz));
-                    }
+                    result.put(key, convertValue(value, clazz));
                 }
             }
             index++;
@@ -462,60 +519,133 @@ public class RedisCacheTemplate {
     }
 
     /**
-     * 批量设置缓存
+     * 批量写入键值并通过 Pipeline 批量设置过期时间。
+     *
+     * @param keyValueMap 键值映射
+     * @param timeout     过期时长
+     * @param timeUnit    时间单位
+     * @param <T>         值类型
      */
     public <T> void multiSet(Map<String, T> keyValueMap, long timeout, TimeUnit timeUnit) {
         if (keyValueMap == null || keyValueMap.isEmpty()) {
             return;
         }
         redisTemplate.opsForValue().multiSet(keyValueMap);
-        // 为每个key设置过期时间
-        keyValueMap.keySet().forEach(key -> expire(key, timeout, timeUnit));
+        if (timeout <= 0 || timeUnit == null) {
+            return;
+        }
+
+        long expireMillis = Math.max(1L, timeUnit.toMillis(timeout));
+        RedisSerializer keySerializer = redisTemplate.getKeySerializer();
+        redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+            for (String key : keyValueMap.keySet()) {
+                byte[] rawKey = keySerializer.serialize(key);
+                if (rawKey != null) {
+                    connection.pExpire(rawKey, expireMillis);
+                }
+            }
+            return null;
+        });
     }
 
-
     /**
-     * 获取匹配的keys
+     * 按模式查询键集合。
+     *
+     * @param pattern 匹配模式
+     * @return 键集合
      */
     public Set<String> keys(String pattern) {
         return redisTemplate.keys(pattern);
     }
 
     /**
-     * 自增操作
+     * 执行自增操作。
+     *
+     * @param key   缓存键
+     * @param delta 增量
+     * @return 自增后的值
      */
     public Long increment(String key, long delta) {
         return redisTemplate.opsForValue().increment(key, delta);
     }
 
     /**
-     * 自减操作
+     * 执行自减操作。
+     *
+     * @param key   缓存键
+     * @param delta 减量
+     * @return 自减后的值
      */
     public Long decrement(String key, long delta) {
         return redisTemplate.opsForValue().decrement(key, delta);
     }
 
-    // ============================== 函数式接口 ==============================
-
+    /**
+     * 兼容旧版本的函数式接口定义（建议优先使用 JDK Supplier）。
+     *
+     * @param <T> 返回值类型
+     */
     @FunctionalInterface
-    public interface Supplier<T> {
-        T get();
+    @Deprecated
+    public interface Supplier<T> extends java.util.function.Supplier<T> {
     }
 
-
     /**
-     * 值转换辅助方法
+     * 将 Redis 原始值转换为目标类型，并处理字符串/集合等兼容场景。
+     *
+     * @param value      原始值
+     * @param targetType 目标类型
+     * @param <T>        目标类型
+     * @return 转换后的值
      */
     private <T> T convertValue(Object value, Class<T> targetType) {
         if (value == null) {
             return null;
         }
-        // 如果已经是目标类型，直接返回
         if (targetType.isInstance(value)) {
             return targetType.cast(value);
         }
-        // 使用JSON进行类型转换
-        String jsonString = JSON.toJSONString(value);
-        return JSON.parseObject(jsonString, targetType);
+        if (value instanceof Collection) {
+            Collection<?> collection = (Collection<?>) value;
+            if (collection.isEmpty()) {
+                return null;
+            }
+            if (collection.size() == 1 && !Collection.class.isAssignableFrom(targetType)) {
+                value = collection.iterator().next();
+                if (targetType.isInstance(value)) {
+                    return targetType.cast(value);
+                }
+            }
+        }
+        if (value instanceof CharSequence) {
+            String text = value.toString().trim();
+            if (text.isEmpty()) {
+                return null;
+            }
+            if (String.class == targetType) {
+                return targetType.cast(value.toString());
+            }
+            if (!JSON.isValid(text) && !isSimpleTargetType(targetType)) {
+                throw new IllegalArgumentException("Cannot convert plain text [" + text + "] to " + targetType.getName());
+            }
+        }
+        return JSON.to(targetType, value);
+    }
+
+    /**
+     * 判断目标类型是否为简单类型（基本类型、包装类型、字符串、日期等）。
+     *
+     * @param targetType 目标类型
+     * @return true 表示简单类型
+     */
+    private boolean isSimpleTargetType(Class<?> targetType) {
+        if (targetType.isPrimitive() || targetType.isEnum()) {
+            return true;
+        }
+        return Number.class.isAssignableFrom(targetType)
+                || CharSequence.class.isAssignableFrom(targetType)
+                || Boolean.class == targetType
+                || Character.class == targetType
+                || Date.class.isAssignableFrom(targetType);
     }
 }

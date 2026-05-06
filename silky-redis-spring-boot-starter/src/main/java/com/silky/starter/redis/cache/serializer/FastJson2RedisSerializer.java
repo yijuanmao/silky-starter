@@ -50,6 +50,22 @@ public class FastJson2RedisSerializer<T> implements RedisSerializer<T> {
             return null;
         }
         String str = new String(bytes, DEFAULT_CHARSET);
-        return JSON.parseObject(str, clazz);
+        if (str.trim().isEmpty()) {
+            return null;
+        }
+        if (clazz == String.class) {
+            return (T) str;
+        }
+        if (clazz == Object.class) {
+            // Compatible with legacy plain-text values in Redis (non-JSON payloads).
+            if (JSON.isValidObject(str) || JSON.isValidArray(str)) {
+                return JSON.parseObject(str, clazz);
+            }
+            return (T) str;
+        }
+        if (JSON.isValid(str)) {
+            return JSON.parseObject(str, clazz);
+        }
+        throw new SerializationException("Cannot deserialize non-JSON content to " + clazz.getName() + ": " + str);
     }
 }
