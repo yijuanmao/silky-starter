@@ -225,11 +225,7 @@ public class RedisCacheTemplate {
      * @return 写入后的列表长度
      */
     public <T> long setList(String key, List<T> dataList) {
-        if (CollectionUtils.isEmpty(dataList)) {
-            return 0L;
-        }
-        Long count = redisTemplate.opsForList().rightPushAll(key, dataList);
-        return count != null ? count : 0L;
+        return setList(key, dataList, -1, TimeUnit.SECONDS);
     }
 
     /**
@@ -592,6 +588,10 @@ public class RedisCacheTemplate {
 
     /**
      * 将 Redis 原始值转换为目标类型，并处理字符串/集合等兼容场景。
+     * <p>
+     * 核心策略：先将 value 序列化为 JSON 字符串，再从字符串反序列化为目标类型，
+     * 避免 {@code JSON.to()} 在 JSONObject→POJO 转换时因内部字段类型不匹配而报错。
+     * </p>
      *
      * @param value      原始值
      * @param targetType 目标类型
@@ -602,9 +602,11 @@ public class RedisCacheTemplate {
         if (value == null) {
             return null;
         }
+        // 如果已经是目标类型，直接返回
         if (targetType.isInstance(value)) {
             return targetType.cast(value);
         }
+        // 如果value是Collection类型（JSONArray等），取第一个元素进行转换
         if (value instanceof Collection) {
             Collection<?> collection = (Collection<?>) value;
             if (collection.isEmpty()) {
@@ -617,35 +619,8 @@ public class RedisCacheTemplate {
                 }
             }
         }
-        if (value instanceof CharSequence) {
-            String text = value.toString().trim();
-            if (text.isEmpty()) {
-                return null;
-            }
-            if (String.class == targetType) {
-                return targetType.cast(value.toString());
-            }
-            if (!JSON.isValid(text) && !isSimpleTargetType(targetType)) {
-                throw new IllegalArgumentException("Cannot convert plain text [" + text + "] to " + targetType.getName());
-            }
-        }
-        return JSON.to(targetType, value);
-    }
-
-    /**
-     * 判断目标类型是否为简单类型（基本类型、包装类型、字符串、日期等）。
-     *
-     * @param targetType 目标类型
-     * @return true 表示简单类型
-     */
-    private boolean isSimpleTargetType(Class<?> targetType) {
-        if (targetType.isPrimitive() || targetType.isEnum()) {
-            return true;
-        }
-        return Number.class.isAssignableFrom(targetType)
-                || CharSequence.class.isAssignableFrom(targetType)
-                || Boolean.class == targetType
-                || Character.class == targetType
-                || Date.class.isAssignableFrom(targetType);
+        // 先序列化为JSON字符串，再反序列化为目标类型（避免 JSON.to 的字段类型匹配问题）
+        String jsonString = JSON.toJSONString(value);
+        return JSON.parseObject(jsonString, targetType);
     }
 }
