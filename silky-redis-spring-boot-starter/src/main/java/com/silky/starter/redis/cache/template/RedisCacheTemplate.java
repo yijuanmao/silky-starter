@@ -2,6 +2,7 @@ package com.silky.starter.redis.cache.template;
 
 import cn.hutool.core.map.MapUtil;
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
@@ -78,7 +79,7 @@ public class RedisCacheTemplate {
      * @param unit    时间单位
      */
     public boolean expire(String key, long timeout, TimeUnit unit) {
-        return Boolean.TRUE.equals(redisTemplate.expire(key, timeout, unit));
+        return redisTemplate.expire(key, timeout, unit);
     }
 
     /**
@@ -104,8 +105,8 @@ public class RedisCacheTemplate {
      *
      * @param key 键
      */
-    public boolean delete(String key) {
-        return Boolean.TRUE.equals(redisTemplate.delete(key));
+    public void delete(String key) {
+        redisTemplate.delete(key);
     }
 
     /**
@@ -117,8 +118,7 @@ public class RedisCacheTemplate {
         if (CollectionUtils.isEmpty(keys)) {
             return 0L;
         }
-        Long count = redisTemplate.delete(keys);
-        return count != null ? count : 0L;
+        return redisTemplate.delete(keys);
     }
 
     /**
@@ -134,16 +134,38 @@ public class RedisCacheTemplate {
         return 0L;
     }
 
-    // ============================== 对象操作 ==============================
-
     /**
      * 获取缓存对象
+     * <p>
+     * 注意：去除 WriteClassName 后，返回值可能为 JSONObject/JSONArray，
+     * 如需类型安全的反序列化，请使用 {@link #getObject(String, Class)}
+     * </p>
      *
      * @param key 键
      */
     public <T> T getObject(String key) {
         ValueOperations<String, T> operation = redisTemplate.opsForValue();
         return operation.get(key);
+    }
+
+    /**
+     * 获取缓存对象（指定类型）
+     * <p>
+     * 推荐使用此方法，确保反序列化时能正确还原为原始类型
+     * </p>
+     *
+     * @param key   键
+     * @param clazz 目标类型
+     */
+    public <T> T getObject(String key, Class<T> clazz) {
+        Object value = redisTemplate.opsForValue().get(key);
+        if (value == null) {
+            return null;
+        }
+        if (clazz.isInstance(value)) {
+            return clazz.cast(value);
+        }
+        return JSON.parseObject(JSON.toJSONString(value), clazz);
     }
 
     /**
@@ -165,7 +187,6 @@ public class RedisCacheTemplate {
         return value;
     }
 
-    // ============================== List操作 ==============================
 
     /**
      * 缓存List数据
@@ -199,12 +220,36 @@ public class RedisCacheTemplate {
 
     /**
      * 获取缓存的list对象
+     * <p>
+     * 注意：去除 WriteClassName 后，List 中的元素可能为 JSONObject，
+     * 如需类型安全的反序列化，请使用 {@link #getList(String, Class)}
+     * </p>
      *
      * @param key 键
      */
     @SuppressWarnings("unchecked")
     public <T> List<T> getList(String key) {
         return (List<T>) redisTemplate.opsForList().range(key, 0, -1);
+    }
+
+    /**
+     * 获取缓存的list对象（指定元素类型）
+     * <p>
+     * 推荐使用此方法，确保 List 中每个元素能正确还原为原始类型
+     * </p>
+     *
+     * @param key   键
+     * @param clazz 元素目标类型
+     */
+    public <T> List<T> getList(String key, Class<T> clazz) {
+        List<T> rawList = redisTemplate.opsForList().range(key, 0, -1);
+        if (CollectionUtils.isEmpty(rawList)) {
+            return Collections.emptyList();
+        }
+        return rawList.stream()
+                .filter(Objects::nonNull)
+                .map(item -> convertValue(item, clazz))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -219,7 +264,25 @@ public class RedisCacheTemplate {
         return (List<T>) redisTemplate.opsForList().range(key, start, end);
     }
 
-    // ============================== Set操作 ==============================
+    /**
+     * 获取List指定范围数据（指定元素类型）
+     *
+     * @param key   键
+     * @param start 起始位置
+     * @param end   结束位置
+     * @param clazz 元素目标类型
+     */
+    public <T> List<T> getListRange(String key, long start, long end, Class<T> clazz) {
+        List<Object> rawList = redisTemplate.opsForList().range(key, start, end);
+        if (CollectionUtils.isEmpty(rawList)) {
+            return Collections.emptyList();
+        }
+        return rawList.stream()
+                .filter(Objects::nonNull)
+                .map(item -> convertValue(item, clazz))
+                .collect(Collectors.toList());
+    }
+
 
     /**
      * 缓存Set
@@ -237,6 +300,10 @@ public class RedisCacheTemplate {
 
     /**
      * 获取缓存的set
+     * <p>
+     * 注意：去除 WriteClassName 后，Set 中的元素可能为 JSONObject，
+     * 如需类型安全的反序列化，请使用 {@link #getSet(String, Class)}
+     * </p>
      *
      * @param key 键
      */
@@ -245,7 +312,23 @@ public class RedisCacheTemplate {
         return (Set<T>) redisTemplate.opsForSet().members(key);
     }
 
-    // ============================== Hash操作 ==============================
+    /**
+     * 获取缓存的set（指定元素类型）
+     *
+     * @param key   键
+     * @param clazz 元素目标类型
+     */
+    public <T> Set<T> getSet(String key, Class<T> clazz) {
+        Set<Object> rawSet = redisTemplate.opsForSet().members(key);
+        if (CollectionUtils.isEmpty(rawSet)) {
+            return Collections.emptySet();
+        }
+        return rawSet.stream()
+                .filter(Objects::nonNull)
+                .map(item -> convertValue(item, clazz))
+                .collect(Collectors.toSet());
+    }
+
 
     /**
      * 缓存Map
@@ -295,6 +378,21 @@ public class RedisCacheTemplate {
     }
 
     /**
+     * 获取Hash中的数据（指定类型）
+     *
+     * @param key   Redis键
+     * @param hKey  Hash键
+     * @param clazz 目标类型
+     */
+    public <T> T getHashValue(String key, String hKey, Class<T> clazz) {
+        Object value = redisTemplate.opsForHash().get(key, hKey);
+        if (value == null) {
+            return null;
+        }
+        return convertValue(value, clazz);
+    }
+
+    /**
      * 获取多个Hash中的数据
      */
     @SuppressWarnings("unchecked")
@@ -306,14 +404,33 @@ public class RedisCacheTemplate {
     }
 
     /**
+     * 获取多个Hash中的数据（指定类型）
+     *
+     * @param key   Redis键
+     * @param hKeys Hash键集合
+     * @param clazz 目标类型
+     */
+    public <T> List<T> getMultiHashValue(String key, Collection<String> hKeys, Class<T> clazz) {
+        if (CollectionUtils.isEmpty(hKeys)) {
+            return Collections.emptyList();
+        }
+        List<Object> values = redisTemplate.opsForHash().multiGet(key, Arrays.asList(hKeys.toArray()));
+        if (CollectionUtils.isEmpty(values)) {
+            return Collections.emptyList();
+        }
+        return values.stream()
+                .filter(Objects::nonNull)
+                .map(item -> convertValue(item, clazz))
+                .collect(Collectors.toList());
+    }
+
+    /**
      * 删除Hash中的某条数据
      */
     public boolean deleteHashValue(String key, String hKey) {
         Long result = redisTemplate.opsForHash().delete(key, hKey);
         return result > 0;
     }
-
-    // ============================== 批量操作 ==============================
 
     /**
      * 批量获取缓存
@@ -356,7 +473,6 @@ public class RedisCacheTemplate {
         keyValueMap.keySet().forEach(key -> expire(key, timeout, timeUnit));
     }
 
-    // ============================== 其他操作 ==============================
 
     /**
      * 获取匹配的keys

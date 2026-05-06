@@ -9,6 +9,9 @@
   - 支持多 Sheet 导出
   - StorageStrategy 返回 StorageObject
   - maxRowsPerSheet 参数校验
+* **silky-redis-spring-boot-starter**: v1.0.5 => v1.0.6
+  - 修复 GEO radius() Distance 为 0 的问题（去除 FastJson2 WriteClassName）
+  - 新增 `RedisCacheTemplate.getObject(key, Class)` 带类型重载方法
 
 ## v1.0.6 (2026-04-29)
 ### 💎 功能优化

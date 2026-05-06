@@ -38,7 +38,7 @@ public class RedisCacheTemplateTest extends RedisApplicationTest {
      */
     @Test
     public void batchSetTest() {
-        redisCacheTemplate.setObject(KEY_LIST, this.buildTradeOrders(), 1L, TimeUnit.HOURS);
+        redisCacheTemplate.setList(KEY_LIST, this.buildTradeOrders(), 1L, TimeUnit.HOURS);
     }
 
 
@@ -56,7 +56,7 @@ public class RedisCacheTemplateTest extends RedisApplicationTest {
      */
     @Test
     public void getTest() {
-        TradeOrder object = redisCacheTemplate.getObject(KEY);
+        TradeOrder object = redisCacheTemplate.getObject(KEY, TradeOrder.class);
         log.info("获取到的对象：{}", object);
     }
 
@@ -65,7 +65,7 @@ public class RedisCacheTemplateTest extends RedisApplicationTest {
      */
     @Test
     public void getListTest() {
-        List<TradeOrder> list = redisCacheTemplate.getObject(KEY_LIST);
+        List<TradeOrder> list = redisCacheTemplate.getList(KEY_LIST, TradeOrder.class);
         for (TradeOrder order : list) {
             log.info("订单对象：{}", order);
         }

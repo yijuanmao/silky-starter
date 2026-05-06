@@ -3,6 +3,7 @@ package com.silky.starter.redis.test.cache;
 import lombok.Data;
 import lombok.ToString;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -14,7 +15,7 @@ import java.time.LocalDateTime;
  **/
 @Data
 @ToString
-public class TradeOrder {
+public class TradeOrder implements Serializable {
 
     private static final long serialVersionUID = 5009955102872378736L;
 
