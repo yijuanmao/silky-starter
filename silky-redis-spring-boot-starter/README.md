@@ -573,87 +573,113 @@ public class RedisSequenceTemplate {
 
 ### RedisGeoTemplate 地理位置
 
+支持 WGS-84、GCJ-02、BD-09 三种坐标系，可通过全局配置或方法参数指定。
+
+#### 全局坐标系配置
+
+```yaml
+spring:
+  redis:
+    geo:
+      coordinate-system: GCJ02  # 可选值：WGS84（默认）、GCJ02、BD09
+```
+
+#### 核心 API
+
 ```java
 public class RedisGeoTemplate {
-    
+
+    // ========== 写入操作 ==========
+
     /**
-     * 添加地理位置
-     * 
-     * @param key       键
-     * @param longitude 经度
-     * @param latitude  纬度
-     * @param member    成员标识
-     * @return 添加成功的成员数量
+     * 添加地理位置（使用全局坐标系）
      */
     public Long add(String key, double longitude, double latitude, String member);
-    
+
     /**
-     * 批量添加地理位置
-     * 
-     * @param key     键
-     * @param members 成员及其对应的地理位置
-     * @return 添加成功的成员数量
+     * 添加地理位置（指定坐标系）
+     * 输入坐标会自动转换为 WGS-84 存储
+     */
+    public Long add(String key, double longitude, double latitude, String member,
+                    CoordinateSystem coordinateSystem);
+
+    /**
+     * 批量添加地理位置（使用全局坐标系）
      */
     public Long addAll(String key, Map<String, Point> members);
-    
+
     /**
-     * 获取地理位置
-     * 
-     * @param key    键
-     * @param member 成员标识
-     * @return 地理位置坐标
+     * 批量添加地理位置（指定坐标系）
+     */
+    public Long addAll(String key, Map<String, Point> members, CoordinateSystem coordinateSystem);
+
+    // ========== 查询操作 ==========
+
+    /**
+     * 获取地理位置（使用全局坐标系）
      */
     public Point get(String key, String member);
-    
+
     /**
-     * 计算两个成员之间的距离
-     * 
-     * @param key     键
-     * @param member1 成员1
-     * @param member2 成员2
-     * @param metric  距离单位（Metrics.KILOMETERS / MILES）
-     * @return 距离
+     * 获取地理位置（指定输出坐标系）
+     * 返回坐标已从 WGS-84 转换为目标坐标系
+     */
+    public Point get(String key, String member, CoordinateSystem coordinateSystem);
+
+    /**
+     * 计算两个成员之间的距离（距离计算不受坐标系影响）
      */
     public Distance distance(String key, String member1, String member2, Metric metric);
-    
+
     /**
-     * 搜索指定成员附近的位置
-     * 
-     * @param key    键
-     * @param member 中心成员
-     * @param radius 半径
-     * @param metric 距离单位
-     * @param limit  返回数量限制
-     * @return 附近位置列表
+     * 搜索指定成员附近的位置（使用全局坐标系）
      */
-    public GeoResults<RedisGeoCommands.GeoLocation<Object>> radius(
+    public GeoResults<RedisGeoCommands.GeoLocation<String>> radius(
             String key, String member, double radius, Metric metric, long limit);
-    
+
     /**
-     * 根据坐标搜索附近的位置
-     * 
-     * @param key       键
-     * @param longitude 经度
-     * @param latitude  纬度
-     * @param radius    半径
-     * @param metric    距离单位
-     * @param limit     返回数量限制
-     * @return 附近位置列表
+     * 搜索指定成员附近的位置（指定坐标系）
      */
-    public GeoResults<RedisGeoCommands.GeoLocation<Object>> radius(
-            String key, double longitude, double latitude, 
+    public GeoResults<RedisGeoCommands.GeoLocation<String>> radius(
+            String key, String member, double radius, Metric metric, long limit,
+            CoordinateSystem coordinateSystem);
+
+    /**
+     * 根据坐标搜索附近的位置（使用全局坐标系）
+     */
+    public GeoResults<RedisGeoCommands.GeoLocation<String>> radius(
+            String key, double longitude, double latitude,
             double radius, Metric metric, long limit);
-    
+
+    /**
+     * 根据坐标搜索附近的位置（指定坐标系）
+     */
+    public GeoResults<RedisGeoCommands.GeoLocation<String>> radius(
+            String key, double longitude, double latitude,
+            double radius, Metric metric, long limit,
+            CoordinateSystem coordinateSystem);
+
+    // ========== 其他操作 ==========
+
     /**
      * 获取 GEO Hash
-     * 
-     * @param key     键
-     * @param members 成员列表
-     * @return GEO Hash 列表
      */
     public List<String> hash(String key, String... members);
+
+    /**
+     * 删除地理位置成员
+     */
+    public Long remove(String key, String... members);
 }
 ```
+
+#### 坐标系说明
+
+| 坐标系 | 适用场景 | 说明 |
+|--------|----------|------|
+| `WGS84` | GPS、国际地图（Google Maps 国际版） | Redis GEO 底层存储坐标系，默认值 |
+| `GCJ02` | 高德地图、腾讯地图、Google Maps 中国版 | 国测局坐标系，又称"火星坐标系" |
+| `BD09` | 百度地图 | 百度在 GCJ02 基础上的二次加密 |
 
 ## 注解使用
 
@@ -1105,39 +1131,77 @@ public class PaymentService {
 ```java
 @Service
 public class LocationService {
-    
+
     @Autowired
     private RedisGeoTemplate geoTemplate;
-    
+
     /**
-     * 添加商家位置
+     * 添加商家位置（使用全局坐标系配置）
      */
     public void addStoreLocation(String storeId, double longitude, double latitude) {
         geoTemplate.add("stores", longitude, latitude, storeId);
     }
-    
+
     /**
-     * 搜索附近的商家
+     * 添加商家位置（使用高德地图坐标系）
+     * 输入的 GCJ02 坐标会自动转为 WGS-84 存储
+     */
+    public void addStoreLocationGcj02(String storeId, double longitude, double latitude) {
+        geoTemplate.add("stores", longitude, latitude, storeId, CoordinateSystem.GCJ02);
+    }
+
+    /**
+     * 搜索附近的商家（使用全局坐标系）
      */
     public List<Store> findNearbyStores(double longitude, double latitude, double radiusKm) {
-        GeoResults<RedisGeoCommands.GeoLocation<Object>> results = 
+        GeoResults<RedisGeoCommands.GeoLocation<String>> results =
             geoTemplate.radius("stores", longitude, latitude, radiusKm, Metrics.KILOMETERS, 10);
-        
+
         List<Store> stores = new ArrayList<>();
-        for (GeoResult<RedisGeoCommands.GeoLocation<Object>> result : results) {
-            String storeId = result.getContent().getName().toString();
+        for (GeoResult<RedisGeoCommands.GeoLocation<String>> result : results) {
+            String storeId = result.getContent().getName();
             double distance = result.getDistance().getValue();
-            
+
             Store store = storeService.getById(storeId);
             store.setDistance(distance);
             stores.add(store);
         }
-        
+
         return stores;
     }
-    
+
     /**
-     * 计算两地距离
+     * 搜索附近的商家（高德地图场景，指定 GCJ02 坐标系）
+     * 输入坐标从 GCJ02 转 WGS84 查询，返回坐标从 WGS84 转 GCJ02
+     */
+    public List<Store> findNearbyStoresGcj02(double longitude, double latitude, double radiusKm) {
+        GeoResults<RedisGeoCommands.GeoLocation<String>> results =
+            geoTemplate.radius("stores", longitude, latitude, radiusKm,
+                    Metrics.KILOMETERS, 10, CoordinateSystem.GCJ02);
+
+        List<Store> stores = new ArrayList<>();
+        for (GeoResult<RedisGeoCommands.GeoLocation<String>> result : results) {
+            String storeId = result.getContent().getName();
+            double distance = result.getDistance().getValue();
+            // result.getContent().getPoint() 返回的坐标已为 GCJ02
+
+            Store store = storeService.getById(storeId);
+            store.setDistance(distance);
+            stores.add(store);
+        }
+
+        return stores;
+    }
+
+    /**
+     * 获取位置坐标并转换为指定坐标系
+     */
+    public Point getStorePoint(String storeId, CoordinateSystem cs) {
+        return geoTemplate.get("stores", storeId, cs);
+    }
+
+    /**
+     * 计算两地距离（距离计算不受坐标系影响）
      */
     public double calculateDistance(String storeId1, String storeId2) {
         Distance distance = geoTemplate.distance("stores", storeId1, storeId2, Metrics.KILOMETERS);

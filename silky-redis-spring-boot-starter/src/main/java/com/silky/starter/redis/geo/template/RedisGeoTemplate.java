@@ -253,8 +253,6 @@ public class RedisGeoTemplate {
         return convertGeoResults(results, coordinateSystem);
     }
 
-    // ============================== 其他操作 ==============================
-
     /**
      * 获取 GEO Hash 值
      *
@@ -277,7 +275,6 @@ public class RedisGeoTemplate {
         return stringRedisTemplate.opsForGeo().remove(key, members);
     }
 
-    // ============================== 内部方法 ==============================
 
     /**
      * 将 GeoResults 中的坐标从 WGS-84 转换为指定坐标系
