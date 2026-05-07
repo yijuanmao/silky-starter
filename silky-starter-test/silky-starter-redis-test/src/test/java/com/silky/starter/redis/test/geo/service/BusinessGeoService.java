@@ -55,17 +55,17 @@ public class BusinessGeoService {
      */
     public List<StoreVO> findNearbyStores(double longitude, double latitude,
                                           double radiusKm, int limit) {
-        GeoResults<RedisGeoCommands.GeoLocation<Object>> results =
+        GeoResults<RedisGeoCommands.GeoLocation<String>> results =
                 redisGeoTemplate.radius(STORE_KEY, longitude, latitude,
                         radiusKm, Metrics.KILOMETERS, limit);
 
         return results.getContent().stream()
                 .map(geoResult -> {
-                    RedisGeoCommands.GeoLocation<Object> location = geoResult.getContent();
+                    RedisGeoCommands.GeoLocation<String> location = geoResult.getContent();
                     Distance distance = geoResult.getDistance();
 
                     return StoreVO.builder()
-                            .storeId((String) location.getName())
+                            .storeId(location.getName())
                             .distance(distance.getValue())
                             .distanceUnit("km")
                             .longitude(location.getPoint().getX())
@@ -115,17 +115,17 @@ public class BusinessGeoService {
     public List<DeliveryPerson> findNearbyDeliveryPersons(double storeLongitude,
                                                           double storeLatitude,
                                                           double radiusKm) {
-        GeoResults<RedisGeoCommands.GeoLocation<Object>> results =
+        GeoResults<RedisGeoCommands.GeoLocation<String>> results =
                 redisGeoTemplate.radius(DELIVERY_KEY, storeLongitude, storeLatitude,
                         radiusKm, Metrics.KILOMETERS, 10);
 
         return results.getContent().stream()
                 .map(geoResult -> {
-                    RedisGeoCommands.GeoLocation<Object> location = geoResult.getContent();
+                    RedisGeoCommands.GeoLocation<String> location = geoResult.getContent();
                     Distance distance = geoResult.getDistance();
 
                     return DeliveryPerson.builder()
-                            .deliveryId((String) location.getName())
+                            .deliveryId(location.getName())
                             .distanceKm(distance.getValue())
                             .longitude(location.getPoint().getX())
                             .latitude(location.getPoint().getY())
