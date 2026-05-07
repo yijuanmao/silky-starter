@@ -18,7 +18,7 @@
     <packaging>pom</packaging>
 
     <properties>
-        <silky.bom.version>1.0.0</silky.bom.version>
+        <silky.bom.version>1.0.1</silky.bom.version>
     </properties>
 
     <dependencyManagement>
@@ -73,7 +73,7 @@
             </dependency>
 
             <!-- 第三方依赖 - 统一版本管理 -->
-            
+
             <!-- hutool 工具类 -->
             <dependency>
                 <groupId>cn.hutool</groupId>
