@@ -1,1 +1,2 @@
 com.silky.starter.redis.config.RedisComponentAutoConfiguration
+com.silky.starter.redis.stream.config.RedisStreamAutoConfiguration

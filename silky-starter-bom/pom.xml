@@ -18,7 +18,7 @@
     <packaging>pom</packaging>
 
     <properties>
-        <silky.bom.version>1.0.1</silky.bom.version>
+        <silky.bom.version>1.0.2</silky.bom.version>
     </properties>
 
     <dependencyManagement>
