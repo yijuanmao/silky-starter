@@ -2,8 +2,6 @@ package com.silky.starter.redis.cache.template;
 
 import cn.hutool.core.map.MapUtil;
 import com.silky.starter.redis.cache.utils.RedisValueUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
