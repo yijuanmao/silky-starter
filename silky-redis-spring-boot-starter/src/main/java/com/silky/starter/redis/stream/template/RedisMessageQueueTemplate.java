@@ -1,4 +1,4 @@
-package com.silky.starter.redis.stream.producer;
+package com.silky.starter.redis.stream.template;
 
 import com.silky.starter.redis.stream.core.MessageRepository;
 import com.silky.starter.redis.stream.core.StreamMessage;

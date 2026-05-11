@@ -3,7 +3,7 @@ package com.silky.starter.redis.stream.config;
 import com.silky.starter.redis.stream.consumer.RedisStreamAnnotationProcessor;
 import com.silky.starter.redis.stream.core.MessageRepository;
 import com.silky.starter.redis.stream.core.NoOpMessageRepository;
-import com.silky.starter.redis.stream.producer.RedisMessageQueueTemplate;
+import com.silky.starter.redis.stream.template.RedisMessageQueueTemplate;
 import com.silky.starter.redis.stream.registry.MessageListenerContainerRegistry;
 import com.silky.starter.redis.stream.support.StreamThreadPoolFactory;
 import org.slf4j.Logger;

@@ -1,15 +1,13 @@
 package com.silky.starter.redis.test.stream;
 
 import com.silky.starter.redis.stream.core.StreamMessage;
-import com.silky.starter.redis.stream.producer.RedisMessageQueueTemplate;
+import com.silky.starter.redis.stream.template.RedisMessageQueueTemplate;
 import com.silky.starter.redis.stream.registry.MessageListenerContainerRegistry;
 import com.silky.starter.redis.test.RedisApplicationTest;
 import com.silky.starter.redis.test.stream.entity.OrderMessage;
 import com.silky.starter.redis.test.stream.service.OrderStreamConsumer;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.connection.stream.ReadOffset;
-import org.springframework.data.redis.connection.stream.StreamOffset;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.math.BigDecimal;
