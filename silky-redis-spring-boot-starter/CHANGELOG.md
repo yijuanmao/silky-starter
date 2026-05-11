@@ -1,4 +1,23 @@
-## v1.0.7 (2026-05-07)
+## v1.0.7 (2026-05-09)
+
+### ✨ 新功能
+
+* **Redis Stream 消息队列**: 全新注解驱动的 Stream 消费框架
+  - 新增 `@RedisStreamListener` 注解，方法标注即可自动注册为 Stream 消费者
+  - 新增 `RedisMessageQueueTemplate` 消息生产者模板（XADD），支持携带扩展 Headers
+  - 新增 `StreamMessage` 统一消息体，包含 payload、headers、timestamp、deliveryCount 等字段
+  - 新增 `MessageListener` 函数式接口，支持编程式消费者注册
+  - 新增 `MessageListenerContainerRegistry` 消费者容器注册中心，支持并发消费者
+  - 新增 `MessageRepository` SPI 持久化接口（onSend / onReceive / onSuccess / onFailure / onDeadLetter），默认空实现
+  - 新增 `DefaultStreamMessageListenerContainer` 消费者容器，实现完整的消费生命周期
+  - 支持消费者组（Consumer Group）自动创建
+  - 支持 Pending 消息超时回收（SDR 2.7.6 range 兼容方案）
+  - 支持死信队列（Dead Letter Queue），超过 `maxRetries` 的消息写入 `{streamKey}:dead`
+  - 支持慢消费监控告警日志
+  - 支持自定义线程池（Bean name: `silkyStreamExecutor`）
+  - 新增 `RedisStreamProperties` 配置属性（`silky.redis.stream.*`），需设置 `enabled: true` 开启
+
+## v1.0.6 (2026-05-07)
 
 ### 🐛 Bug Fixes
 
@@ -24,7 +43,7 @@
   - 泛型签名变更：`GeoLocation<Object>` → `GeoLocation<String>`
   - 如已有代码使用了 `location.getName().toString()`，可直接改为 `location.getName()`（已为 String）
 
-## v1.0.6 (2026-05-06)
+## v1.0.5 (2026-05-06)
 
 ### 🐛 Bug Fixes
 
@@ -47,7 +66,7 @@
 * **FastJson2RedisSerializer**: 序列化不再写入 `@type` 类名标记，反序列化不再启用 `SupportAutoType`
   - 如需类型安全的反序列化，请使用 `redisCacheTemplate.getObject(key, YourClass.class)` 替代 `redisCacheTemplate.getObject(key)`
 
-## v1.0.5 (2026-04-28)
+## v1.0.4 (2026-04-28)
 ### 💎 功能优化
 * hutool工具类 =》 5.8.44版本
 

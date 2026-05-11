@@ -4,12 +4,14 @@
 * **groupId 迁移**: `io.github.yijuanmao` → `top.silky`，涉及所有模块 pom.xml 及文档
 
 ### 💎 功能优化
+* **silky-redis-spring-boot-starter**: v1.0.6 => v1.0.7
+  - 新增 Redis Stream 消息队列模块（`@RedisStreamListener` 注解驱动消费者、`RedisMessageQueueTemplate` 生产者、Consumer Group 自动创建、Pending 回收、死信队列、`MessageRepository` SPI 持久化）
 * **silky-excel-spring-boot-starter**: v1.0.5 => v1.0.6
   - 新增 `@ExcelEnum`、`@ExcelDict`、`@ExcelMask` 注解驱动字段转换
   - 支持多 Sheet 导出
   - StorageStrategy 返回 StorageObject
   - maxRowsPerSheet 参数校验
-* **silky-redis-spring-boot-starter**: v1.0.5 => v1.0.7
+* **silky-redis-spring-boot-starter**: v1.0.5 => v1.0.6
   - 修复 GEO `radius()` Distance 为 0 的问题（改用 StringRedisTemplate，Issue #7）
   - 新增 WGS-84 / GCJ-02 / BD-09 坐标系转换支持（`CoordinateSystem`、`CoordinateUtils`、`GeoProperties`）
   - 新增 `RedisGeoTemplate.remove()` 方法

@@ -17,7 +17,7 @@
 - **限流控制**：支持令牌桶、固定窗口、滑动窗口算法
 - **序列号生成**：分布式环境下的唯一序列号生成
 - **地理位置**：基于 Redis GEO 的地理位置服务
-- **注解支持**：通过注解快速实现分布式锁、限流、序列号
+- **消息队列**：基于 Redis Stream 的轻量级消息队列，注解驱动消费者、死信队列、Pending 回收
 
 ## 快速开始
 
@@ -681,7 +681,179 @@ public class RedisGeoTemplate {
 | `GCJ02` | 高德地图、腾讯地图、Google Maps 中国版 | 国测局坐标系，又称"火星坐标系" |
 | `BD09` | 百度地图 | 百度在 GCJ02 基础上的二次加密 |
 
+### RedisMessageQueueTemplate 消息队列（Stream）
+
+基于 Redis Stream 的轻量级消息队列，支持注解驱动消费者、并发消费、Pending 回收、死信队列。
+
+#### 启用配置
+
+```yaml
+silky:
+  redis:
+    stream:
+      enabled: true                    # 必须，默认 false
+      default-group: silky-default-group  # 全局默认消费者组名
+      consumer:
+        batch-size: 10                 # 每次 XREADGROUP 拉取最大消息数
+        poll-timeout-ms: 2000          # 阻塞读取超时（毫秒）
+        max-retries: 3                 # 最大重试次数（超过后进入死信队列）
+        pending-timeout-ms: 30000      # Pending 消息超时阈值（毫秒）
+        concurrency: 1                 # 每个 streamKey 默认并发消费者数量
+        thread-pool:
+          core-size: 5
+          max-size: 20
+          queue-capacity: 100
+          thread-name-prefix: silky-stream-
+      dead-letter:
+        enabled: true                  # 是否启用死信队列
+        suffix: ":dead"                # 死信 Stream Key 后缀
+      monitor:
+        enabled: true                  # 是否启用慢消费监控
+        slow-threshold-ms: 500         # 慢消费告警阈值（毫秒）
+```
+
+#### 生产者 API
+
+```java
+public class RedisMessageQueueTemplate {
+
+    /**
+     * 发送消息到指定 Stream
+     *
+     * @param streamKey Stream Key（队列名称）
+     * @param payload   业务对象（自动序列化为 JSON）
+     * @return Redis 生成的消息 ID（格式：timestamp-sequence）
+     */
+    public String send(String streamKey, Object payload);
+
+    /**
+     * 发送消息并携带扩展 Headers
+     *
+     * @param streamKey Stream Key
+     * @param payload   业务对象
+     * @param headers   扩展属性（如 traceId、bizType 等）
+     * @return 消息 ID
+     */
+    public String send(String streamKey, Object payload, Map<String, String> headers);
+}
+```
+
+#### StreamMessage 消息体
+
+```java
+public class StreamMessage {
+
+    /** Redis 消息 ID（格式：timestamp-sequence） */
+    private String id;
+    /** Stream Key（队列名称） */
+    private String streamKey;
+    /** 消费者组名 */
+    private String groupId;
+    /** 原始 payload JSON 字符串 */
+    private String payloadJson;
+    /** 扩展属性（可存储 traceId、bizType 等） */
+    private Map<String, String> headers;
+    /** 消息发送时间戳（毫秒） */
+    private long timestamp;
+    /** 已投递次数（从 XPENDING 解析，首次消费为 1） */
+    private long deliveryCount;
+
+    /**
+     * 反序列化 payload 为指定类型
+     */
+    public <T> T getPayload(Class<T> clazz);
+
+    /**
+     * 获取 / 设置 Header
+     */
+    public String getHeader(String key);
+    public void putHeader(String key, String value);
+}
+```
+
+#### MessageRepository SPI（可选实现）
+
+用户可注入自定义 `MessageRepository` 实现，在消息生命周期的关键节点执行持久化逻辑：
+
+```java
+public interface MessageRepository {
+
+    /** 生产者发送前回调（可入库记录，返回值会存入 headers["dbId"]） */
+    default String onSend(StreamMessage message) { return null; }
+
+    /** 消费者接收到消息、业务处理前回调 */
+    default void onReceive(StreamMessage message, String consumerName) {}
+
+    /** 业务处理成功且 ACK 之后回调 */
+    default void onSuccess(StreamMessage message, Object result) {}
+
+    /** 业务处理失败回调，返回 true 继续重试，false 放入死信队列 */
+    default boolean onFailure(StreamMessage message, Exception exception, int retryCount) { return true; }
+
+    /** 消息进入死信队列时回调 */
+    default void onDeadLetter(StreamMessage message, String reason) {}
+}
+```
+
+#### MessageListenerContainerRegistry 编程式注册
+
+```java
+public class MessageListenerContainerRegistry {
+
+    /**
+     * 注册并启动消费者容器
+     *
+     * @param streamKey   Stream Key
+     * @param groupName   消费者组名
+     * @param concurrency 并发数（创建 concurrency 个消费者实例，Redis 自动分配消息）
+     * @param listener    消息处理逻辑（函数式接口）
+     */
+    public void register(String streamKey, String groupName, int concurrency, MessageListener listener);
+
+    /**
+     * 注册消费者容器（自定义消费者名前缀）
+     */
+    public void register(String streamKey, String groupName, String consumerPrefix,
+                         int concurrency, MessageListener listener);
+
+    /** 停止指定 Stream 的所有消费者 */
+    public void stop(String streamKey);
+
+    /** 获取所有已注册的容器 */
+    public List<DefaultStreamMessageListenerContainer> getAllContainers();
+}
+```
+
 ## 注解使用
+
+### @RedisStreamListener Stream 消费者注解
+
+标注在方法上，使该方法自动注册为 Redis Stream 消费者。方法参数必须为 `StreamMessage` 类型。
+
+```java
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface RedisStreamListener {
+
+    /** Stream Key（队列名称），必填 */
+    String stream();
+
+    /** 消费者组名，默认使用全局配置 */
+    String group() default "";
+
+    /** 消费者名称前缀，默认使用 hostname，并发时自动追加序号后缀 */
+    String consumer() default "";
+
+    /** 并发消费者数量，默认 1 */
+    int concurrency() default 1;
+
+    /** 每次拉取的最大消息数，0 表示使用全局配置 */
+    int batchSize() default 0;
+
+    /** 是否自动创建消费者组（不存在时），默认 true */
+    boolean autoCreateGroup() default true;
+}
+```
 
 ### @RedisLock 分布式锁注解
 
@@ -1210,6 +1382,134 @@ public class LocationService {
 }
 ```
 
+### Stream 消息队列示例
+
+#### 发送消息
+
+```java
+@Service
+public class OrderService {
+
+    @Autowired
+    private RedisMessageQueueTemplate messageQueue;
+
+    /**
+     * 发送订单消息
+     */
+    public String sendOrderEvent(Order order) {
+        return messageQueue.send("order-stream", order);
+    }
+
+    /**
+     * 发送消息并携带追踪信息
+     */
+    public String sendOrderEventWithTrace(Order order, String traceId) {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("traceId", traceId);
+        headers.put("bizType", "ORDER_CREATE");
+        return messageQueue.send("order-stream", order, headers);
+    }
+}
+```
+
+#### 注解驱动消费（推荐）
+
+```java
+@Component
+public class OrderStreamConsumer {
+
+    /**
+     * 消费订单消息（单消费者）
+     * 方法正常返回 → 框架自动 ACK
+     * 方法抛出异常 → 框架触发重试或死信流程
+     */
+    @RedisStreamListener(stream = "order-stream", group = "order-group")
+    public void onOrderMessage(StreamMessage message) {
+        Order order = message.getPayload(Order.class);
+        String traceId = message.getHeader("traceId");
+        log.info("收到订单消息: orderNo={}, traceId={}", order.getOrderNo(), traceId);
+        // 处理业务...
+    }
+
+    /**
+     * 并发消费（3 个消费者实例共享同一个 Consumer Group）
+     */
+    @RedisStreamListener(stream = "order-stream", group = "order-group", concurrency = 3)
+    public void onConcurrentOrderMessage(StreamMessage message) {
+        Order order = message.getPayload(Order.class);
+        // 并发处理...
+    }
+
+    /**
+     * 处理失败超过 maxRetries 次后，消息将自动进入死信队列 "order-stream:dead"
+     */
+    @RedisStreamListener(stream = "order-stream", group = "order-group")
+    public void onFailOrderMessage(StreamMessage message) {
+        Order order = message.getPayload(Order.class);
+        if (order.getAmount() <= 0) {
+            throw new BusinessException("订单金额异常");
+        }
+        // 处理业务...
+    }
+}
+```
+
+#### 编程式消费
+
+```java
+@Configuration
+public class StreamConsumerConfig {
+
+    @Autowired
+    private MessageListenerContainerRegistry registry;
+
+    @PostConstruct
+    public void registerConsumers() {
+        // 编程式注册消费者（3 并发）
+        registry.register("order-stream", "order-group", 3, message -> {
+            Order order = message.getPayload(Order.class);
+            // 处理业务...
+            return null;
+        });
+    }
+}
+```
+
+#### 自定义持久化（MessageRepository）
+
+```java
+@Component
+public class OrderMessageRepository implements MessageRepository {
+
+    @Autowired
+    private OrderMessageLogMapper logMapper;
+
+    @Override
+    public String onSend(StreamMessage message) {
+        // 发送前入库记录
+        OrderMessageLog log = new OrderMessageLog();
+        log.setPayload(message.getPayloadJson());
+        log.setStatus("SENT");
+        logMapper.insert(log);
+        return String.valueOf(log.getId());  // 返回 dbId，框架自动存入 headers
+    }
+
+    @Override
+    public void onSuccess(StreamMessage message, Object result) {
+        // 消费成功后更新状态
+        String dbId = message.getHeader("dbId");
+        logMapper.updateStatus(Long.parseLong(dbId), "CONSUMED");
+    }
+
+    @Override
+    public void onDeadLetter(StreamMessage message, String reason) {
+        // 死信消息告警
+        log.error("消息进入死信: stream={}, id={}, reason={}",
+                message.getStreamKey(), message.getId(), reason);
+    }
+}
+```
+
 ## 常见问题
 
 ### Q1: 分布式锁的看门狗机制？
@@ -1237,6 +1537,18 @@ A: 基于 Redis 原子自增操作，不会重复。但需要注意：
 ### Q4: 如何监控 Redis 操作？
 
 A: 可以通过 Spring Boot Actuator 监控 Redis 连接池状态，或自定义拦截器记录操作日志。
+
+### Q5: Redis Stream 消费失败如何处理？
+
+A: 框架内置了完整的失败处理机制：
+- 消费异常后消息不 ACK，留在 Pending Entry List（PEL）中
+- 超过 `pending-timeout-ms` 后，框架自动回收并重新投递
+- 重试次数超过 `max-retries` 后，消息转入死信队列（`{streamKey}:dead`）
+- 可通过 `MessageRepository.onFailure` 自定义重试策略，返回 `false` 可提前放弃重试
+
+### Q6: Redis Stream 支持并发消费吗？
+
+A: 支持。通过 `@RedisStreamListener(concurrency = 3)` 注解或编程式 `registry.register(stream, group, 3, listener)` 配置，多个消费者实例共享同一个 Consumer Group，Redis 自动分配消息，保证同一条消息不会被重复消费。
 
 ## 相关链接
 
