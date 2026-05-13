@@ -70,6 +70,7 @@ public class RedisGeoTemplate {
      */
     public Long add(String key, double longitude, double latitude, String member,
                     CoordinateSystem coordinateSystem) {
+        validateCoordinates(longitude, latitude);
         double[] wgs84 = CoordinateUtils.toWgs84(coordinateSystem, longitude, latitude);
         return stringRedisTemplate.opsForGeo().add(key, new Point(wgs84[0], wgs84[1]), member);
     }
@@ -96,6 +97,9 @@ public class RedisGeoTemplate {
      * @return 添加成功的成员数量
      */
     public Long addAll(String key, Map<String, Point> members, CoordinateSystem coordinateSystem) {
+        if (members == null || members.isEmpty()) {
+            return 0L;
+        }
         List<RedisGeoCommands.GeoLocation<String>> locations = new ArrayList<>(members.size());
         for (Map.Entry<String, Point> entry : members.entrySet()) {
             if (entry.getKey() == null || entry.getValue() == null) {
@@ -187,6 +191,7 @@ public class RedisGeoTemplate {
                                                                    double radius, Metric metric,
                                                                    long limit,
                                                                    CoordinateSystem coordinateSystem) {
+        validateRadiusArguments(radius, limit);
         Point centerPoint = get(key, member, CoordinateSystem.WGS84);
         if (centerPoint == null) {
             throw new IllegalArgumentException("Member '" + member + "' not found in key '" + key + "'");
@@ -237,6 +242,8 @@ public class RedisGeoTemplate {
                                                                    double latitude, double radius,
                                                                    Metric metric, long limit,
                                                                    CoordinateSystem coordinateSystem) {
+        validateRadiusArguments(radius, limit);
+        validateCoordinates(longitude, latitude);
         // 将输入坐标转换为 WGS84 用于 Redis 查询
         double[] wgs84 = CoordinateUtils.toWgs84(coordinateSystem, longitude, latitude);
         Point point = new Point(wgs84[0], wgs84[1]);
@@ -315,6 +322,18 @@ public class RedisGeoTemplate {
         }
         if (latitude < -90 || latitude > 90) {
             throw new IllegalArgumentException("Invalid latitude value: " + latitude);
+        }
+    }
+
+    /**
+     * 校验半径查询参数
+     */
+    private void validateRadiusArguments(double radius, long limit) {
+        if (radius <= 0) {
+            throw new IllegalArgumentException("Radius must be greater than 0");
+        }
+        if (limit <= 0) {
+            throw new IllegalArgumentException("Limit must be greater than 0");
         }
     }
 

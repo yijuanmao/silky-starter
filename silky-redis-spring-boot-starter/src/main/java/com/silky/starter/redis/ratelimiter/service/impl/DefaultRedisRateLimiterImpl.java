@@ -5,6 +5,7 @@ import cn.hutool.core.thread.ThreadUtil;
 import com.silky.starter.redis.ratelimiter.annotation.RateLimit;
 import com.silky.starter.redis.ratelimiter.config.RateLimitConfig;
 import com.silky.starter.redis.ratelimiter.exception.RateLimitExceededException;
+import com.silky.starter.redis.ratelimiter.exception.RateLimitSystemException;
 import com.silky.starter.redis.ratelimiter.service.RedisRateLimiter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
@@ -172,7 +173,7 @@ public class DefaultRedisRateLimiterImpl implements RedisRateLimiter {
                     break;
 
                 default:
-                    throw new RateLimitExceededException("Unsupported rate limit algorithm: " + config.getAlgorithm());
+                    throw new RateLimitSystemException("Unsupported rate limit algorithm: " + config.getAlgorithm());
             }
             boolean acquired = result != null && result == 1;
             long costTime = System.currentTimeMillis() - startTime;
@@ -184,11 +185,13 @@ public class DefaultRedisRateLimiterImpl implements RedisRateLimiter {
 
             return acquired;
 
+        } catch (RateLimitSystemException e) {
+            throw e;
         } catch (Exception e) {
             long costTime = System.currentTimeMillis() - startTime;
             log.error("Rate limit tryAcquire failed - key: {}, permits: {}, cost: {}ms, error: {}",
                     key, permits, costTime, e.getMessage(), e);
-            throw new RateLimitExceededException("Rate limit acquire failed: " + e.getMessage(), e);
+            throw new RateLimitSystemException("Rate limit acquire failed: " + e.getMessage(), e);
         }
     }
 
@@ -259,11 +262,13 @@ public class DefaultRedisRateLimiterImpl implements RedisRateLimiter {
             }
             return finalAttempt;
 
+        } catch (RateLimitSystemException e) {
+            throw e;
         } catch (Exception e) {
             long waitTime = System.currentTimeMillis() - startTime;
             log.error("Rate limit wait failed - key: {}, waitTime: {}ms, error: {}",
                     key, waitTime, e.getMessage(), e);
-            throw new RateLimitExceededException("Rate limit wait failed: " + e.getMessage(), e);
+            throw new RateLimitSystemException("Rate limit wait failed: " + e.getMessage(), e);
         }
     }
 
@@ -291,7 +296,7 @@ public class DefaultRedisRateLimiterImpl implements RedisRateLimiter {
             log.debug("Rate limit reset - key: {}", key);
         } catch (Exception e) {
             log.error("Rate limit reset failed - key: {}, error: {}", key, e.getMessage(), e);
-            throw new RateLimitExceededException("Rate limit reset failed: " + e.getMessage(), e);
+            throw new RateLimitSystemException("Rate limit reset failed: " + e.getMessage(), e);
         }
     }
 
@@ -347,7 +352,7 @@ public class DefaultRedisRateLimiterImpl implements RedisRateLimiter {
             return redisScript;
         } catch (Exception e) {
             log.error("Failed to load Lua script from: {}", scriptPath, e);
-            throw new RateLimitExceededException("Failed to load Lua script: " + scriptPath, e);
+            throw new RateLimitSystemException("Failed to load Lua script: " + scriptPath, e);
         }
     }
 

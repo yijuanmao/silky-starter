@@ -21,6 +21,10 @@ import java.util.Map;
 public class RedisMessageQueueTemplate {
 
     private static final Logger log = LoggerFactory.getLogger(RedisMessageQueueTemplate.class);
+    private static final String HEADER_DB_ID = "dbId";
+    private static final int MAX_HEADERS_COUNT = 64;
+    private static final int MAX_HEADER_KEY_LENGTH = 128;
+    private static final int MAX_HEADER_VALUE_LENGTH = 2048;
 
     private final StringRedisTemplate stringRedisTemplate;
     private final MessageRepository messageRepository;
@@ -51,6 +55,8 @@ public class RedisMessageQueueTemplate {
      * @return Redis 生成的消息 ID
      */
     public String send(String streamKey, Object payload, Map<String, String> headers) {
+        validateSendArguments(streamKey, payload, headers);
+
         StreamMessage message = new StreamMessage(streamKey, payload);
         if (headers != null) {
             headers.forEach(message::putHeader);
@@ -60,7 +66,7 @@ public class RedisMessageQueueTemplate {
         try {
             String dbId = messageRepository.onSend(message);
             if (dbId != null && !dbId.isEmpty()) {
-                message.putHeader("dbId", dbId);
+                message.putHeader(HEADER_DB_ID, dbId);
             }
         } catch (Exception e) {
             log.warn("[RedisStream] MessageRepository.onSend 回调异常，stream={}", streamKey, e);
@@ -72,7 +78,11 @@ public class RedisMessageQueueTemplate {
         RecordId recordId = stringRedisTemplate.opsForStream()
                 .add(StreamRecords.mapBacked(recordMap).withStreamKey(streamKey));
 
-        String id = recordId != null ? recordId.getValue() : "unknown";
+        if (recordId == null || recordId.getValue() == null || recordId.getValue().isEmpty()) {
+            throw new IllegalStateException("Redis Stream add returned null RecordId, streamKey=" + streamKey);
+        }
+
+        String id = recordId.getValue();
         message.setId(id);
 
         log.debug("[RedisStream] 消息发送成功: stream={}, id={}, payloadLen={}",
@@ -94,5 +104,36 @@ public class RedisMessageQueueTemplate {
             map.put(StreamFieldConstants.FIELD_HEADERS, com.alibaba.fastjson2.JSON.toJSONString(message.getHeaders()));
         }
         return map;
+    }
+
+    /**
+     * 校验发送参数，避免将非法数据写入 Stream。
+     */
+    private void validateSendArguments(String streamKey, Object payload, Map<String, String> headers) {
+        if (streamKey == null || streamKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("streamKey must not be blank");
+        }
+        if (payload == null) {
+            throw new IllegalArgumentException("payload must not be null");
+        }
+        if (headers == null || headers.isEmpty()) {
+            return;
+        }
+        if (headers.size() > MAX_HEADERS_COUNT) {
+            throw new IllegalArgumentException("headers size exceeds limit: " + MAX_HEADERS_COUNT);
+        }
+        for (Map.Entry<String, String> entry : headers.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+            if (key == null || key.trim().isEmpty()) {
+                throw new IllegalArgumentException("header key must not be blank");
+            }
+            if (key.length() > MAX_HEADER_KEY_LENGTH) {
+                throw new IllegalArgumentException("header key length exceeds limit: " + MAX_HEADER_KEY_LENGTH);
+            }
+            if (value != null && value.length() > MAX_HEADER_VALUE_LENGTH) {
+                throw new IllegalArgumentException("header value length exceeds limit: " + MAX_HEADER_VALUE_LENGTH);
+            }
+        }
     }
 }

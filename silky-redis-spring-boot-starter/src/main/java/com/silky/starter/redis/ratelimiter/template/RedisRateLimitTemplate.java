@@ -2,6 +2,7 @@ package com.silky.starter.redis.ratelimiter.template;
 
 import com.silky.starter.redis.ratelimiter.config.RateLimitConfig;
 import com.silky.starter.redis.ratelimiter.exception.RateLimitExceededException;
+import com.silky.starter.redis.ratelimiter.exception.RateLimitSystemException;
 import com.silky.starter.redis.ratelimiter.service.RedisRateLimiter;
 
 import java.util.concurrent.TimeUnit;
@@ -16,9 +17,19 @@ import java.util.function.Supplier;
 public class RedisRateLimitTemplate {
 
     private final RedisRateLimiter redisRateLimiter;
+    /**
+     * 系统异常（Redis/Lua/配置等）时是否降级执行 fallback。
+     * false: 抛出系统异常；true: 执行 fallback。
+     */
+    private final boolean fallbackOnSystemFailure;
 
     public RedisRateLimitTemplate(RedisRateLimiter redisRateLimiter) {
+        this(redisRateLimiter, false);
+    }
+
+    public RedisRateLimitTemplate(RedisRateLimiter redisRateLimiter, boolean fallbackOnSystemFailure) {
         this.redisRateLimiter = redisRateLimiter;
+        this.fallbackOnSystemFailure = fallbackOnSystemFailure;
     }
 
     /**
@@ -151,8 +162,12 @@ public class RedisRateLimitTemplate {
             } else {
                 return fallbackSupplier.get();
             }
+        } catch (RateLimitSystemException e) {
+            if (fallbackOnSystemFailure) {
+                return fallbackSupplier.get();
+            }
+            throw e;
         } catch (RateLimitExceededException e) {
-            Thread.currentThread().interrupt();
             return fallbackSupplier.get();
         }
     }

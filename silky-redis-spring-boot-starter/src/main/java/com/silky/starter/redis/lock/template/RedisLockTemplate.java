@@ -57,10 +57,14 @@ public class RedisLockTemplate {
     public <T> T lock(String key, long waitTime, long leaseTime,
                       TimeUnit timeUnit, boolean releaseAfterTransaction,
                       Supplier<T> supplier) {
-        RLock lock = redissonClient.getLock(key);
+        RLock lock = getRLock(key, LockType.REENTRANT);
         boolean isLocked = false;
 
         try {
+            if (releaseAfterTransaction && leaseTime > 0) {
+                log.warn("releaseAfterTransaction=true with leaseTime={} may cause lock to expire before transaction completion, key={}",
+                        leaseTime, key);
+            }
             isLocked = lock.tryLock(waitTime, leaseTime, timeUnit);
             if (!isLocked) {
                 throw new RedissonException("获取分布式锁失败, key: " + key);
@@ -118,7 +122,20 @@ public class RedisLockTemplate {
      * 直接获取RLock对象，提供最大的灵活性
      */
     public RLock getRLock(String key, LockType lockType) {
-        return redissonClient.getLock(key);
+        if (lockType == null) {
+            lockType = LockType.REENTRANT;
+        }
+        switch (lockType) {
+            case FAIR:
+                return redissonClient.getFairLock(key);
+            case READ:
+                return redissonClient.getReadWriteLock(key).readLock();
+            case WRITE:
+                return redissonClient.getReadWriteLock(key).writeLock();
+            case REENTRANT:
+            default:
+                return redissonClient.getLock(key);
+        }
     }
 
     /**
@@ -127,6 +144,18 @@ public class RedisLockTemplate {
      * @param key 锁的key
      */
     public void forceUnlock(String key) {
+        RLock lock = redissonClient.getLock(key);
+        if (lock.isLocked()) {
+            lock.forceUnlock();
+        }
+    }
+
+    /**
+     * 仅当当前线程持有锁时解锁。
+     *
+     * @param key 锁的key
+     */
+    public void unlockIfHeldByCurrentThread(String key) {
         RLock lock = redissonClient.getLock(key);
         if (lock.isHeldByCurrentThread()) {
             safeUnlock(lock);
