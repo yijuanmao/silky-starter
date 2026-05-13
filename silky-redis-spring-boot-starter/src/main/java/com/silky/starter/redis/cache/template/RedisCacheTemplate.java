@@ -23,6 +23,9 @@ import java.util.stream.Collectors;
 @SuppressWarnings(value = {"unchecked"})
 public class RedisCacheTemplate {
 
+    private static final long DEFAULT_SCAN_COUNT = 1000L;
+    private static final int DEFAULT_DELETE_BATCH_SIZE = 500;
+
     private final RedisTemplate<String, Object> redisTemplate;
 
     /**
@@ -605,28 +608,61 @@ public class RedisCacheTemplate {
      * @return 实际删除的数量
      */
     public long deleteByPattern(String pattern) {
+        return deleteByPattern(pattern, DEFAULT_SCAN_COUNT, DEFAULT_DELETE_BATCH_SIZE);
+    }
+
+    /**
+     * 按模式批量删除键（基于 SCAN 游标 + 分批删除）。
+     * <p>与 {@link #deleteByPattern(String)} 相比，该方法支持自定义扫描步长与删除批次大小，
+     * 可在大 key 空间场景下进一步降低内存峰值与单次删除压力。</p>
+     *
+     * @param pattern         匹配模式，支持通配符 * 和 ?
+     * @param scanCount       SCAN 每轮建议返回数量（>0）
+     * @param deleteBatchSize 每批删除的键数量（>0）
+     * @return 实际删除的数量
+     */
+    public long deleteByPattern(String pattern, long scanCount, int deleteBatchSize) {
         if (pattern == null || pattern.trim().isEmpty()) {
             return 0L;
         }
-        Set<String> keys = new HashSet<>();
-        ScanOptions scanOptions = ScanOptions.scanOptions().match(pattern).count(1000).build();
+        if (scanCount <= 0) {
+            scanCount = DEFAULT_SCAN_COUNT;
+        }
+        if (deleteBatchSize <= 0) {
+            deleteBatchSize = DEFAULT_DELETE_BATCH_SIZE;
+        }
+
+        ScanOptions scanOptions = ScanOptions.scanOptions().match(pattern).count(scanCount).build();
         RedisSerializer<?> keySerializer = redisTemplate.getKeySerializer();
-        redisTemplate.execute((RedisCallback<Void>) connection -> {
+        final int finalDeleteBatchSize = deleteBatchSize;
+        Long deleted = redisTemplate.execute((RedisCallback<Long>) connection -> {
+            long totalDeleted = 0L;
+            List<String> batch = new ArrayList<>(finalDeleteBatchSize);
             try (Cursor<byte[]> cursor = connection.scan(scanOptions)) {
                 while (cursor.hasNext()) {
                     byte[] rawKey = cursor.next();
                     Object key = keySerializer.deserialize(rawKey);
                     if (key != null) {
-                        keys.add(key.toString());
+                        batch.add(key.toString());
+                        if (batch.size() >= finalDeleteBatchSize) {
+                            Long count = redisTemplate.delete(batch);
+                            if (count != null) {
+                                totalDeleted += count;
+                            }
+                            batch.clear();
+                        }
                     }
                 }
             }
-            return null;
+            if (!batch.isEmpty()) {
+                Long count = redisTemplate.delete(batch);
+                if (count != null) {
+                    totalDeleted += count;
+                }
+            }
+            return totalDeleted;
         });
-        if (CollectionUtils.isEmpty(keys)) {
-            return 0L;
-        }
-        return delete(keys);
+        return deleted == null ? 0L : deleted;
     }
 
     /**
