@@ -13,9 +13,9 @@ import com.silky.starter.excel.core.model.imports.ImportRequest;
 import com.silky.starter.excel.core.model.imports.ImportResult;
 import com.silky.starter.excel.core.model.imports.ImportTask;
 import com.silky.starter.excel.core.resolve.ExcelFieldResolverPipeline;
-import com.silky.starter.excel.core.resolve.ResolvedPage;
 import com.silky.starter.excel.core.resolve.ResolveCellWriteHandler;
 import com.silky.starter.excel.core.resolve.ResolveContext;
+import com.silky.starter.excel.core.resolve.ResolvedPage;
 import com.silky.starter.excel.core.storage.StorageObject;
 import com.silky.starter.excel.core.storage.factory.StorageStrategyFactory;
 import com.silky.starter.excel.entity.ExportRecord;
@@ -179,9 +179,7 @@ public class DefaultExcelTemplate implements ExcelTemplate {
 
             tempFile = createTempFile(request.getFileName());
             ExportResult result = writeExportFile(task, tempFile);
-            StorageObject storageObject = storageStrategyFactory
-                    .getStrategy(resolveExportStorageType(request))
-                    .store(tempFile, request.getFileName(), request.getFileMetadata());
+            StorageObject storageObject = storageStrategyFactory.getStrategy(resolveExportStorageType(request)).store(tempFile, request.getFileName(), request.getFileMetadata());
 
             long costTime = System.currentTimeMillis() - startTime;
             task.finish();

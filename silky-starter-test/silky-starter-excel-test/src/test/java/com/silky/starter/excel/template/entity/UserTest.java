@@ -31,7 +31,7 @@ public class UserTest {
     private Integer status;
 
     @ExcelProperty(value = "性别")
-    @ExcelDict(dictCode = "gender")
+    @ExcelDict(dictCode = "1=男,2=女")
     private Integer gender;
 
     @ExcelProperty(value = "身份证号")

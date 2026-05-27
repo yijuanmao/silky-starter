@@ -37,6 +37,9 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class ExcelTemplateTest extends ExcelApplicationTest {
 
+    /**
+     * 测试数据源。
+     */
     private static final List<UserTest> TEST_DATA = createTestData();
 
     @Autowired
@@ -48,7 +51,7 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
     @Test
     public void testExportSync() {
         ExportRequest<UserTest> request = ExportRequest.of(
-                "test-export.xlsx",
+                "D:\\test-export.xlsx",
                 UserTest.class,
                 this::pageData
         );
@@ -245,7 +248,7 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
     }
 
     /**
-     * 测试枚举字段解析器。
+     * 测试脱敏字段解析器。
      */
     @Test
     public void testMaskFieldResolver() throws Exception {
@@ -299,7 +302,7 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
     }
 
     /**
-     * 测试导出结果解析器。
+     * 测试注解导出（枚举翻译 + 字典翻译 + 脱敏）整体流程。
      */
     @Test
     public void testExportWithAnnotations() {
@@ -320,7 +323,7 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
     }
 
     /**
-     * 测试导出结果解析器。
+     * 测试 EnhancedWriterWrapper 的基础行为。
      */
     @Test
     public void testEnhancedWriterWrapper_Basic() throws Exception {
@@ -342,7 +345,7 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
     }
 
     /**
-     * 测试导出结果解析器。
+     * 测试组合注解解析：枚举 + 脱敏。
      */
     @Test
     public void testResolverPipeline_EnumAndMask() {
@@ -361,6 +364,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         assertEquals("启用", page.getValue(0, "statusCode"));
     }
 
+    /**
+     * 测试枚举翻译只影响导出展示值，不修改原始 DTO。
+     */
     @Test
     public void testResolverPipeline_EnumNoMutate() {
         List<ExcelFieldResolver<?>> resolvers = Collections.singletonList(new EnumFieldResolver());
@@ -374,6 +380,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         assertEquals("启用", page.getValue(0, "status"));
     }
 
+    /**
+     * 测试字典表达式模式翻译。
+     */
     @Test
     public void testResolverPipeline_DictExpression() {
         List<ExcelFieldResolver<?>> resolvers = Collections.singletonList(new DictFieldResolver(null));
@@ -387,7 +396,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         assertEquals("VIP", page.getValue(0, "userLevel"));
     }
 
-
+    /**
+     * 测试无注解字段保持原值且无解析结果。
+     */
     @Test
     public void testResolverPipeline_NoAnnotation() {
         List<ExcelFieldResolver<?>> resolvers = asList(new EnumFieldResolver(), new MaskFieldResolver());
@@ -403,6 +414,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         assertTrue(page.isEmpty());
     }
 
+    /**
+     * 测试字段值为 null 时跳过解析。
+     */
     @Test
     public void testResolverPipeline_NullValue() {
         List<ExcelFieldResolver<?>> resolvers = Collections.singletonList(new EnumFieldResolver());
@@ -416,6 +430,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         assertTrue(page.isEmpty());
     }
 
+    /**
+     * 测试字典 Provider 在单页内只批量查询一次。
+     */
     @Test
     public void testResolverPipeline_DictProviderBatchQueryOnce() {
         AtomicInteger queryCount = new AtomicInteger(0);
@@ -442,6 +459,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         assertEquals("产品", page.getValue(1, "department"));
     }
 
+    /**
+     * 测试字典 Provider 的多值翻译场景。
+     */
     @Test
     public void testResolverPipeline_DictProviderMultiValue() {
         DictionaryProvider provider = (dictCode, codes) -> {
@@ -461,6 +481,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         assertEquals("Java,Go,3", page.getValue(0, "tags"));
     }
 
+    /**
+     * 测试同一字典编码的多个字段不会互相覆盖。
+     */
     @Test
     public void testResolverPipeline_SameDictCodeMultipleFields() {
         DictionaryProvider provider = (dictCode, codes) -> {
@@ -482,10 +505,16 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         assertEquals("产品", page.getValue(0, "secondaryDepartment"));
     }
 
+    /**
+     * 分页数据入口，供导出请求调用。
+     */
     private ExportPageData<UserTest> pageData(int pageNum, int pageSize, Map<String, Object> params) {
         return pageDataFromSource(TEST_DATA, pageNum, pageSize);
     }
 
+    /**
+     * 从指定数据源按页切片，构造导出分页结果。
+     */
     private ExportPageData<UserTest> pageDataFromSource(List<UserTest> source, int pageNum, int pageSize) {
         if (pageNum <= 0 || pageSize <= 0) {
             return new ExportPageData<>(Collections.emptyList(), false);
@@ -500,6 +529,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         return new ExportPageData<>(pageData, hasNext);
     }
 
+    /**
+     * 构造多 Sheet 场景的第一个 Sheet 数据。
+     */
     private List<UserTest> sheet1Data() {
         return asList(
                 new UserTest("用户1", "13800000001", "u1@silky.com", 1, 1, "110101199001011111", "6222021234567890001"),
@@ -507,6 +539,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         );
     }
 
+    /**
+     * 构造多 Sheet 场景的第二个 Sheet 数据。
+     */
     private List<UserTest> sheet2Data() {
         return asList(
                 new UserTest("用户3", "13900000003", "u3@silky.com", 1, 1, "110101199001011113", "6222021234567890003"),
@@ -514,6 +549,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         );
     }
 
+    /**
+     * 先生成一个临时 Excel 文件，供导入测试复用。
+     */
     private String exportSampleImportFile(String suffix) {
         String fileName = System.getProperty("java.io.tmpdir")
                 + "/silky-import-source-" + suffix + "-" + System.currentTimeMillis() + ".xlsx";
@@ -535,6 +573,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         return fileName;
     }
 
+    /**
+     * 轮询导出记录，直到任务结束或超时。
+     */
     private ExportRecord waitExportRecord(String taskId, long timeoutMillis) throws InterruptedException {
         long start = System.currentTimeMillis();
         while (System.currentTimeMillis() - start < timeoutMillis) {
@@ -548,6 +589,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         return excelTemplate.getExportRecord(taskId);
     }
 
+    /**
+     * 轮询导入记录，直到任务结束或超时。
+     */
     private ImportRecord waitImportRecord(String taskId, long timeoutMillis) throws InterruptedException {
         long start = System.currentTimeMillis();
         while (System.currentTimeMillis() - start < timeoutMillis) {
@@ -561,6 +605,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         return excelTemplate.getImportRecord(taskId);
     }
 
+    /**
+     * 构造基础测试数据。
+     */
     private static List<UserTest> createTestData() {
         List<UserTest> list = new ArrayList<>();
         for (int i = 1; i <= 60; i++) {
@@ -576,6 +623,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         return list;
     }
 
+    /**
+     * 便捷构建列表。
+     */
     @SafeVarargs
     private static <T> List<T> asList(T... rows) {
         List<T> list = new ArrayList<>();
@@ -583,6 +633,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         return list;
     }
 
+    /**
+     * 组合注解测试 DTO：同一字段包含枚举翻译和脱敏。
+     */
     static class PipelineCombinedDTO {
         @ExcelEnum(enumClass = UserStatus.class, codeField = "code", labelField = "label")
         @ExcelMask(strategy = MaskStrategy.PHONE)
@@ -597,6 +650,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         }
     }
 
+    /**
+     * 字符串枚举测试 DTO。
+     */
     static class PipelineStringEnumDTO {
         @ExcelEnum(enumClass = UserStatus.class, codeField = "code", labelField = "label")
         private String status;
@@ -610,6 +666,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         }
     }
 
+    /**
+     * 字典表达式测试 DTO。
+     */
     static class PipelineDictDTO {
         @ExcelDict(readConverterExp = "0=普通,1=VIP,2=SVIP")
         private String userLevel;
@@ -623,6 +682,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         }
     }
 
+    /**
+     * 无注解测试 DTO。
+     */
     static class PipelineNoAnnotationDTO {
         private String name;
         private int age;
@@ -644,6 +706,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         }
     }
 
+    /**
+     * 字典 Provider 测试 DTO。
+     */
     static class PipelineDictProviderDTO {
         @ExcelDict(dictCode = "department")
         private String department;
@@ -657,6 +722,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         }
     }
 
+    /**
+     * 多值字典测试 DTO。
+     */
     static class PipelineTagsDTO {
         @ExcelDict(dictCode = "tags", separator = ",")
         private String tags;
@@ -670,6 +738,9 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         }
     }
 
+    /**
+     * 相同 dictCode 多字段测试 DTO。
+     */
     static class PipelineSameDictCodeDTO {
         @ExcelDict(dictCode = "department")
         private String primaryDepartment;
