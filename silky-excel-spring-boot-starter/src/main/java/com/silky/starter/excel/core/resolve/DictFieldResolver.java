@@ -4,22 +4,21 @@ import com.silky.starter.excel.core.annotation.ExcelDict;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 字典翻译解析器
- * 将字典编码翻译为字典文本，支持批量查询和缓存
+ * 将字典编码翻译为字典文本。
  * <p>
  * 支持两种翻译模式：
  * <ol>
- *   <li>字典查询模式：通过 DictionaryProvider 查询字典文本</li>
+ *   <li>字典查询模式：通过 DictionaryProvider 按页批量查询字典文本</li>
  *   <li>表达式模式：通过 @ExcelDict(readConverterExp) 直接翻译</li>
  * </ol>
  * <p>
@@ -29,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @since 1.1.0
  */
 @Slf4j
-public class DictFieldResolver implements ExcelFieldResolver {
+public class DictFieldResolver implements BatchExcelFieldResolver<ExcelDict> {
 
     private final DictionaryProvider dictionaryProvider;
 
@@ -42,50 +41,55 @@ public class DictFieldResolver implements ExcelFieldResolver {
         this.dictionaryProvider = dictionaryProvider;
     }
 
-    /**
-     * 字典翻译支持判断
-     * <p>
-     * 支持条件：
-     * <ul>
-     *   <li>注解是 ExcelDict</li>
-     *   <li>有字典查询模式（dictCode 非空且有 DictionaryProvider）</li>
-     *   <li>或有表达式模式（readConverterExp 非空）</li>
-     * </ul>
-     *
-     * @param field       字段
-     * @param annotation  注解
-     * @return 是否支持
-     */
     @Override
-    public boolean supports(Field field, Annotation annotation) {
-        if (!(annotation instanceof ExcelDict)) {
-            return false;
+    public Class<ExcelDict> getAnnotationType() {
+        return ExcelDict.class;
+    }
+
+    @Override
+    public void prepare(List<FieldValueContext> contexts, ExcelDict excelDict) {
+        if (dictionaryProvider == null || excelDict.dictCode().isEmpty() || !excelDict.readConverterExp().isEmpty()) {
+            return;
         }
-        ExcelDict excelDict = (ExcelDict) annotation;
-        // 表达式模式始终支持
-        if (!excelDict.readConverterExp().isEmpty()) {
-            return true;
+
+        String dictCode = excelDict.dictCode();
+        Set<String> codes = new LinkedHashSet<>();
+        for (FieldValueContext context : contexts) {
+            try {
+                Object value = context.getField().get(context.getRow());
+                if (value != null) {
+                    collectCodes(codes, String.valueOf(value), excelDict.separator());
+                }
+            } catch (IllegalAccessException e) {
+                log.warn("收集字典字段失败: field={}", context.getFieldName(), e);
+            }
         }
-        // 字典查询模式需要有 DictionaryProvider
-        return !excelDict.dictCode().isEmpty() && dictionaryProvider != null;
+        if (codes.isEmpty()) {
+            return;
+        }
+
+        try {
+            Map<String, String> result = dictionaryProvider.batchQuery(dictCode, new ArrayList<>(codes));
+            contexts.get(0).getResolveContext().putDictResult(dictCode, result);
+        } catch (Exception e) {
+            log.warn("字典批量查询失败: dictCode={}, keys={}", dictCode, codes, e);
+        }
     }
 
     /**
      * 字段解析
      *
-     * @param field       字段
-     * @param annotation  注解
-     * @param fieldValue  字段值
-     * @param context     解析上下文
+     * @param context    字段解析上下文
+     * @param excelDict  字典注解
+     * @param fieldValue 字段值
      * @return 解析结果
      */
     @Override
-    public Object resolve(Field field, Annotation annotation, Object fieldValue, ResolveContext context) {
+    public Object resolve(FieldValueContext context, ExcelDict excelDict, Object fieldValue) {
         if (fieldValue == null) {
             return null;
         }
 
-        ExcelDict excelDict = (ExcelDict) annotation;
         String codeStr = String.valueOf(fieldValue);
 
         // 优先使用表达式模式
@@ -93,39 +97,21 @@ public class DictFieldResolver implements ExcelFieldResolver {
             return resolveByConverterExp(excelDict, codeStr);
         }
 
-        // 字典查询模式
         String dictCode = excelDict.dictCode();
-        if (dictCode.isEmpty()) {
+        if (dictCode.isEmpty() || dictionaryProvider == null) {
             return fieldValue;
         }
 
-        // 先从缓存中获取
-        String label = context.getDictLabel(dictCode, codeStr);
+        String separator = excelDict.separator();
+        if (codeStr.contains(separator) && !separator.isEmpty()) {
+            return resolveMultiValueByContext(context, excelDict, dictCode, codeStr);
+        }
+
+        String label = context.getResolveContext().getDictLabel(dictCode, codeStr);
         if (label != null) {
             return label;
         }
 
-        // 收集待查询的字典键
-        context.collectDictKey(dictCode, codeStr);
-
-        // 执行批量查询
-        try {
-            Set<String> pendingKeys = context.getPendingDictKeys().get(dictCode);
-            if (pendingKeys != null && !pendingKeys.isEmpty()) {
-                Map<String, String> result = dictionaryProvider.batchQuery(dictCode, new ArrayList<>(pendingKeys));
-                context.putDictResult(dictCode, result);
-                context.clearPendingDictKeys(dictCode);
-
-                label = result.get(codeStr);
-                if (label != null) {
-                    return label;
-                }
-            }
-        } catch (Exception e) {
-            log.warn("字典批量查询失败: dictCode={}, keys={}", dictCode, context.getPendingDictKeys().get(dictCode), e);
-        }
-
-        // 未命中处理
         return handleMiss(excelDict, fieldValue);
     }
 
@@ -194,6 +180,38 @@ public class DictFieldResolver implements ExcelFieldResolver {
             }
         }
         return map;
+    }
+
+    private String resolveMultiValueByContext(FieldValueContext context, ExcelDict excelDict, String dictCode, String codeStr) {
+        String separator = excelDict.separator();
+        String[] codes = codeStr.split(java.util.regex.Pattern.quote(separator));
+        StringBuilder sb = new StringBuilder();
+        for (String code : codes) {
+            String trimmed = code.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            if (sb.length() > 0) {
+                sb.append(separator);
+            }
+            String label = context.getResolveContext().getDictLabel(dictCode, trimmed);
+            sb.append(label != null ? label : handleMissStr(excelDict, trimmed));
+        }
+        return sb.toString();
+    }
+
+    private void collectCodes(Set<String> codes, String codeStr, String separator) {
+        if (separator != null && !separator.isEmpty() && codeStr.contains(separator)) {
+            String[] values = codeStr.split(java.util.regex.Pattern.quote(separator));
+            for (String value : values) {
+                String trimmed = value.trim();
+                if (!trimmed.isEmpty()) {
+                    codes.add(trimmed);
+                }
+            }
+            return;
+        }
+        codes.add(codeStr);
     }
 
     /**

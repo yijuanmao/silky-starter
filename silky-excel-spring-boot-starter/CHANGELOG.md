@@ -1,4 +1,22 @@
 
+## v1.0.7 (2026-05-27)
+
+### 💎 功能优化
+- **ExcelTemplate API 收口**：导入导出入口统一为 `exportSync`、`exportAsync`、`importSync`、`importAsync`，用户最小使用链路变为定义 DTO、编写分页 supplier、提交异步任务、通过 taskId 查询进度和文件地址。
+- **导入导出流程简化**：导出、导入执行逻辑收口到 `DefaultExcelTemplate`，减少 `ExportEngine`、`ImportEngine` 带来的重复调度心智。
+- **请求与配置精简**：保留大文件分页、多 Sheet、异步任务、进度、存储扩展、导入批处理等核心配置，移除压缩分片、重复异步模型和未使用配置项。
+- **字段解析管道重构**：`ExcelFieldResolverPipeline` 改为页级解析模型，通过 `ResolvedPage` 承载导出展示值，不再维护任务级旁路状态。
+- **字段转换不反写 DTO**：`@ExcelEnum`、`@ExcelDict`、`@ExcelMask` 只影响 Excel 单元格输出，避免导出过程修改业务对象。
+- **解析器 SPI 泛型化**：`ExcelFieldResolver` 通过 `getAnnotationType()` 声明支持的注解，新增 `BatchExcelFieldResolver` 支持页级批量预处理。
+- **字典 Provider 批量优化**：`@ExcelDict(dictCode = "...")` 在每页导出前批量查询字典值，多值字段按 `separator` 拆分后统一翻译。
+- **枚举缓存修正**：枚举翻译缓存 key 纳入 `enumClass`、`codeField`、`labelField`，避免同一枚举不同字段映射互相污染。
+- **README 更新**：补充分页异步导出、进度查询、存储扩展、导入批处理、字段转换不反写 DTO 和字典批量查询说明。
+
+### 🐛 Bug Fixes
+- 修复导入最后不足一批的数据未提交问题。
+- 修复导入记录服务空实现导致任务记录无法查询的问题。
+- 修复 `@ExcelDict(readConverterExp = "...")` 在没有 `DictionaryProvider` 时不生效的问题。
+
 ## v1.0.6 (2026-04-30)
 
 ### ✨ 新特性

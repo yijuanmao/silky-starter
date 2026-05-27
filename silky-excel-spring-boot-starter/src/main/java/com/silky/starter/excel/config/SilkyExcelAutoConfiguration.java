@@ -90,7 +90,7 @@ public class SilkyExcelAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public ExcelFieldResolverPipeline excelFieldResolverPipeline(ObjectProvider<DictionaryProvider> dictionaryProvider) {
-        List<ExcelFieldResolver> resolvers = new ArrayList<>();
+        List<ExcelFieldResolver<?>> resolvers = new ArrayList<>();
         resolvers.add(new EnumFieldResolver());
         resolvers.add(new DictFieldResolver(dictionaryProvider.getIfAvailable()));
         resolvers.add(new MaskFieldResolver());

@@ -11,7 +11,7 @@
 - 进度查询：通过 `getExportRecord(taskId)` / `getImportRecord(taskId)` 查询状态。
 - 存储扩展：内置本地存储，业务方实现 `StorageStrategy` 即可接入 OSS、COS、S3、MinIO 等。
 - 导入支持：按批读取 Excel，并交给业务方 `DataImporterSupplier` 落库。
-- 字段转换：支持 `@ExcelEnum`、`@ExcelDict`、`@ExcelMask`。
+- 字段转换：支持 `@ExcelEnum`、`@ExcelDict`、`@ExcelMask`，只影响导出单元格展示值，不反写 DTO。
 
 ## 快速开始
 
@@ -90,6 +90,15 @@ ExportResult result = excelTemplate.exportAsync(request);
 ExportRecord record = excelTemplate.getExportRecord(result.getTaskId());
 ```
 
+异步导出提交成功后，使用 `taskId` 查询进度和文件地址：
+
+```java
+ExportRecord record = excelTemplate.getExportRecord(result.getTaskId());
+Long processedCount = record.getProcessedCount();
+Long totalCount = record.getTotalCount();
+String fileUrl = record.getFileUrl();
+```
+
 同步导出：
 
 ```java
@@ -140,6 +149,8 @@ ImportResult result = excelTemplate.importAsync(request);
 ImportRecord record = excelTemplate.getImportRecord(result.getTaskId());
 ```
 
+导入会按 `imports.page-size` 分批读取并调用 `DataImporterSupplier`，最后不足一批的数据也会正常提交。
+
 ## 存储扩展
 
 内置 `local` 存储。接入 OSS、COS、S3、MinIO 时，实现 `StorageStrategy` 并注册为 Spring Bean：
@@ -187,6 +198,8 @@ request.setStorageType("oss");
 
 ## 字段转换
 
+字段转换在导出写入阶段生效，只替换 Excel 单元格展示值，不修改业务 DTO 原字段值。比如 `Integer status = 1` 通过 `@ExcelEnum` 输出为 `"启用"`，导出完成后 DTO 中仍然是 `1`。
+
 枚举翻译：
 
 ```java
@@ -203,6 +216,8 @@ private Integer status;
 private Integer gender;
 ```
 
+`readConverterExp` 不依赖 `DictionaryProvider`，适合少量固定枚举值。
+
 字典 Provider：
 
 ```java
@@ -214,6 +229,14 @@ public class CustomDictionaryProvider implements DictionaryProvider {
         return dictService.batchGetLabels(dictCode, codes);
     }
 }
+```
+
+`DictionaryProvider` 会按当前导出分页批量查询字典值，避免逐行逐列查库。多值字段可通过 `separator` 拆分后逐个翻译：
+
+```java
+@ExcelProperty("标签")
+@ExcelDict(dictCode = "article_tag", separator = ",")
+private String tags;
 ```
 
 脱敏：

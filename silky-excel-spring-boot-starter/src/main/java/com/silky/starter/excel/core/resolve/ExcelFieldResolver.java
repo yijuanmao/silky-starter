@@ -1,6 +1,6 @@
 package com.silky.starter.excel.core.resolve;
 
-import java.lang.reflect.Field;
+import java.lang.annotation.Annotation;
 
 /**
  * 字段解析器接口
@@ -11,28 +11,23 @@ import java.lang.reflect.Field;
  * @author zy
  * @since 1.1.0
  */
-public interface ExcelFieldResolver {
+public interface ExcelFieldResolver<A extends Annotation> {
 
     /**
-     * 判断当前解析器是否支持处理该字段
-     *
-     * @param field      字段
-     * @param annotation 注解（可为 null）
-     * @return 是否支持
+     * 当前解析器支持的注解类型。
      */
-    boolean supports(Field field, java.lang.annotation.Annotation annotation);
+    Class<A> getAnnotationType();
 
     /**
      * 对字段值进行解析/转换
      * 执行顺序：原值 -> 枚举翻译 -> 字典翻译 -> 脱敏 -> 输出
      *
-     * @param field      字段
+     * @param context    字段解析上下文
      * @param annotation 注解
-     * @param fieldValue 字段原始值
-     * @param context    解析上下文
+     * @param fieldValue 字段值
      * @return 转换后的值
      */
-    Object resolve(Field field, java.lang.annotation.Annotation annotation, Object fieldValue, ResolveContext context);
+    Object resolve(FieldValueContext context, A annotation, Object fieldValue);
 
     /**
      * 解析器优先级，数值越小优先级越高（越先执行）

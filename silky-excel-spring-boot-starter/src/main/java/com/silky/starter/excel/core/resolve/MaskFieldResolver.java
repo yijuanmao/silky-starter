@@ -5,7 +5,6 @@ import com.silky.starter.excel.core.annotation.ExcelMask;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 
-import java.lang.reflect.Field;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,14 +18,11 @@ import java.util.regex.Pattern;
  * @since 1.1.0
  */
 @Slf4j
-public class MaskFieldResolver implements ExcelFieldResolver {
+public class MaskFieldResolver implements ExcelFieldResolver<ExcelMask> {
 
-    /**
-     * 支持的注解类型
-     */
     @Override
-    public boolean supports(Field field, java.lang.annotation.Annotation annotation) {
-        return annotation instanceof ExcelMask;
+    public Class<ExcelMask> getAnnotationType() {
+        return ExcelMask.class;
     }
 
     /**
@@ -39,7 +35,7 @@ public class MaskFieldResolver implements ExcelFieldResolver {
      * @return 脱敏后的字段值
      */
     @Override
-    public Object resolve(Field field, java.lang.annotation.Annotation annotation, Object fieldValue, ResolveContext context) {
+    public Object resolve(FieldValueContext context, ExcelMask excelMask, Object fieldValue) {
         if (fieldValue == null) {
             return null;
         }
@@ -49,11 +45,10 @@ public class MaskFieldResolver implements ExcelFieldResolver {
             return strValue;
         }
 
-        ExcelMask excelMask = (ExcelMask) annotation;
         try {
             return doMask(strValue, excelMask);
         } catch (Exception e) {
-            log.warn("脱敏处理失败: field={}, value={}", field.getName(), fieldValue, e);
+            log.warn("脱敏处理失败: field={}, value={}", context.getFieldName(), fieldValue, e);
             return fieldValue;
         }
     }

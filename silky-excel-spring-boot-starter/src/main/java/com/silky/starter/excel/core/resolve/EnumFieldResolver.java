@@ -4,8 +4,8 @@ import com.silky.starter.excel.core.annotation.ExcelEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Objects;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -19,20 +19,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * @since 1.1.0
  */
 @Slf4j
-public class EnumFieldResolver implements ExcelFieldResolver {
+public class EnumFieldResolver implements ExcelFieldResolver<ExcelEnum> {
 
-    private final Map<String, EnumMeta> enumMetaCache = new ConcurrentHashMap<>();
+    private final Map<EnumMetaKey, EnumMeta> enumMetaCache = new ConcurrentHashMap<>();
 
-    /**
-     * 枚举翻译支持判断
-     *
-     * @param field       字段
-     * @param annotation  注解
-     * @return 是否支持
-     */
     @Override
-    public boolean supports(Field field, java.lang.annotation.Annotation annotation) {
-        return annotation instanceof ExcelEnum;
+    public Class<ExcelEnum> getAnnotationType() {
+        return ExcelEnum.class;
     }
 
     /**
@@ -45,20 +38,20 @@ public class EnumFieldResolver implements ExcelFieldResolver {
      * @return 解析结果
      */
     @Override
-    public Object resolve(Field field, java.lang.annotation.Annotation annotation, Object fieldValue, ResolveContext context) {
+    public Object resolve(FieldValueContext context, ExcelEnum excelEnum, Object fieldValue) {
         if (fieldValue == null) {
             return null;
         }
 
-        ExcelEnum excelEnum = (ExcelEnum) annotation;
         Class<? extends Enum<?>> enumClass = excelEnum.enumClass();
         String codeField = excelEnum.codeField();
         String labelField = excelEnum.labelField();
 
         try {
+            EnumMetaKey key = new EnumMetaKey(enumClass, codeField, labelField);
             EnumMeta meta = enumMetaCache.computeIfAbsent(
-                    enumClass.getName(),
-                    k -> buildEnumMeta(enumClass, codeField, labelField)
+                    key,
+                    k -> buildEnumMeta(k.enumClass, k.codeField, k.labelField)
             );
 
             String codeStr = String.valueOf(fieldValue);
@@ -78,7 +71,8 @@ public class EnumFieldResolver implements ExcelFieldResolver {
 
             return label;
         } catch (Exception e) {
-            log.warn("枚举翻译失败: field={}, enumClass={}, value={}", field.getName(), enumClass.getSimpleName(), fieldValue, e);
+            log.warn("枚举翻译失败: field={}, enumClass={}, value={}",
+                    context.getFieldName(), enumClass.getSimpleName(), fieldValue, e);
             return fieldValue;
         }
     }
@@ -137,5 +131,36 @@ public class EnumFieldResolver implements ExcelFieldResolver {
 
     private static class EnumMeta {
         final Map<String, String> codeToLabel = new ConcurrentHashMap<>();
+    }
+
+    private static class EnumMetaKey {
+        final Class<? extends Enum<?>> enumClass;
+        final String codeField;
+        final String labelField;
+
+        EnumMetaKey(Class<? extends Enum<?>> enumClass, String codeField, String labelField) {
+            this.enumClass = enumClass;
+            this.codeField = codeField;
+            this.labelField = labelField;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof EnumMetaKey)) {
+                return false;
+            }
+            EnumMetaKey that = (EnumMetaKey) o;
+            return Objects.equals(enumClass, that.enumClass)
+                    && Objects.equals(codeField, that.codeField)
+                    && Objects.equals(labelField, that.labelField);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(enumClass, codeField, labelField);
+        }
     }
 }

@@ -13,6 +13,7 @@ import com.silky.starter.excel.core.model.imports.ImportRequest;
 import com.silky.starter.excel.core.model.imports.ImportResult;
 import com.silky.starter.excel.core.model.imports.ImportTask;
 import com.silky.starter.excel.core.resolve.ExcelFieldResolverPipeline;
+import com.silky.starter.excel.core.resolve.ResolvedPage;
 import com.silky.starter.excel.core.resolve.ResolveCellWriteHandler;
 import com.silky.starter.excel.core.resolve.ResolveContext;
 import com.silky.starter.excel.core.storage.StorageObject;
@@ -260,16 +261,12 @@ public class DefaultExcelTemplate implements ExcelTemplate {
 
             List<T> pageRows = pageData.getData();
             if (fieldResolverPipeline != null) {
-                fieldResolverPipeline.resolve(pageRows, sheetContext.dataClass, resolveContext);
+                ResolvedPage resolvedPage = fieldResolverPipeline.resolve(pageRows, sheetContext.dataClass, resolveContext);
                 if (resolveHandler != null) {
-                    // 解析结果可能与字段类型不兼容，写入前通过 WriteHandler 替换单元格值。
-                    resolveHandler.setCurrentPageData(pageRows, fieldResolverPipeline);
+                    resolveHandler.setResolvedPage(resolvedPage);
                 }
             }
             writer.write(pageRows, sheetContext.dataClass, sheetContext.sheetName);
-            if (fieldResolverPipeline != null) {
-                fieldResolverPipeline.clearResolvedValues(pageRows);
-            }
 
             sheetRows += pageRows.size();
             updateExportProgress(request, task.getTaskId(), processedBeforeSheet + sheetRows, totalCount);

@@ -1,15 +1,11 @@
 package com.silky.starter.excel.core.resolve;
 
-import lombok.Getter;
-
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * 解析上下文
- * 在一次导出过程中共享，用于批量收集字典查询键值
+ * 在一次导出过程中共享页级字段解析结果。
  *
  * @author zy
  * @since 1.1.0
@@ -19,30 +15,7 @@ public class ResolveContext {
     /**
      * 字典缓存：dictCode -> (code -> label)
      */
-    @Getter
     private final Map<String, Map<String, String>> dictCache = new HashMap<>();
-
-    /**
-     * 待查询的字典键收集：dictCode -> Set<code>
-     */
-    @Getter
-    private final Map<String, Set<String>> pendingDictKeys = new HashMap<>();
-
-    /**
-     * 枚举缓存：enumClassName -> (code -> label)
-     */
-    @Getter
-    private final Map<String, Map<String, String>> enumCache = new HashMap<>();
-
-    /**
-     * 收集待查询的字典键
-     *
-     * @param dictCode 字典编码
-     * @param code     字典值
-     */
-    public void collectDictKey(String dictCode, String code) {
-        pendingDictKeys.computeIfAbsent(dictCode, k -> new HashSet<>()).add(code);
-    }
 
     /**
      * 获取字典翻译文本
@@ -65,16 +38,7 @@ public class ResolveContext {
      */
     public void putDictResult(String dictCode, Map<String, String> result) {
         if (result != null && !result.isEmpty()) {
-            dictCache.put(dictCode, result);
+            dictCache.computeIfAbsent(dictCode, key -> new HashMap<>()).putAll(result);
         }
-    }
-
-    /**
-     * 清空待查询的字典键（批量查询后调用）
-     *
-     * @param dictCode 字典编码
-     */
-    public void clearPendingDictKeys(String dictCode) {
-        pendingDictKeys.remove(dictCode);
     }
 }
