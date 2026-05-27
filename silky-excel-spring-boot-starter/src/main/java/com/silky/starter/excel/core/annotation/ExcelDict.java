@@ -12,6 +12,10 @@ import java.lang.annotation.*;
  *   <li><b>表达式模式</b>：通过 {@code readConverterExp} 直接指定翻译表达式（如 "0=男,1=女,2=未知"），无需实现 DictionaryProvider</li>
  * </ol>
  * <p>
+ * 兼容说明：
+ * 当 {@code readConverterExp} 为空且 {@code dictCode} 形如表达式时，也会按表达式模式处理，
+ * 用于兼容历史写法（如 {@code @ExcelDict(dictCode = "1=男,2=女")}）。
+ * <p>
  * 使用示例：
  * <pre>
  *     // 方式一：字典查询模式（需实现 DictionaryProvider）
@@ -24,10 +28,20 @@ import java.lang.annotation.*;
  *     @ExcelDict(readConverterExp = "0=禁用,1=启用,2=锁定")
  *     private Integer status;
  *
+ *     // 方式三：兼容历史写法（不推荐新项目继续使用）
+ *     @ExcelProperty("性别")
+ *     @ExcelDict(dictCode = "1=男,2=女")
+ *     private Integer gender;
+ *
  *     // 方式三：多值分隔符模式
  *     @ExcelProperty("标签")
  *     @ExcelDict(readConverterExp = "1=Java,2=Python,3=Go", separator = ",")
  *     private String tags;
+ *
+ *     // 方式四：表达式键值分隔符为冒号
+ *     @ExcelProperty("等级")
+ *     @ExcelDict(readConverterExp = "1:普通,2:VIP", kvSeparator = ":")
+ *     private Integer level;
  * </pre>
  *
  * @author zy
@@ -42,6 +56,9 @@ public @interface ExcelDict {
     /**
      * 字典编码，对应 DictionaryProvider 中的字典类型
      * 需要实现 {@link com.silky.starter.excel.core.resolve.DictionaryProvider} 接口并注册为 Spring Bean。
+     * <p>
+     * 兼容模式下，当 readConverterExp 为空且该值形如表达式（如 "1=男,2=女"）时，
+     * 会按表达式模式进行翻译。
      */
     String dictCode() default "";
 
@@ -55,6 +72,14 @@ public @interface ExcelDict {
      * 如果同时设置了 dictCode 和 readConverterExp，优先使用 readConverterExp。
      */
     String readConverterExp() default "";
+
+    /**
+     * 表达式键值分隔符
+     * <p>
+     * 用于解析 readConverterExp（以及兼容模式下的 dictCode 表达式）。
+     * 默认使用 "="，也支持 ":" 等自定义分隔符。
+     */
+    String kvSeparator() default "=";
 
     /**
      * 分隔符，读取字符串组内容

@@ -218,6 +218,22 @@ private Integer gender;
 
 `readConverterExp` 不依赖 `DictionaryProvider`，适合少量固定枚举值。
 
+兼容历史写法（推荐老代码平滑过渡，新代码仍建议使用 `readConverterExp`）：
+
+```java
+@ExcelProperty("性别")
+@ExcelDict(dictCode = "0=女,1=男")
+private Integer gender;
+```
+
+当表达式使用冒号时，可通过 `kvSeparator` 指定键值分隔符：
+
+```java
+@ExcelProperty("会员等级")
+@ExcelDict(readConverterExp = "0:普通,1:VIP,2:SVIP", kvSeparator = ":")
+private Integer level;
+```
+
 字典 Provider：
 
 ```java
@@ -238,6 +254,8 @@ public class CustomDictionaryProvider implements DictionaryProvider {
 @ExcelDict(dictCode = "article_tag", separator = ",")
 private String tags;
 ```
+
+说明：`dictCode` 在 Provider 模式下表示“字典类型编码”（如 `article_tag`）；`separator` 是字段多值分隔符（如 `1,2,3`），不是表达式键值分隔符。
 
 脱敏：
 

@@ -397,6 +397,38 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
     }
 
     /**
+     * 测试兼容写法：dictCode 直接写表达式时也能翻译。
+     */
+    @Test
+    public void testResolverPipeline_DictExpressionCompatByDictCode() {
+        List<ExcelFieldResolver<?>> resolvers = Collections.singletonList(new DictFieldResolver(null));
+        ExcelFieldResolverPipeline pipeline = new ExcelFieldResolverPipeline(resolvers);
+
+        PipelineDictCompatDTO dto = new PipelineDictCompatDTO();
+        dto.setGender("2");
+
+        ResolvedPage page = pipeline.resolve(Collections.singletonList(dto), PipelineDictCompatDTO.class, new ResolveContext());
+        assertEquals("2", dto.getGender());
+        assertEquals("女", page.getValue(0, "gender"));
+    }
+
+    /**
+     * 测试字典表达式支持自定义键值分隔符（冒号）。
+     */
+    @Test
+    public void testResolverPipeline_DictExpressionKvSeparatorColon() {
+        List<ExcelFieldResolver<?>> resolvers = Collections.singletonList(new DictFieldResolver(null));
+        ExcelFieldResolverPipeline pipeline = new ExcelFieldResolverPipeline(resolvers);
+
+        PipelineDictColonDTO dto = new PipelineDictColonDTO();
+        dto.setUserLevel("2");
+
+        ResolvedPage page = pipeline.resolve(Collections.singletonList(dto), PipelineDictColonDTO.class, new ResolveContext());
+        assertEquals("2", dto.getUserLevel());
+        assertEquals("SVIP", page.getValue(0, "userLevel"));
+    }
+
+    /**
      * 测试无注解字段保持原值且无解析结果。
      */
     @Test
@@ -457,6 +489,31 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
         assertEquals(1, queryCount.get());
         assertEquals("研发", page.getValue(0, "department"));
         assertEquals("产品", page.getValue(1, "department"));
+    }
+
+    /**
+     * 测试兼容表达式场景下不会触发 DictionaryProvider 查询。
+     */
+    @Test
+    public void testResolverPipeline_DictExpressionCompatNoProviderQuery() {
+        AtomicInteger queryCount = new AtomicInteger(0);
+        DictionaryProvider provider = (dictCode, codes) -> {
+            queryCount.incrementAndGet();
+            return new HashMap<>();
+        };
+
+        ExcelFieldResolverPipeline pipeline = new ExcelFieldResolverPipeline(
+                Collections.singletonList(new DictFieldResolver(provider)));
+
+        PipelineDictCompatDTO first = new PipelineDictCompatDTO();
+        first.setGender("1");
+        PipelineDictCompatDTO second = new PipelineDictCompatDTO();
+        second.setGender("2");
+
+        ResolvedPage page = pipeline.resolve(asList(first, second), PipelineDictCompatDTO.class, new ResolveContext());
+        assertEquals(0, queryCount.get());
+        assertEquals("男", page.getValue(0, "gender"));
+        assertEquals("女", page.getValue(1, "gender"));
     }
 
     /**
@@ -671,6 +728,38 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
      */
     static class PipelineDictDTO {
         @ExcelDict(readConverterExp = "0=普通,1=VIP,2=SVIP")
+        private String userLevel;
+
+        public String getUserLevel() {
+            return userLevel;
+        }
+
+        public void setUserLevel(String userLevel) {
+            this.userLevel = userLevel;
+        }
+    }
+
+    /**
+     * 字典表达式兼容写法测试 DTO。
+     */
+    static class PipelineDictCompatDTO {
+        @ExcelDict(dictCode = "1=男,2=女")
+        private String gender;
+
+        public String getGender() {
+            return gender;
+        }
+
+        public void setGender(String gender) {
+            this.gender = gender;
+        }
+    }
+
+    /**
+     * 冒号分隔字典表达式测试 DTO。
+     */
+    static class PipelineDictColonDTO {
+        @ExcelDict(readConverterExp = "0:普通,1:VIP,2:SVIP", kvSeparator = ":")
         private String userLevel;
 
         public String getUserLevel() {
