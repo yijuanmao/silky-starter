@@ -1,9 +1,11 @@
 package com.silky.starter.excel.template;
 
-import cn.hutool.core.collection.ListUtil;
 import com.silky.starter.excel.ExcelApplicationTest;
+import com.silky.starter.excel.core.annotation.ExcelDict;
 import com.silky.starter.excel.core.annotation.ExcelEnum;
 import com.silky.starter.excel.core.annotation.ExcelMask;
+import com.silky.starter.excel.core.annotation.ExcelMask.MaskStrategy;
+import com.silky.starter.excel.core.engine.EnhancedWriterWrapper;
 import com.silky.starter.excel.core.model.export.ExportPageData;
 import com.silky.starter.excel.core.model.export.ExportRequest;
 import com.silky.starter.excel.core.model.export.ExportResult;
@@ -11,28 +13,27 @@ import com.silky.starter.excel.core.model.export.ExportSheet;
 import com.silky.starter.excel.core.model.imports.DataImporterSupplier;
 import com.silky.starter.excel.core.model.imports.ImportRequest;
 import com.silky.starter.excel.core.model.imports.ImportResult;
-import com.silky.starter.excel.core.resolve.EnumFieldResolver;
-import com.silky.starter.excel.core.resolve.MaskFieldResolver;
-import com.silky.starter.excel.core.resolve.ResolveContext;
+import com.silky.starter.excel.core.resolve.*;
 import com.silky.starter.excel.core.storage.StorageObject;
-import com.silky.starter.excel.enums.AsyncType;
-import com.silky.starter.excel.enums.StorageType;
+import com.silky.starter.excel.entity.ExportRecord;
+import com.silky.starter.excel.entity.ImportRecord;
+import com.silky.starter.excel.enums.ExportStatus;
+import com.silky.starter.excel.enums.ImportStatus;
+import com.silky.starter.excel.template.entity.UserStatus;
 import com.silky.starter.excel.template.entity.UserTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.io.File;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * ExcelTemplate 示例测试类。
- * 说明：该模块用于示例演示，因此测试更偏向“接口用法示例 + 基础行为校验”。
- *
- * @author zy
+ * 目标：按当前组件最新用法演示导入导出，并覆盖核心行为校验。
  */
 public class ExcelTemplateTest extends ExcelApplicationTest {
 
@@ -42,168 +43,180 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
     private ExcelTemplate excelTemplate;
 
     /**
-     * 验证同步导出基础流程。
+     * 测试同步导出。
      */
     @Test
     public void testExportSync() {
-        ExportResult result = excelTemplate.export(ExportRequest.<UserTest>builder()
-                .dataClass(UserTest.class)
-                .fileName("test-export.xlsx")
-                .dataSupplier((pageNum, pageSize, params) -> new ExportPageData<>(TEST_DATA, false))
-                .build(), AsyncType.SYNC);
-
-        log.info("同步导出结果: {}", result.getSummary());
-        assertTrue(result.isSuccess());
-        assertNotNull(result.getFileUrl());
-        assertTrue(result.getTotalCount() > 0);
-    }
-
-    /**
-     * 验证分页同步导出流程。
-     */
-    @Test
-    public void testPageExportSync() {
-        ExportRequest<UserTest> request = new ExportRequest<>();
-        request.setDataClass(UserTest.class);
-        request.setFileName("test-page.xls");
-        request.setPageSize(10);
-        request.setDataSupplier((pageNum, pageSize, params) -> {
-            List<UserTest> users = findByCondition(pageNum, pageSize);
-            return new ExportPageData<>(users, pageNum * pageSize < TEST_DATA.size());
-        });
+        ExportRequest<UserTest> request = ExportRequest.of(
+                "test-export.xlsx",
+                UserTest.class,
+                this::pageData
+        );
+        request.setPageSize(50);
+        request.setEnableProgress(true);
 
         ExportResult result = excelTemplate.exportSync(request);
-        log.info("分页导出结果: {}", result.getSummary());
+        log.info("同步导出结果: {}", result.getSummary());
+
         assertTrue(result.isSuccess());
         assertNotNull(result.getTaskId());
+        assertNotNull(result.getFileUrl());
+        assertTrue(result.getTotalCount() > 0);
+        assertTrue(result.getSuccessCount() > 0);
     }
 
     /**
-     * 验证异步导出任务提交流程。
+     * 测试异步导出。
      */
     @Test
-    public void testExportAsync() {
-        ExportRequest<UserTest> request = new ExportRequest<>();
-        request.setDataClass(UserTest.class);
-        request.setFileName("test-async.xls");
-        request.setPageSize(10);
-        request.setMaxRowsPerSheet(10000L);
-        request.setDataSupplier((pageNum, pageSize, params) -> {
-            List<UserTest> users = findByCondition(pageNum, pageSize);
-            return new ExportPageData<>(users, pageNum * pageSize < TEST_DATA.size());
-        });
+    public void testExportAsync() throws InterruptedException {
+        ExportRequest<UserTest> request = ExportRequest.of(
+                "test-async.xlsx",
+                UserTest.class,
+                this::pageData
+        );
+        request.setPageSize(100);
+        request.setEnableProgress(true);
 
         ExportResult result = excelTemplate.exportAsync(request);
-        log.info("异步导出结果: {}", result);
         assertTrue(result.isSuccess());
         assertNotNull(result.getTaskId());
+
+        ExportRecord record = waitExportRecord(result.getTaskId(), 4000);
+        assertNotNull(record);
+        assertNotNull(record.getStatus());
+        assertTrue(record.getStatus() == ExportStatus.PENDING
+                || record.getStatus() == ExportStatus.PROCESSING
+                || record.getStatus() == ExportStatus.COMPLETED);
     }
 
     /**
-     * 验证同步导入接口可正常返回结果（示例模式下不强依赖固定文件）。
+     * 测试多Sheet导出。
+     */
+    @Test
+    public void testMultiSheetExport() {
+        ExportSheet<UserTest> sheet1 = ExportSheet.of(
+                "用户基本信息",
+                UserTest.class,
+                (pageNum, pageSize, params) -> pageDataFromSource(sheet1Data(), pageNum, pageSize)
+        );
+
+        ExportSheet<UserTest> sheet2 = ExportSheet.of(
+                "用户详细信息",
+                UserTest.class,
+                (pageNum, pageSize, params) -> pageDataFromSource(sheet2Data(), pageNum, pageSize)
+        );
+
+        ExportRequest<?> request = ExportRequest.sheets("test-multi-sheet.xlsx", asList(sheet1, sheet2));
+        request.setPageSize(10);
+
+        ExportResult result = excelTemplate.exportSync(request);
+        log.info("多Sheet导出结果: {}", result.getSummary());
+
+        assertTrue(result.isSuccess());
+        assertNotNull(result.getFileUrl());
+        assertEquals(4L, result.getTotalCount());
+        assertTrue(result.getSuccessCount() >= 4);
+    }
+
+    /**
+     * 测试自动分Sheet导出。
+     */
+    @Test
+    public void testAutoSheetSplit() {
+        ExportRequest<UserTest> request = ExportRequest.of(
+                "test-auto-split.xlsx",
+                UserTest.class,
+                this::pageData
+        );
+        request.setPageSize(10);
+        request.setMaxRowsPerSheet(5L);
+
+        ExportResult result = excelTemplate.exportSync(request);
+        log.info("自动分Sheet导出结果: {}", result.getSummary());
+
+        assertTrue(result.isSuccess());
+        assertTrue(result.getSheetCount() > 1);
+    }
+
+    /**
+     * 测试最大行数限制。
+     */
+    @Test
+    public void testMaxRowsPerSheetValidation() {
+        ExportRequest<UserTest> invalidZero = ExportRequest.of(
+                "invalid-zero.xlsx",
+                UserTest.class,
+                this::pageData
+        );
+        invalidZero.setMaxRowsPerSheet(0L);
+        ExportResult zeroResult = excelTemplate.exportSync(invalidZero);
+        assertFalse(zeroResult.isSuccess());
+        assertTrue(zeroResult.getMessage().contains("每个 Sheet 最大行数必须在 1 到 1048576 之间"));
+
+        ExportRequest<UserTest> invalidTooLarge = ExportRequest.of(
+                "invalid-large.xlsx",
+                UserTest.class,
+                this::pageData
+        );
+        invalidTooLarge.setMaxRowsPerSheet(2_000_000L);
+        ExportResult tooLargeResult = excelTemplate.exportSync(invalidTooLarge);
+        assertFalse(tooLargeResult.isSuccess());
+        assertTrue(tooLargeResult.getMessage().contains("每个 Sheet 最大行数必须在 1 到 1048576 之间"));
+    }
+
+    /**
+     * 测试同步导入。
      */
     @Test
     public void testImportSync() {
-        ImportRequest<UserTest> request = buildImportRequest();
+        String importFile = exportSampleImportFile("sync");
+        ImportRequest<UserTest> request = ImportRequest.of(importFile, UserTest.class,
+                (data, params) -> new DataImporterSupplier.ImportBatchResult(data.size(), Collections.emptyList()));
+        request.setPageSize(2);
+        request.setHeadRowNumber(1);
+
         ImportResult result = excelTemplate.importSync(request);
-
         log.info("同步导入结果: {}", result.getSummary());
-        assertNotNull(result);
+
+        assertTrue(result.isSuccess());
         assertNotNull(result.getTaskId());
+        assertEquals(3L, result.getTotalCount());
+        assertEquals(3L, result.getSuccessCount());
+        assertEquals(0L, result.getFailedCount());
     }
 
     /**
-     * 验证异步导入任务提交流程。
+     * 测试异步导入。
      */
     @Test
-    public void testImportAsync() {
-        ImportRequest<UserTest> request = buildImportRequest();
+    public void testImportAsync() throws InterruptedException {
+        String importFile = exportSampleImportFile("async");
+        ImportRequest<UserTest> request = ImportRequest.of(importFile, UserTest.class,
+                (data, params) -> new DataImporterSupplier.ImportBatchResult(data.size(), Collections.emptyList()));
+        request.setPageSize(2);
+        request.setHeadRowNumber(1);
+
         ImportResult result = excelTemplate.importAsync(request);
-
-        log.info("异步导入结果: {}", result);
         assertTrue(result.isSuccess());
         assertNotNull(result.getTaskId());
+
+        ImportRecord record = waitImportRecord(result.getTaskId(), 4000);
+        assertNotNull(record);
+        assertNotNull(record.getStatus());
+        assertTrue(record.getStatus() == ImportStatus.PENDING
+                || record.getStatus() == ImportStatus.PROCESSING
+                || record.getStatus() == ImportStatus.COMPLETED);
     }
 
     /**
-     * 验证字段脱敏解析器，覆盖手机号、姓名、邮箱。
-     * 修复点：resolve 参数必须是 (field, annotation, value, context)。
-     */
-    @Test
-    public void testMaskFieldResolver() {
-        MaskFieldResolver resolver = new MaskFieldResolver();
-        ResolveContext context = new ResolveContext();
-
-        Field phoneField = getField("phone");
-        ExcelMask phoneMask = phoneField.getAnnotation(ExcelMask.class);
-        Object phoneResult = resolver.resolve(phoneField, phoneMask, "13812345678", context);
-        assertEquals("138****5678", phoneResult);
-
-        Field nameField = getField("name");
-        ExcelMask nameMask = nameField.getAnnotation(ExcelMask.class);
-        Object nameResult = resolver.resolve(nameField, nameMask, "张三丰", context);
-        assertEquals("张**", nameResult);
-
-        Field emailField = getField("email");
-        ExcelMask emailMask = emailField.getAnnotation(ExcelMask.class);
-        Object emailResult = resolver.resolve(emailField, emailMask, "zhangsan@example.com", context);
-        assertTrue(String.valueOf(emailResult).endsWith("@example.com"));
-        assertNotEquals("zhangsan@example.com", emailResult);
-    }
-
-    /**
-     * 验证枚举翻译解析器。
-     */
-    @Test
-    public void testEnumFieldResolver() {
-        EnumFieldResolver resolver = new EnumFieldResolver();
-        Field statusField = getField("status");
-        ExcelEnum annotation = statusField.getAnnotation(ExcelEnum.class);
-
-        Object result = resolver.resolve(statusField, annotation, 1, new ResolveContext());
-        assertEquals("启用", result);
-    }
-
-    /**
-     * 验证注解驱动导出（枚举翻译 + 脱敏）流程。
-     */
-    @Test
-    public void testExportWithAnnotations() {
-        List<UserTest> data = new ArrayList<>();
-
-        UserTest user1 = new UserTest("张三丰", "13812345678");
-        user1.setEmail("zhangsan@example.com");
-        user1.setStatus(1);
-        user1.setIdCard("110101199001011234");
-        user1.setBankCard("6222021234567890123");
-        data.add(user1);
-
-        UserTest user2 = new UserTest("李四", "13987654321");
-        user2.setEmail("lisi@example.com");
-        user2.setStatus(0);
-        user2.setIdCard("320102199501011234");
-        user2.setBankCard("6222021234567890456");
-        data.add(user2);
-
-        ExportResult result = excelTemplate.export(ExportRequest.<UserTest>builder()
-                .dataClass(UserTest.class)
-                .fileName("test-annotation-export.xlsx")
-                .dataSupplier((pageNum, pageSize, params) -> new ExportPageData<>(data, false))
-                .build(), AsyncType.SYNC);
-
-        log.info("注解导出结果: {}", result.getSummary());
-        assertTrue(result.isSuccess());
-        assertEquals(2L, result.getTotalCount());
-    }
-
-    /**
-     * 验证 StorageObject 构建与字段赋值。
+     * 测试存储对象。
      */
     @Test
     public void testStorageObject() {
         StorageObject obj = StorageObject.of("test_key.xlsx", 1024);
         assertEquals("test_key.xlsx", obj.getKey());
-        assertEquals(1024, obj.getSize());
+        assertEquals(1024L, obj.getSize());
 
         StorageObject obj2 = StorageObject.builder()
                 .key("key2.xlsx")
@@ -214,179 +227,470 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
 
         assertEquals("key2.xlsx", obj2.getKey());
         assertEquals("/tmp/key2.xlsx", obj2.getUrl());
-        assertEquals(2048, obj2.getSize());
+        assertEquals(2048L, obj2.getSize());
         assertEquals("abc123", obj2.getEtag());
     }
 
     /**
-     * 验证多 Sheet 导出。
-     * 修复点：当前模板层校验要求 dataClass/dataSupplier 非空，因此补充占位字段。
+     * 测试导出结果添加错误。
      */
     @Test
-    public void testMultiSheetExport() {
-        List<UserTest> sheet1Data = new ArrayList<>();
-        sheet1Data.add(new UserTest("用户1", "13800000001"));
+    public void testExportResultAddError() {
+        ExportResult result = ExportResult.success("task-1");
+        result.addError(1, "fieldName", "测试错误");
 
-        List<UserTest> sheet2Data = new ArrayList<>();
-        sheet2Data.add(new UserTest("用户2", "13900000002"));
+        assertTrue(result.hasErrors());
+        assertEquals(1, result.getErrorCount());
+        assertEquals("测试错误", result.getErrors().get(0).getErrorMessage());
+    }
 
-        ExportRequest<UserTest> request = ExportRequest.<UserTest>builder()
-                .dataClass(UserTest.class)
-                .dataSupplier((pageNum, pageSize, params) -> new ExportPageData<>(Collections.emptyList(), false))
-                .fileName("test-multi-sheet.xlsx")
-                .sheets(ListUtil.of(
-                        ExportSheet.of("用户基本信息", UserTest.class,
-                                (pageNum, pageSize, params) -> new ExportPageData<>(sheet1Data, false)),
-                        ExportSheet.of("用户详细信息", UserTest.class,
-                                (pageNum, pageSize, params) -> new ExportPageData<>(sheet2Data, false))
-                ))
-                .build();
+    /**
+     * 测试枚举字段解析器。
+     */
+    @Test
+    public void testMaskFieldResolver() throws Exception {
+        MaskFieldResolver resolver = new MaskFieldResolver();
+        ResolveContext context = new ResolveContext();
 
-        ExportResult result = excelTemplate.export(request, AsyncType.SYNC);
-        log.info("多Sheet导出结果: {}", result.getSummary());
+        UserTest row = new UserTest();
+
+        Field phoneField = UserTest.class.getDeclaredField("phone");
+        phoneField.setAccessible(true);
+        Object phoneResult = resolver.resolve(
+                new com.silky.starter.excel.core.resolve.FieldValueContext(row, 0, phoneField, context),
+                phoneField.getAnnotation(ExcelMask.class),
+                "13812345678");
+        assertEquals("138****5678", phoneResult);
+
+        Field nameField = UserTest.class.getDeclaredField("name");
+        nameField.setAccessible(true);
+        Object nameResult = resolver.resolve(
+                new com.silky.starter.excel.core.resolve.FieldValueContext(row, 0, nameField, context),
+                nameField.getAnnotation(ExcelMask.class),
+                "张三丰");
+        assertEquals("张**", nameResult);
+
+        Field emailField = UserTest.class.getDeclaredField("email");
+        emailField.setAccessible(true);
+        Object emailResult = resolver.resolve(
+                new com.silky.starter.excel.core.resolve.FieldValueContext(row, 0, emailField, context),
+                emailField.getAnnotation(ExcelMask.class),
+                "zhangsan@example.com");
+        assertNotEquals("zhangsan@example.com", emailResult);
+        assertTrue(String.valueOf(emailResult).endsWith("@example.com"));
+    }
+
+    /**
+     * 测试枚举字段解析器。
+     */
+    @Test
+    public void testEnumFieldResolver() throws Exception {
+        EnumFieldResolver resolver = new EnumFieldResolver();
+        ResolveContext context = new ResolveContext();
+        UserTest row = new UserTest();
+
+        Field statusField = UserTest.class.getDeclaredField("status");
+        statusField.setAccessible(true);
+        Object result = resolver.resolve(
+                new com.silky.starter.excel.core.resolve.FieldValueContext(row, 0, statusField, context),
+                statusField.getAnnotation(ExcelEnum.class),
+                1);
+        assertEquals("启用", result);
+    }
+
+    /**
+     * 测试导出结果解析器。
+     */
+    @Test
+    public void testExportWithAnnotations() {
+        List<UserTest> data = new ArrayList<>();
+        data.add(new UserTest("张三丰", "13812345678", "zhangsan@example.com", 1, 1, "110101199001011234", "6222021234567890123"));
+        data.add(new UserTest("李四", "13987654321", "lisi@example.com", 0, 2, "320102199501011234", "6222021234567890456"));
+
+        ExportRequest<UserTest> request = ExportRequest.of(
+                "test-annotation-export.xlsx",
+                UserTest.class,
+                (pageNum, pageSize, params) -> new ExportPageData<>(data, false)
+        );
+
+        ExportResult result = excelTemplate.exportSync(request);
+        log.info("注解导出结果: {}", result.getSummary());
         assertTrue(result.isSuccess());
-        assertEquals(2, result.getSheetCount().intValue());
+        assertEquals(2L, result.getTotalCount());
     }
 
     /**
-     * 验证 maxRowsPerSheet 参数边界。
+     * 测试导出结果解析器。
      */
     @Test
-    public void testMaxRowsPerSheetValidation() {
-        assertThrows(IllegalArgumentException.class, () ->
-                excelTemplate.export(ExportRequest.<UserTest>builder()
-                        .dataClass(UserTest.class)
-                        .fileName("test-invalid.xlsx")
-                        .maxRowsPerSheet(0L)
-                        .dataSupplier((pageNum, pageSize, params) -> new ExportPageData<>(TEST_DATA, false))
-                        .build(), AsyncType.SYNC)
-        );
-
-        assertThrows(IllegalArgumentException.class, () ->
-                excelTemplate.export(ExportRequest.<UserTest>builder()
-                        .dataClass(UserTest.class)
-                        .fileName("test-invalid2.xlsx")
-                        .maxRowsPerSheet(2_000_000L)
-                        .dataSupplier((pageNum, pageSize, params) -> new ExportPageData<>(TEST_DATA, false))
-                        .build(), AsyncType.SYNC)
-        );
-    }
-
-    /**
-     * 验证自动分 Sheet 逻辑。
-     */
-    @Test
-    public void testAutoSheetSplit() {
-        ExportResult result = excelTemplate.export(ExportRequest.<UserTest>builder()
-                .dataClass(UserTest.class)
-                .fileName("test-auto-split.xlsx")
-                .maxRowsPerSheet(5L)
-                .pageSize(10)
-                .dataSupplier((pageNum, pageSize, params) -> {
-                    List<UserTest> page = findByCondition(pageNum, 5);
-                    return new ExportPageData<>(page, pageNum * 5 < TEST_DATA.size());
-                })
-                .build(), AsyncType.SYNC);
-
-        log.info("自动分Sheet导出结果: {}", result.getSummary());
-        assertTrue(result.isSuccess());
-        assertTrue(result.getSheetCount() > 1);
-    }
-
-    /**
-     * 验证带任务配置器的导入调用。
-     */
-    @Test
-    public void testImportsWithTaskConfig() {
-        ImportRequest<UserTest> request = buildImportRequest();
-
-        ImportResult result = excelTemplate.imports(request, AsyncType.SYNC, task ->
-                log.info("自定义导入任务配置: taskId={}", task.getTaskId())
-        );
-
-        log.info("通用导入结果: {}", result.getSummary());
-        assertNotNull(result);
-        assertNotNull(result.getTaskId());
-    }
-
-    /**
-     * 验证导出引擎状态查询接口。
-     */
-    @Test
-    public void testExportEngineStatus() {
-        assertNotNull(excelTemplate.getExportEngineStatus());
-    }
-
-    /**
-     * 验证导入引擎状态查询接口。
-     */
-    @Test
-    public void testImportEngineStatus() {
-        assertNotNull(excelTemplate.getImportEngineStatus());
-    }
-
-    /**
-     * 按页码与页大小从内存测试数据中切片。
-     */
-    private List<UserTest> findByCondition(int pageNum, int pageSize) {
-        int adjustedPageNum = pageNum - 1;
-        if (adjustedPageNum < 0) {
-            return Collections.emptyList();
-        }
-
-        int fromIndex = adjustedPageNum * pageSize;
-        int toIndex = Math.min(fromIndex + pageSize, TEST_DATA.size());
-        if (fromIndex >= TEST_DATA.size()) {
-            return Collections.emptyList();
-        }
-
-        return new ArrayList<>(TEST_DATA.subList(fromIndex, toIndex));
-    }
-
-    /**
-     * 构建导入请求。
-     */
-    private ImportRequest<UserTest> buildImportRequest() {
-        ImportRequest<UserTest> request = new ImportRequest<>();
-        request.setDataClass(UserTest.class);
-        request.setFileName("test.xls");
-        request.setFileUrl(System.getProperty("java.io.tmpdir") + "/silky-excel/test-import.xlsx");
-        request.setDataImporterSupplier((data, params) -> {
-            log.info("导入数据长度: {}", data.size());
-            return new DataImporterSupplier.ImportBatchResult(data.size(), Collections.emptyList());
-        });
-        request.setStorageType(StorageType.LOCAL);
-        request.setPageSize(20000);
-        return request;
-    }
-
-    /**
-     * 通过字段名获取 UserTest 字段，避免依赖声明顺序。
-     */
-    private Field getField(String fieldName) {
+    public void testEnhancedWriterWrapper_Basic() throws Exception {
+        String file = System.getProperty("java.io.tmpdir") + "/writer-basic-" + System.currentTimeMillis() + ".xlsx";
+        EnhancedWriterWrapper writer = new EnhancedWriterWrapper(file, 100);
         try {
-            return UserTest.class.getDeclaredField(fieldName);
-        } catch (NoSuchFieldException e) {
-            throw new IllegalStateException("字段不存在: " + fieldName, e);
+            assertEquals("数据_0", writer.getCurrentSheetName());
+            assertEquals(0, writer.getCurrentSheetIndex());
+            assertEquals(0L, writer.getTotalRows().get());
+
+            writer.write(Collections.emptyList(), Object.class, "测试Sheet");
+
+            assertEquals(0, writer.getCurrentSheetIndex());
+            assertEquals(0L, writer.getTotalRows().get());
+        } finally {
+            writer.close();
+            new File(file).delete();
         }
     }
 
     /**
-     * 创建测试用用户数据。
+     * 测试导出结果解析器。
      */
+    @Test
+    public void testResolverPipeline_EnumAndMask() {
+        List<ExcelFieldResolver<?>> resolvers = new ArrayList<>();
+        resolvers.add(new EnumFieldResolver());
+        resolvers.add(new MaskFieldResolver());
+
+        ExcelFieldResolverPipeline pipeline = new ExcelFieldResolverPipeline(resolvers);
+        ResolveContext context = new ResolveContext();
+
+        PipelineCombinedDTO dto = new PipelineCombinedDTO();
+        dto.setStatusCode(1);
+
+        ResolvedPage page = pipeline.resolve(Collections.singletonList(dto), PipelineCombinedDTO.class, context);
+        assertEquals(1, dto.getStatusCode());
+        assertEquals("启用", page.getValue(0, "statusCode"));
+    }
+
+    @Test
+    public void testResolverPipeline_EnumNoMutate() {
+        List<ExcelFieldResolver<?>> resolvers = Collections.singletonList(new EnumFieldResolver());
+        ExcelFieldResolverPipeline pipeline = new ExcelFieldResolverPipeline(resolvers);
+
+        PipelineStringEnumDTO dto = new PipelineStringEnumDTO();
+        dto.setStatus("1");
+
+        ResolvedPage page = pipeline.resolve(Collections.singletonList(dto), PipelineStringEnumDTO.class, new ResolveContext());
+        assertEquals("1", dto.getStatus());
+        assertEquals("启用", page.getValue(0, "status"));
+    }
+
+    @Test
+    public void testResolverPipeline_DictExpression() {
+        List<ExcelFieldResolver<?>> resolvers = Collections.singletonList(new DictFieldResolver(null));
+        ExcelFieldResolverPipeline pipeline = new ExcelFieldResolverPipeline(resolvers);
+
+        PipelineDictDTO dto = new PipelineDictDTO();
+        dto.setUserLevel("1");
+
+        ResolvedPage page = pipeline.resolve(Collections.singletonList(dto), PipelineDictDTO.class, new ResolveContext());
+        assertEquals("1", dto.getUserLevel());
+        assertEquals("VIP", page.getValue(0, "userLevel"));
+    }
+
+
+    @Test
+    public void testResolverPipeline_NoAnnotation() {
+        List<ExcelFieldResolver<?>> resolvers = asList(new EnumFieldResolver(), new MaskFieldResolver());
+        ExcelFieldResolverPipeline pipeline = new ExcelFieldResolverPipeline(resolvers);
+
+        PipelineNoAnnotationDTO dto = new PipelineNoAnnotationDTO();
+        dto.setName("张三");
+        dto.setAge(25);
+
+        ResolvedPage page = pipeline.resolve(Collections.singletonList(dto), PipelineNoAnnotationDTO.class, new ResolveContext());
+        assertEquals("张三", dto.getName());
+        assertEquals(25, dto.getAge());
+        assertTrue(page.isEmpty());
+    }
+
+    @Test
+    public void testResolverPipeline_NullValue() {
+        List<ExcelFieldResolver<?>> resolvers = Collections.singletonList(new EnumFieldResolver());
+        ExcelFieldResolverPipeline pipeline = new ExcelFieldResolverPipeline(resolvers);
+
+        PipelineStringEnumDTO dto = new PipelineStringEnumDTO();
+        dto.setStatus(null);
+
+        ResolvedPage page = pipeline.resolve(Collections.singletonList(dto), PipelineStringEnumDTO.class, new ResolveContext());
+        assertNull(dto.getStatus());
+        assertTrue(page.isEmpty());
+    }
+
+    @Test
+    public void testResolverPipeline_DictProviderBatchQueryOnce() {
+        AtomicInteger queryCount = new AtomicInteger(0);
+        DictionaryProvider provider = (dictCode, codes) -> {
+            queryCount.incrementAndGet();
+            Map<String, String> map = new HashMap<>();
+            map.put("1", "研发");
+            map.put("2", "产品");
+            return map;
+        };
+
+        ExcelFieldResolverPipeline pipeline = new ExcelFieldResolverPipeline(
+                Collections.singletonList(new DictFieldResolver(provider)));
+
+        PipelineDictProviderDTO first = new PipelineDictProviderDTO();
+        first.setDepartment("1");
+        PipelineDictProviderDTO second = new PipelineDictProviderDTO();
+        second.setDepartment("2");
+
+        ResolvedPage page = pipeline.resolve(asList(first, second), PipelineDictProviderDTO.class, new ResolveContext());
+
+        assertEquals(1, queryCount.get());
+        assertEquals("研发", page.getValue(0, "department"));
+        assertEquals("产品", page.getValue(1, "department"));
+    }
+
+    @Test
+    public void testResolverPipeline_DictProviderMultiValue() {
+        DictionaryProvider provider = (dictCode, codes) -> {
+            Map<String, String> map = new HashMap<>();
+            map.put("1", "Java");
+            map.put("2", "Go");
+            return map;
+        };
+
+        ExcelFieldResolverPipeline pipeline = new ExcelFieldResolverPipeline(
+                Collections.singletonList(new DictFieldResolver(provider)));
+
+        PipelineTagsDTO dto = new PipelineTagsDTO();
+        dto.setTags("1,2,3");
+
+        ResolvedPage page = pipeline.resolve(Collections.singletonList(dto), PipelineTagsDTO.class, new ResolveContext());
+        assertEquals("Java,Go,3", page.getValue(0, "tags"));
+    }
+
+    @Test
+    public void testResolverPipeline_SameDictCodeMultipleFields() {
+        DictionaryProvider provider = (dictCode, codes) -> {
+            Map<String, String> map = new HashMap<>();
+            map.put("1", "研发");
+            map.put("2", "产品");
+            return map;
+        };
+
+        ExcelFieldResolverPipeline pipeline = new ExcelFieldResolverPipeline(
+                Collections.singletonList(new DictFieldResolver(provider)));
+
+        PipelineSameDictCodeDTO dto = new PipelineSameDictCodeDTO();
+        dto.setPrimaryDepartment("1");
+        dto.setSecondaryDepartment("2");
+
+        ResolvedPage page = pipeline.resolve(Collections.singletonList(dto), PipelineSameDictCodeDTO.class, new ResolveContext());
+        assertEquals("研发", page.getValue(0, "primaryDepartment"));
+        assertEquals("产品", page.getValue(0, "secondaryDepartment"));
+    }
+
+    private ExportPageData<UserTest> pageData(int pageNum, int pageSize, Map<String, Object> params) {
+        return pageDataFromSource(TEST_DATA, pageNum, pageSize);
+    }
+
+    private ExportPageData<UserTest> pageDataFromSource(List<UserTest> source, int pageNum, int pageSize) {
+        if (pageNum <= 0 || pageSize <= 0) {
+            return new ExportPageData<>(Collections.emptyList(), false);
+        }
+        int fromIndex = (pageNum - 1) * pageSize;
+        if (fromIndex >= source.size()) {
+            return new ExportPageData<>(Collections.emptyList(), false);
+        }
+        int toIndex = Math.min(fromIndex + pageSize, source.size());
+        List<UserTest> pageData = new ArrayList<>(source.subList(fromIndex, toIndex));
+        boolean hasNext = toIndex < source.size();
+        return new ExportPageData<>(pageData, hasNext);
+    }
+
+    private List<UserTest> sheet1Data() {
+        return asList(
+                new UserTest("用户1", "13800000001", "u1@silky.com", 1, 1, "110101199001011111", "6222021234567890001"),
+                new UserTest("用户2", "13800000002", "u2@silky.com", 0, 2, "110101199001011112", "6222021234567890002")
+        );
+    }
+
+    private List<UserTest> sheet2Data() {
+        return asList(
+                new UserTest("用户3", "13900000003", "u3@silky.com", 1, 1, "110101199001011113", "6222021234567890003"),
+                new UserTest("用户4", "13900000004", "u4@silky.com", 0, 2, "110101199001011114", "6222021234567890004")
+        );
+    }
+
+    private String exportSampleImportFile(String suffix) {
+        String fileName = System.getProperty("java.io.tmpdir")
+                + "/silky-import-source-" + suffix + "-" + System.currentTimeMillis() + ".xlsx";
+        List<UserTest> users = asList(
+                new UserTest("导入A", "13811110001", "a@silky.com", UserStatus.ACTIVE.getCode(), 1,
+                        "320106199001010001", "6222021234567800011"),
+                new UserTest("导入B", "13811110002", "b@silky.com", UserStatus.DISABLED.getCode(), 2,
+                        "320106199001010002", "6222021234567800012"),
+                new UserTest("导入C", "13811110003", "c@silky.com", UserStatus.LOCKED.getCode(), 1,
+                        "320106199001010003", "6222021234567800013")
+        );
+
+        EnhancedWriterWrapper writer = new EnhancedWriterWrapper(fileName, 1000);
+        try {
+            writer.write(users, UserTest.class, "导入数据");
+        } finally {
+            writer.close();
+        }
+        return fileName;
+    }
+
+    private ExportRecord waitExportRecord(String taskId, long timeoutMillis) throws InterruptedException {
+        long start = System.currentTimeMillis();
+        while (System.currentTimeMillis() - start < timeoutMillis) {
+            ExportRecord record = excelTemplate.getExportRecord(taskId);
+            if (record != null && record.getStatus() != null
+                    && (record.getStatus() == ExportStatus.COMPLETED || record.getStatus() == ExportStatus.FAILED)) {
+                return record;
+            }
+            Thread.sleep(100);
+        }
+        return excelTemplate.getExportRecord(taskId);
+    }
+
+    private ImportRecord waitImportRecord(String taskId, long timeoutMillis) throws InterruptedException {
+        long start = System.currentTimeMillis();
+        while (System.currentTimeMillis() - start < timeoutMillis) {
+            ImportRecord record = excelTemplate.getImportRecord(taskId);
+            if (record != null && record.getStatus() != null
+                    && (record.getStatus() == ImportStatus.COMPLETED || record.getStatus() == ImportStatus.FAILED)) {
+                return record;
+            }
+            Thread.sleep(100);
+        }
+        return excelTemplate.getImportRecord(taskId);
+    }
+
     private static List<UserTest> createTestData() {
-        int size = 500;
-        List<UserTest> list = new ArrayList<>(size);
-        for (int i = 1; i <= size; i++) {
+        List<UserTest> list = new ArrayList<>();
+        for (int i = 1; i <= 60; i++) {
             String name = "用户" + i;
             String phone = "1380013" + String.format("%04d", i);
-            String email = 824412345 + i + "@silky.com";
-            Integer status = i % 2 == 0 ? 1 : 2;
-            Integer gender = i % 2 == 0 ? 1 : 2;
-            String idCard = "320106" + String.format("%016d", i);
-            String bankCard = "622202" + String.format("%014d", i);
+            String email = "user" + i + "@silky.com";
+            int status = i % 2 == 0 ? UserStatus.ACTIVE.getCode() : UserStatus.DISABLED.getCode();
+            int gender = i % 2 == 0 ? 1 : 2;
+            String idCard = "320106" + String.format("%012d", i) + "01";
+            String bankCard = "622202" + String.format("%013d", i);
             list.add(new UserTest(name, phone, email, status, gender, idCard, bankCard));
         }
         return list;
+    }
+
+    @SafeVarargs
+    private static <T> List<T> asList(T... rows) {
+        List<T> list = new ArrayList<>();
+        Collections.addAll(list, rows);
+        return list;
+    }
+
+    static class PipelineCombinedDTO {
+        @ExcelEnum(enumClass = UserStatus.class, codeField = "code", labelField = "label")
+        @ExcelMask(strategy = MaskStrategy.PHONE)
+        private Integer statusCode;
+
+        public Integer getStatusCode() {
+            return statusCode;
+        }
+
+        public void setStatusCode(Integer statusCode) {
+            this.statusCode = statusCode;
+        }
+    }
+
+    static class PipelineStringEnumDTO {
+        @ExcelEnum(enumClass = UserStatus.class, codeField = "code", labelField = "label")
+        private String status;
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+    }
+
+    static class PipelineDictDTO {
+        @ExcelDict(readConverterExp = "0=普通,1=VIP,2=SVIP")
+        private String userLevel;
+
+        public String getUserLevel() {
+            return userLevel;
+        }
+
+        public void setUserLevel(String userLevel) {
+            this.userLevel = userLevel;
+        }
+    }
+
+    static class PipelineNoAnnotationDTO {
+        private String name;
+        private int age;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public int getAge() {
+            return age;
+        }
+
+        public void setAge(int age) {
+            this.age = age;
+        }
+    }
+
+    static class PipelineDictProviderDTO {
+        @ExcelDict(dictCode = "department")
+        private String department;
+
+        public String getDepartment() {
+            return department;
+        }
+
+        public void setDepartment(String department) {
+            this.department = department;
+        }
+    }
+
+    static class PipelineTagsDTO {
+        @ExcelDict(dictCode = "tags", separator = ",")
+        private String tags;
+
+        public String getTags() {
+            return tags;
+        }
+
+        public void setTags(String tags) {
+            this.tags = tags;
+        }
+    }
+
+    static class PipelineSameDictCodeDTO {
+        @ExcelDict(dictCode = "department")
+        private String primaryDepartment;
+
+        @ExcelDict(dictCode = "department")
+        private String secondaryDepartment;
+
+        public String getPrimaryDepartment() {
+            return primaryDepartment;
+        }
+
+        public void setPrimaryDepartment(String primaryDepartment) {
+            this.primaryDepartment = primaryDepartment;
+        }
+
+        public String getSecondaryDepartment() {
+            return secondaryDepartment;
+        }
+
+        public void setSecondaryDepartment(String secondaryDepartment) {
+            this.secondaryDepartment = secondaryDepartment;
+        }
     }
 }

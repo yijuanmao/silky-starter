@@ -1,31 +1,23 @@
-# application.yml
 silky:
   excel:
+    enabled: true
     async:
-      # 默认使用线程池
-      enabled: true
-      async-type: THREAD_POOL
-      # 线程池配置
       thread-pool:
         core-pool-size: 10
         max-pool-size: 50
         queue-capacity: 1000
         keep-alive-seconds: 60
-    #导出超时配置
     export:
-      #30分钟超时
+      page-size: 100
       timeout-minutes: 30
-       #单个sheet最大行数配置
       max-rows-per-sheet: 100000
-      #是否启用进度条
-      enable-progress: true
+      progress-enabled: true
+    imports:
+      page-size: 100
+      max-error-count: 100
+      timeout-minutes: 30
+      head-row-number: 1
     storage:
-      storage-type: LOCAL
+      type: local
       local:
-        base-path: /tmp/excel-exports
-    #压缩配置
-    compression:
-      enabled: true
-      type: ZIP
-      split-large-files: true
-      split-size: 104857600  # 100MB
+        base-path: ${java.io.tmpdir}/silky-excel-test
