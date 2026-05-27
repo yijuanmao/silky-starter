@@ -8,12 +8,7 @@ import com.silky.starter.excel.core.engine.EnhancedWriterWrapper;
 import com.silky.starter.excel.core.engine.ExcelReaderWrapper;
 import com.silky.starter.excel.core.exception.ExcelExportException;
 import com.silky.starter.excel.core.model.AnalysisListenersContext;
-import com.silky.starter.excel.core.model.export.ExportDataSupplier;
-import com.silky.starter.excel.core.model.export.ExportPageData;
-import com.silky.starter.excel.core.model.export.ExportRequest;
-import com.silky.starter.excel.core.model.export.ExportResult;
-import com.silky.starter.excel.core.model.export.ExportSheet;
-import com.silky.starter.excel.core.model.export.ExportTask;
+import com.silky.starter.excel.core.model.export.*;
 import com.silky.starter.excel.core.model.imports.ImportRequest;
 import com.silky.starter.excel.core.model.imports.ImportResult;
 import com.silky.starter.excel.core.model.imports.ImportTask;
@@ -73,12 +68,26 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         this.fieldResolverPipeline = fieldResolverPipeline;
     }
 
+    /**
+     * Excel 导出。
+     *
+     * @param request 导出请求
+     * @param <T>     数据类型
+     * @return 导出结果
+     */
     @Override
     public <T> ExportResult exportSync(ExportRequest<T> request) {
         ExportTask<T> task = createExportTask(request, false);
         return doExport(task);
     }
 
+    /**
+     * Excel 异步导出。
+     *
+     * @param request 导出请求
+     * @param <T>     数据类型
+     * @return 导出结果
+     */
     @Override
     public <T> ExportResult exportAsync(ExportRequest<T> request) {
         ExportTask<T> task = createExportTask(request, true);
@@ -92,12 +101,26 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         }
     }
 
+    /**
+     * Excel 导入。
+     *
+     * @param request 导入请求
+     * @param <T>     数据类型
+     * @return 导入结果
+     */
     @Override
     public <T> ImportResult importSync(ImportRequest<T> request) {
         ImportTask<T> task = createImportTask(request, false);
         return doImport(task);
     }
 
+    /**
+     * Excel 异步导入。
+     *
+     * @param request 导入请求
+     * @param <T>     数据类型
+     * @return 导入结果
+     */
     @Override
     public <T> ImportResult importAsync(ImportRequest<T> request) {
         ImportTask<T> task = createImportTask(request, true);
@@ -111,16 +134,35 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         }
     }
 
+    /**
+     * 获取导出记录。
+     *
+     * @param taskId 任务ID
+     * @return 导出记录
+     */
     @Override
     public ExportRecord getExportRecord(String taskId) {
         return exportRecordService.getByTaskId(taskId);
     }
 
+    /**
+     * 获取导入记录。
+     *
+     * @param taskId 任务ID
+     * @return 导入记录
+     */
     @Override
     public ImportRecord getImportRecord(String taskId) {
         return importRecordService.getByTaskId(taskId);
     }
 
+    /**
+     * 开始导出任务。
+     *
+     * @param task 任务
+     * @param <T>  数据类型
+     * @return 导出任务
+     */
     private <T> ExportResult doExport(ExportTask<T> task) {
         ExportRequest<T> request = task.getRequest();
         String taskId = task.getTaskId();
@@ -157,6 +199,14 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         }
     }
 
+    /**
+     * 文件写入
+     *
+     * @param task     任务
+     * @param tempFile 临时文件
+     * @param <T>      数据类型
+     * @return 导出结果
+     */
     private <T> ExportResult writeExportFile(ExportTask<T> task, File tempFile) {
         ExportRequest<T> request = task.getRequest();
         ResolveCellWriteHandler resolveHandler = fieldResolverPipeline != null ? new ResolveCellWriteHandler() : null;
@@ -176,6 +226,19 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         }
     }
 
+    /**
+     * 写入Sheet
+     *
+     * @param task                 任务
+     * @param writer               写入器
+     * @param resolveHandler       解析处理器
+     * @param sheetContext         Sheet上下文
+     * @param resolveContext       解析上下文
+     * @param processedBeforeSheet 已处理的行数（Sheet 之前）
+     * @param totalCount           总记录数
+     * @param <T>                  数据类型
+     * @return 已处理的行数（Sheet 之后）
+     */
     private <T> long writeSheet(ExportTask<?> task,
                                 EnhancedWriterWrapper writer,
                                 ResolveCellWriteHandler resolveHandler,
@@ -218,6 +281,13 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         return sheetRows;
     }
 
+    /**
+     * 导出执行
+     *
+     * @param request 导出请求
+     * @param <T>     数据类型
+     * @return 导出结果
+     */
     private <T> ImportResult doImport(ImportTask<T> task) {
         ImportRequest<T> request = task.getRequest();
         String taskId = task.getTaskId();
@@ -263,6 +333,14 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         }
     }
 
+    /**
+     * 构建导入结果
+     *
+     * @param taskId 任务ID
+     * @param reader 读取器
+     * @param <T>    数据类型
+     * @return 导入结果
+     */
     private ImportResult buildImportResult(String taskId, ExcelReaderWrapper<?> reader) {
         long successCount = reader.getSuccessRowCount();
         long failedCount = reader.getFailRowCount();
@@ -273,6 +351,14 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         return ImportResult.partialSuccess(taskId, totalCount, successCount, failedCount, reader.getAllErrors());
     }
 
+    /**
+     * 创建导出任务
+     *
+     * @param request 导出请求
+     * @param async   是否异步执行
+     * @param <T>     数据类型
+     * @return 导出任务
+     */
     private <T> ExportTask<T> createExportTask(ExportRequest<T> request, boolean async) {
         String businessType = request != null ? request.getBusinessType() : "default_export";
         ExportTask<T> task = new ExportTask<>();
@@ -284,6 +370,14 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         return task;
     }
 
+    /**
+     * 创建导入任务
+     *
+     * @param request 导入请求
+     * @param async   是否异步执行
+     * @param <T>     数据类型
+     * @return 导入任务
+     */
     private <T> ImportTask<T> createImportTask(ImportRequest<T> request, boolean async) {
         String businessType = request != null ? request.getBusinessType() : "default_import";
         ImportTask<T> task = new ImportTask<>();
@@ -295,6 +389,12 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         return task;
     }
 
+    /**
+     * 创建导出记录
+     *
+     * @param task 导出任务
+     * @param <T>  数据类型
+     */
     private <T> void createExportRecord(ExportTask<T> task) {
         ExportRequest<T> request = task.getRequest();
         ExportRecord record = ExportRecord.builder()
@@ -311,6 +411,12 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         exportRecordService.save(record);
     }
 
+    /**
+     * 创建导入记录
+     *
+     * @param task 导入任务
+     * @param <T>  数据类型
+     */
     private <T> void createImportRecord(ImportTask<T> task) {
         ImportRequest<T> request = task.getRequest();
         ImportRecord record = ImportRecord.builder()
@@ -329,6 +435,13 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         importRecordService.save(record);
     }
 
+    /**
+     * 构建Sheet导出上下文列表
+     *
+     * @param request 导出请求
+     * @param <T>     数据类型
+     * @return Sheet导出上下文列表
+     */
     private <T> List<SheetExportContext<?>> buildSheetContexts(ExportRequest<T> request) {
         List<SheetExportContext<?>> contexts = new ArrayList<>();
         if (CollUtil.isNotEmpty(request.getSheets())) {
@@ -341,6 +454,9 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         return contexts;
     }
 
+    /**
+     * 将ExportSheet转换为SheetExportContext
+     */
     private <T> SheetExportContext<T> toSheetContext(ExportSheet<T> sheet) {
         return new SheetExportContext<>(sheet.getSheetName(), sheet.getDataClass(), sheet.getDataSupplier());
     }
@@ -375,6 +491,11 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         }
     }
 
+    /**
+     * 验证导入请求
+     *
+     * @param request 导入请求
+     */
     private <T> void validateImportRequest(ImportRequest<T> request) {
         if (request == null) {
             throw new IllegalArgumentException("导入请求不能为空");
@@ -390,6 +511,13 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         }
     }
 
+    /**
+     * 估计导出总记录数
+     *
+     * @param request 导出请求
+     * @param <T>     数据类型
+     * @return 总记录数
+     */
     private <T> long estimateExportTotalCount(ExportRequest<T> request) {
         if (CollUtil.isNotEmpty(request.getSheets())) {
             long total = 0;
@@ -407,6 +535,9 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         return request.getDataSupplier().getTotalCount(request.getParams());
     }
 
+    /**
+     * 更新导出进度
+     */
     private void updateExportProgress(ExportRequest<?> request, String taskId, long processedCount, long totalCount) {
         boolean progressEnabled = request.getEnableProgress() == null
                 ? properties.getExport().isProgressEnabled()
@@ -416,6 +547,9 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         }
     }
 
+    /**
+     * 检查导出任务是否超时
+     */
     private void checkExportTimeout(ExportTask<?> task) {
         long timeoutMillis = properties.getExport().getTimeoutMinutes() * 60 * 1000;
         if (task.isTimeout(timeoutMillis)) {
@@ -423,6 +557,9 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         }
     }
 
+    /**
+     * 检查导入任务是否超时
+     */
     private void checkImportTimeout(ImportTask<?> task) {
         long timeoutMillis = properties.getImports().getTimeoutMinutes() * 60 * 1000;
         if (task.isTimeout(timeoutMillis)) {
@@ -460,6 +597,9 @@ public class DefaultExcelTemplate implements ExcelTemplate {
                 : request.getHeadRowNumber();
     }
 
+    /**
+     * 创建临时文件
+     */
     private File createTempFile(String fileName) throws IOException {
         String safeFileName = fileName.replaceAll("[^a-zA-Z0-9.\\-]", "_");
         File tempFile = new File(System.getProperty("java.io.tmpdir"),
@@ -471,12 +611,18 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         return tempFile;
     }
 
+    /**
+     * 清理临时文件
+     */
     private void cleanupTempFile(File tempFile) {
         if (tempFile != null && tempFile.exists()) {
             FileUtil.del(tempFile);
         }
     }
 
+    /**
+     * 生成任务ID
+     */
     private String generateTaskId(String prefix, String businessType) {
         String safeBusinessType = StrUtil.isNotBlank(businessType)
                 ? businessType.replaceAll("[^a-zA-Z0-9]", "_")
@@ -484,18 +630,29 @@ public class DefaultExcelTemplate implements ExcelTemplate {
         return prefix + "_" + safeBusinessType + "_" + System.currentTimeMillis() + "_" + IdUtil.fastSimpleUUID();
     }
 
+    /**
+     * 解析导出存储类型
+     */
     private String resolveExportStorageType(ExportRequest<?> request) {
         return request != null && StrUtil.isNotBlank(request.getStorageType())
                 ? request.getStorageType()
                 : properties.getStorage().getType();
     }
 
+    /**
+     * 解析导入存储类型
+     */
     private String resolveImportStorageType(ImportRequest<?> request) {
         return request != null && StrUtil.isNotBlank(request.getStorageType())
                 ? request.getStorageType()
                 : properties.getStorage().getType();
     }
 
+    /**
+     * 表格导出上下文
+     *
+     * @param <T> 数据类型
+     */
     private static class SheetExportContext<T> {
         final String sheetName;
         final Class<T> dataClass;

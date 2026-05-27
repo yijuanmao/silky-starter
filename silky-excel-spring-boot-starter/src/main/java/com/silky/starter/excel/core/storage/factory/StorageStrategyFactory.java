@@ -42,6 +42,12 @@ public class StorageStrategyFactory implements InitializingBean {
         }
     }
 
+    /**
+     * 获取存储策略
+     *
+     * @param storageType 存储类型
+     * @return 存储策略
+     */
     public StorageStrategy getStrategy(String storageType) {
         String type = normalizeType(StrUtil.blankToDefault(storageType, properties.getStorage().getType()));
         StorageStrategy strategy = strategyMap.get(type);
@@ -51,10 +57,20 @@ public class StorageStrategyFactory implements InitializingBean {
         return strategy;
     }
 
+    /**
+     * 获取默认存储策略
+     *
+     * @return 存储策略
+     */
     public StorageStrategy getDefaultStrategy() {
         return getStrategy(properties.getStorage().getType());
     }
 
+    /**
+     * 注册存储策略
+     *
+     * @param strategy 存储策略
+     */
     public void registerStrategy(StorageStrategy strategy) {
         if (strategy == null || StrUtil.isBlank(strategy.getType())) {
             throw new IllegalArgumentException("StorageStrategy type must not be blank");
@@ -64,6 +80,12 @@ public class StorageStrategyFactory implements InitializingBean {
         log.info("注册 Excel 存储策略: {}", type);
     }
 
+    /**
+     * 正常化存储类型
+     *
+     * @param storageType 存储类型
+     * @return 正常化后的存储类型
+     */
     private String normalizeType(String storageType) {
         return storageType.trim().toLowerCase(Locale.ROOT);
     }

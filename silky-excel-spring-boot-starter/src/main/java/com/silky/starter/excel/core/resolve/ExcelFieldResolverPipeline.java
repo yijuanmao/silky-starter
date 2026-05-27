@@ -89,13 +89,18 @@ public class ExcelFieldResolverPipeline {
                         continue;
                     }
                     Object resolvedValue = fieldValue;
-                    // 遍历所有解析器，支持组合注解
-                    for (ExcelFieldResolver resolver : resolvers) {
-                        if (resolver.supports(info.field, info.annotation)) {
-                            resolvedValue = resolver.resolve(info.field, info.annotation, resolvedValue, context);
-                            if (resolvedValue == null) {
-                                break;
+                    // 同一字段的多个注解按顺序串行执行：枚举 -> 字典 -> 脱敏。
+                    for (Annotation annotation : info.annotations) {
+                        for (ExcelFieldResolver resolver : resolvers) {
+                            if (resolver.supports(info.field, annotation)) {
+                                resolvedValue = resolver.resolve(info.field, annotation, resolvedValue, context);
+                                if (resolvedValue == null) {
+                                    break;
+                                }
                             }
+                        }
+                        if (resolvedValue == null) {
+                            break;
                         }
                     }
                     if (resolvedValue != null && !resolvedValue.equals(fieldValue)) {
@@ -185,9 +190,9 @@ public class ExcelFieldResolverPipeline {
             for (Field field : current.getDeclaredFields()) {
                 // 收集字段上所有解析器注解
                 List<Annotation> annotations = findResolverAnnotations(field);
-                for (Annotation annotation : annotations) {
+                if (!annotations.isEmpty()) {
                     field.setAccessible(true);
-                    infos.add(new FieldAnnotationInfo(field, annotation));
+                    infos.add(new FieldAnnotationInfo(field, annotations));
                 }
             }
             current = current.getSuperclass();
@@ -223,11 +228,11 @@ public class ExcelFieldResolverPipeline {
      */
     static class FieldAnnotationInfo {
         final Field field;
-        final Annotation annotation;
+        final List<Annotation> annotations;
 
-        FieldAnnotationInfo(Field field, Annotation annotation) {
+        FieldAnnotationInfo(Field field, List<Annotation> annotations) {
             this.field = field;
-            this.annotation = annotation;
+            this.annotations = annotations;
         }
     }
 }

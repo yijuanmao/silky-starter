@@ -4,18 +4,14 @@ import com.silky.starter.excel.core.annotation.ExcelDict;
 import com.silky.starter.excel.core.annotation.ExcelEnum;
 import com.silky.starter.excel.core.annotation.ExcelMask;
 import com.silky.starter.excel.core.annotation.ExcelMask.MaskStrategy;
-import com.silky.starter.excel.core.resolve.ExcelFieldResolver;
-import com.silky.starter.excel.core.resolve.ExcelFieldResolverPipeline;
-import com.silky.starter.excel.core.resolve.ResolveContext;
-import com.silky.starter.excel.core.resolve.DictionaryProvider;
-import com.silky.starter.excel.core.resolve.EnumFieldResolver;
-import com.silky.starter.excel.core.resolve.MaskFieldResolver;
-import com.silky.starter.excel.core.resolve.DictFieldResolver;
 import org.junit.jupiter.api.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * ExcelFieldResolverPipeline 组合注解测试
@@ -27,10 +23,9 @@ class ExcelFieldResolverPipelineTest {
 
     /**
      * 测试组合注解：@ExcelEnum + @ExcelMask 同时存在
-     * 每个注解独立进入解析器管道，从原始值开始处理
-     * - ExcelEnum 分支：Integer 1 -> String "启用"（类型不兼容存入旁路）
-     * - ExcelMask 分支：原始值 1 -> 脱敏处理
-     * 因为 ExcelMask 对 Integer 值 1 的脱敏结果不是有效手机号，保持原值
+     * 同一字段的多个注解按顺序串行执行。
+     * - ExcelEnum：Integer 1 -> String "启用"
+     * - ExcelMask：对 "启用" 无脱敏效果
      */
     @Test
     void testCombinedAnnotation_EnumAndMask() {
@@ -47,7 +42,7 @@ class ExcelFieldResolverPipelineTest {
         List<TestCombinedDTO> data = Collections.singletonList(dto);
         pipeline.resolve(data, TestCombinedDTO.class, context);
 
-        // ExcelEnum 分支：Integer 字段 -> String "启用"，类型不兼容 -> 存入旁路存储
+        // ExcelEnum：Integer 字段 -> String "启用"，类型不兼容 -> 存入旁路存储
         assertEquals(1, dto.getStatusCode());  // 原值不变
         Object resolved = pipeline.getResolvedValue(dto, "statusCode");
         assertEquals("启用", resolved);
@@ -168,55 +163,98 @@ class ExcelFieldResolverPipelineTest {
 
     // ========== 测试用 DTO ==========
 
-    /** 组合注解 DTO（Integer 字段） */
+    /**
+     * 组合注解 DTO（Integer 字段）
+     */
     static class TestCombinedDTO {
         @ExcelEnum(enumClass = StatusEnum.class, codeField = "code", labelField = "label")
         @ExcelMask(strategy = MaskStrategy.PHONE)
         private Integer statusCode;
 
-        public Integer getStatusCode() { return statusCode; }
-        public void setStatusCode(Integer statusCode) { this.statusCode = statusCode; }
+        public Integer getStatusCode() {
+            return statusCode;
+        }
+
+        public void setStatusCode(Integer statusCode) {
+            this.statusCode = statusCode;
+        }
     }
 
-    /** String 字段枚举 DTO */
+    /**
+     * String 字段枚举 DTO
+     */
     static class TestStringEnumDTO {
         @ExcelEnum(enumClass = StatusEnum.class, codeField = "code", labelField = "label")
         private String status;
 
-        public String getStatus() { return status; }
-        public void setStatus(String status) { this.status = status; }
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
     }
 
-    /** 字典表达式 DTO */
+    /**
+     * 字典表达式 DTO
+     */
     static class TestDictDTO {
         @ExcelDict(readConverterExp = "0=普通,1=VIP,2=SVIP")
         private String userLevel;
 
-        public String getUserLevel() { return userLevel; }
-        public void setUserLevel(String userLevel) { this.userLevel = userLevel; }
+        public String getUserLevel() {
+            return userLevel;
+        }
+
+        public void setUserLevel(String userLevel) {
+            this.userLevel = userLevel;
+        }
     }
 
-    /** 无注解 DTO */
+    /**
+     * 无注解 DTO
+     */
     static class TestNoAnnotationDTO {
         private String name;
         private int age;
 
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
-        public int getAge() { return age; }
-        public void setAge(int age) { this.age = age; }
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public int getAge() {
+            return age;
+        }
+
+        public void setAge(int age) {
+            this.age = age;
+        }
     }
 
-    /** 类型不兼容 DTO */
+    /**
+     * 类型不兼容 DTO
+     */
     static class TypeIncompatibleDTO {
         @ExcelEnum(enumClass = StatusEnum.class, codeField = "code", labelField = "label")
         private Integer statusCode;
 
-        public Integer getStatusCode() { return statusCode; }
-        public void setStatusCode(Integer statusCode) { this.statusCode = statusCode; }
+        public Integer getStatusCode() {
+            return statusCode;
+        }
+
+        public void setStatusCode(Integer statusCode) {
+            this.statusCode = statusCode;
+        }
     }
 
-    /** 状态枚举 */
+    /**
+     * 状态枚举
+     */
     enum StatusEnum {
         DISABLED(0, "禁用"),
         ENABLED(1, "启用");
@@ -229,7 +267,12 @@ class ExcelFieldResolverPipelineTest {
             this.label = label;
         }
 
-        public int getCode() { return code; }
-        public String getLabel() { return label; }
+        public int getCode() {
+            return code;
+        }
+
+        public String getLabel() {
+            return label;
+        }
     }
 }

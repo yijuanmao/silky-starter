@@ -33,6 +33,14 @@ public class LocalStorageStrategy implements StorageStrategy {
         return TYPE;
     }
 
+    /**
+     * 保存文件
+     *
+     * @param file     文件
+     * @param fileName 文件名
+     * @param metadata 元数据
+     * @return StorageObject
+     */
     @Override
     public StorageObject store(File file, String fileName, Map<String, Object> metadata) {
         try {
@@ -59,6 +67,12 @@ public class LocalStorageStrategy implements StorageStrategy {
         }
     }
 
+    /**
+     * 下载文件
+     *
+     * @param keyOrUrl 文件标识或 URL
+     * @return File
+     */
     @Override
     public File download(String keyOrUrl) {
         try {
@@ -80,6 +94,12 @@ public class LocalStorageStrategy implements StorageStrategy {
         }
     }
 
+    /**
+     * 解析源文件
+     *
+     * @param keyOrUrl 文件标识或 URL
+     * @return File
+     */
     private File resolveSourceFile(String keyOrUrl) {
         File directFile = new File(keyOrUrl);
         if (directFile.isAbsolute() || directFile.exists()) {
@@ -88,6 +108,12 @@ public class LocalStorageStrategy implements StorageStrategy {
         return new File(properties.getStorage().getLocal().getBasePath(), keyOrUrl);
     }
 
+    /**
+     * 生成文件标识
+     *
+     * @param fileName 文件名
+     * @return 文件标识
+     */
     private String generateFileKey(String fileName) {
         return IdUtil.fastSimpleUUID() + "_" + FileUtil.cleanInvalid(fileName);
     }
