@@ -29,6 +29,8 @@ public class EnhancedWriterWrapper implements Closeable {
 
     private final String filePath;
 
+    private final WriteHandler writeHandler;
+
     /**
      * 每个Sheet最大行数
      */
@@ -73,6 +75,7 @@ public class EnhancedWriterWrapper implements Closeable {
     public EnhancedWriterWrapper(String filePath, long maxRowsPerSheet, WriteHandler writeHandler) {
         this.filePath = filePath;
         this.maxRowsPerSheet = maxRowsPerSheet;
+        this.writeHandler = writeHandler;
 
         try {
             cn.idev.excel.write.builder.ExcelWriterBuilder builder = EasyExcel.write(filePath)

@@ -85,21 +85,6 @@ public class ExportResult {
     private List<ExportError> errors;
 
 
-    /**
-     * 是否启用压缩
-     */
-    private Boolean compressionEnabled;
-
-    /**
-     * 压缩类型
-     */
-    private String compressionType;
-
-    /**
-     * 压缩比
-     */
-    private Double compressionRatio;
-
     @Data
     @Accessors(chain = true)
     public static class ExportError {
@@ -303,21 +288,6 @@ public class ExportResult {
 
     public int getErrorCount() {
         return errors != null ? errors.size() : 0;
-    }
-
-    // 设置压缩信息
-    public ExportResult withCompressionInfo(boolean enabled, String type, Double ratio) {
-        this.compressionEnabled = enabled;
-        this.compressionType = type;
-        this.compressionRatio = ratio;
-        return this;
-    }
-
-    // 计算压缩比
-    public void calculateCompressionRatio(Long originalSize) {
-        if (originalSize != null && fileSize != null && originalSize > 0) {
-            this.compressionRatio = 1 - (double) fileSize / originalSize;
-        }
     }
 
 }

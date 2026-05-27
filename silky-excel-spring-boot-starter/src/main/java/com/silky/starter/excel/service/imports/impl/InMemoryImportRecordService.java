@@ -1,71 +1,73 @@
 package com.silky.starter.excel.service.imports.impl;
 
+import cn.hutool.core.util.StrUtil;
 import com.silky.starter.excel.core.model.imports.ImportResult;
 import com.silky.starter.excel.entity.ImportRecord;
 import com.silky.starter.excel.enums.ImportStatus;
 import com.silky.starter.excel.service.imports.ImportRecordService;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
- * 基于内存的导入记录服务实现,注意：此实现仅用于示例和测试，生产环境应该使用数据库存储
+ * 基于内存的导入记录服务实现。
  *
  * @author zy
  * @date 2025-10-28 15:42
  **/
 public class InMemoryImportRecordService implements ImportRecordService {
 
-    /**
-     * 添加导入记录
-     *
-     * @param record 导入记录对象
-     */
-    @Override
-    public void addImportRecord(ImportRecord record) {
+    private final Map<String, ImportRecord> recordMap = new ConcurrentHashMap<>();
 
+    @Override
+    public void save(ImportRecord record) {
+        if (record == null || StrUtil.isBlank(record.getTaskId())) {
+            throw new IllegalArgumentException("导入记录和任务ID不能为空");
+        }
+        recordMap.put(record.getTaskId(), record);
     }
 
-    /**
-     * 更新导入记录状态
-     *
-     * @param taskId 导入记录ID
-     * @param status 新状态
-     */
     @Override
-    public void updateStatus(String taskId, ImportStatus status) {
-
+    public ImportRecord getByTaskId(String taskId) {
+        if (StrUtil.isBlank(taskId)) {
+            return null;
+        }
+        return recordMap.get(taskId);
     }
 
-    /**
-     * 更新导入记录为成功
-     *
-     * @param taskId 导入记录ID
-     * @param result 导入结果
-     */
     @Override
-    public void updateSuccess(String taskId, ImportResult result) {
-
+    public void markProcessing(String taskId) {
+        update(taskId, record -> record.setStatus(ImportStatus.PROCESSING));
     }
 
-    /**
-     * 更新导入记录为失败
-     *
-     * @param taskId   导入记录ID
-     * @param errorMsg 错误信息
-     */
     @Override
-    public void updateFail(String taskId, String errorMsg) {
-
+    public void updateProgress(String taskId, long totalCount, long successCount, long failedCount) {
+        update(taskId, record -> {
+            record.setTotalCount(totalCount);
+            record.setSuccessCount(successCount);
+            record.setFailCount(failedCount);
+        });
     }
 
-    /**
-     * 更新导入进度
-     *
-     * @param taskId       导入记录ID
-     * @param totalCount   总数
-     * @param successCount 成功数
-     * @param failedCount  失败数
-     */
     @Override
-    public void updateProgress(String taskId, Long totalCount, Long successCount, Long failedCount) {
+    public void markSuccess(String taskId, ImportResult result) {
+        update(taskId, record -> {
+            record.setStatus(ImportStatus.COMPLETED);
+            record.setTotalCount(result.getTotalCount());
+            record.setSuccessCount(result.getSuccessCount());
+            record.setFailCount(result.getFailedCount());
+        });
+    }
 
+    @Override
+    public void markFailed(String taskId, String errorMsg) {
+        update(taskId, record -> record.setStatus(ImportStatus.FAILED));
+    }
+
+    private void update(String taskId, java.util.function.Consumer<ImportRecord> updater) {
+        ImportRecord record = getByTaskId(taskId);
+        if (record != null) {
+            updater.accept(record);
+        }
     }
 }

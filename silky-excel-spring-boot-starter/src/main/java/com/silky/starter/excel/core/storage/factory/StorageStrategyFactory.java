@@ -1,101 +1,70 @@
 package com.silky.starter.excel.core.storage.factory;
 
 import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.core.util.StrUtil;
 import com.silky.starter.excel.core.storage.StorageStrategy;
-import com.silky.starter.excel.enums.StorageType;
+import com.silky.starter.excel.properties.SilkyExcelProperties;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 存储策略工厂
+ * 存储策略工厂。
  *
  * @author zy
  * @date 2025-10-24 13:50
  **/
+@Slf4j
 public class StorageStrategyFactory implements InitializingBean {
-
-    private final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(StorageStrategyFactory.class);
 
     private final List<StorageStrategy> storageStrategies;
 
-    /**
-     * 存储策略映射表
-     */
-    private final Map<StorageType, StorageStrategy> strategyMap = new ConcurrentHashMap<>();
+    private final SilkyExcelProperties properties;
 
-    public StorageStrategyFactory(List<StorageStrategy> storageStrategies) {
+    private final Map<String, StorageStrategy> strategyMap = new ConcurrentHashMap<>();
+
+    public StorageStrategyFactory(List<StorageStrategy> storageStrategies, SilkyExcelProperties properties) {
         this.storageStrategies = storageStrategies;
+        this.properties = properties;
     }
 
-
-    /**
-     * 初始化方法，注册所有存储策略
-     */
     @Override
     public void afterPropertiesSet() {
-        this.init();
-    }
-
-    /**
-     * 初始化方法，注册所有存储策略
-     */
-    public void init() {
-        if (CollectionUtil.isNotEmpty(this.storageStrategies)) {
-            for (StorageStrategy strategy : storageStrategies) {
-                strategyMap.put(strategy.getStorageType(), strategy);
-                log.info("注册存储策略: {}", strategy.getStorageType());
-            }
+        if (CollectionUtil.isEmpty(storageStrategies)) {
+            return;
+        }
+        for (StorageStrategy strategy : storageStrategies) {
+            registerStrategy(strategy);
         }
     }
 
-    /**
-     * 根据存储类型获取存储策略
-     *
-     * @param storageType 存储类型
-     * @return 存储策略实例
-     * @throws IllegalArgumentException 如果存储类型不支持
-     */
-    public StorageStrategy getStrategy(StorageType storageType) {
-        StorageStrategy strategy = strategyMap.get(storageType);
+    public StorageStrategy getStrategy(String storageType) {
+        String type = normalizeType(StrUtil.blankToDefault(storageType, properties.getStorage().getType()));
+        StorageStrategy strategy = strategyMap.get(type);
         if (strategy == null) {
             throw new IllegalArgumentException("不支持的存储类型: " + storageType);
         }
         return strategy;
     }
 
-    /**
-     * 获取默认存储策略（本地存储）
-     *
-     * @return 默认存储策略实例
-     */
     public StorageStrategy getDefaultStrategy() {
-        return getStrategy(StorageType.LOCAL);
+        return getStrategy(properties.getStorage().getType());
     }
 
-    /**
-     * 注册自定义存储策略
-     *
-     * @param strategy 存储策略实例
-     */
     public void registerStrategy(StorageStrategy strategy) {
-        StorageType storageType = strategy.getStorageType();
-        if (strategyMap.containsKey(storageType)) {
-            log.warn("存储策略已存在: {}, 将被覆盖", storageType);
+        if (strategy == null || StrUtil.isBlank(strategy.getType())) {
+            throw new IllegalArgumentException("StorageStrategy type must not be blank");
         }
-        strategyMap.put(storageType, strategy);
-        log.info("注册自定义存储策略: {}", storageType);
+        String type = normalizeType(strategy.getType());
+        strategyMap.put(type, strategy);
+        log.info("注册 Excel 存储策略: {}", type);
     }
 
-    /**
-     * 获取所有支持的存储类型
-     *
-     * @return 存储类型列表
-     */
-    public StorageType[] getSupportedStorageTypes() {
-        return strategyMap.keySet().toArray(new StorageType[0]);
+    private String normalizeType(String storageType) {
+        return storageType.trim().toLowerCase(Locale.ROOT);
     }
-
 }

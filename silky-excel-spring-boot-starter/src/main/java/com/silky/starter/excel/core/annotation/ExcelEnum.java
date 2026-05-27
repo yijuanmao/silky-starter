@@ -48,30 +48,9 @@ public @interface ExcelEnum {
     String labelField() default "desc";
 
     /**
-     * 匹配模式：按字段值还是按枚举名称匹配
-     */
-    MatchMode matchMode() default MatchMode.BY_FIELD;
-
-    /**
      * 翻译失败时的策略
      */
     OnMiss onMiss() default OnMiss.KEEP_ORIGINAL;
-
-    /**
-     * 匹配模式
-     */
-    enum MatchMode {
-
-        /**
-         * 按枚举字段值匹配（默认）
-         */
-        BY_FIELD,
-
-        /**
-         * 按枚举名称匹配
-         */
-        BY_NAME
-    }
 
     /**
      * 匹配失败时的处理策略

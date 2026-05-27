@@ -1,8 +1,6 @@
 package com.silky.starter.excel.entity;
 
-import com.silky.starter.excel.enums.CompressionType;
 import com.silky.starter.excel.enums.ImportStatus;
-import com.silky.starter.excel.enums.StorageType;
 import lombok.*;
 
 import java.io.Serializable;
@@ -45,14 +43,9 @@ public class ImportRecord implements Serializable {
     private String fileUrl;
 
     /**
-     * 存储类型
+     * 存储类型。
      */
-    private StorageType storageType;
-
-    /**
-     * 创建用户标识
-     */
-    private String createUser;
+    private String storageType;
 
     /**
      * 导入状态
@@ -85,13 +78,4 @@ public class ImportRecord implements Serializable {
      */
     private Long failCount;
 
-    /**
-     * 压缩类型
-     */
-    private CompressionType compressionType;
-
-    /**
-     * 压缩开关
-     */
-    private Boolean compressionEnabled;
 }

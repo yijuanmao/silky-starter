@@ -1,12 +1,10 @@
 package com.silky.starter.excel.core.listener;
 
-import cn.hutool.core.collection.CollUtil;
 import cn.idev.excel.context.AnalysisContext;
 import cn.idev.excel.event.AnalysisEventListener;
 import cn.idev.excel.exception.ExcelDataConvertException;
 import com.silky.starter.excel.core.exception.ExcelExportException;
 import com.silky.starter.excel.core.model.AnalysisListenersContext;
-import com.silky.starter.excel.core.model.DataProcessor;
 import com.silky.starter.excel.core.model.imports.DataImporterSupplier;
 import com.silky.starter.excel.core.model.imports.ImportRequest;
 import com.silky.starter.excel.core.model.imports.ImportResult;
@@ -48,9 +46,9 @@ public abstract class BaseAnalysisListeners<T> extends AnalysisEventListener<T> 
 
     private final AtomicLong failCount = new AtomicLong(0);
 
-    private String currentSheetName;
+    private final AtomicLong importedCount = new AtomicLong(0);
 
-    private final List<DataProcessor<T>> processors;
+    private String currentSheetName;
 
     private final DataImporterSupplier<T> dataImporterSupplier;
 
@@ -63,7 +61,6 @@ public abstract class BaseAnalysisListeners<T> extends AnalysisEventListener<T> 
         this.context = context;
         this.maxErrorCount = context.getMaxErrorCount();
         this.pageSize = context.getPageSize();
-        this.processors = context.getRequest().getProcessors();
         this.importRequest = context.getRequest();
         this.dataImporterSupplier = context.getRequest().getDataImporterSupplier();
     }
@@ -79,19 +76,14 @@ public abstract class BaseAnalysisListeners<T> extends AnalysisEventListener<T> 
     public void invoke(T t, AnalysisContext analysisContext) {
         dataList.add(t);
         if (dataList.size() >= pageSize) {
-            List<T> processedData = dataList;
-            // 数据导入前处理，比如加解密、数据转换等
-            processImportData(processedData, processors);
-            // 数据导入
-            dataImporterSupplier.importData(processedData, importRequest.getParams());
-            dataList.clear();
+            flushData();
         }
-        successCount.incrementAndGet();
         currentSheetRowCount.incrementAndGet();
     }
 
     @Override
     public void doAfterAllAnalysed(AnalysisContext analysisContext) {
+        flushData();
         context.setTotalCount((int) (successCount.get() + failCount.get()));
         context.setSuccessCount((int) successCount.get());
         context.setFailCount((int) failCount.get());
@@ -152,24 +144,24 @@ public abstract class BaseAnalysisListeners<T> extends AnalysisEventListener<T> 
     }
 
     /**
-     * 处理导入数据
-     *
-     * @param data       原始数据
-     * @param processors 数据处理器列表
-     * @param <T>        数据类型
-     * @return 处理后的数据
+     * 将当前缓存的数据批量提交给业务导入器。
      */
-    private <T> List<T> processImportData(List<T> data, List<DataProcessor<T>> processors) {
-        if (CollUtil.isEmpty(processors)) {
-            return data;
+    private void flushData() {
+        if (dataList.isEmpty()) {
+            return;
         }
-        List<T> processedData = data;
-        for (DataProcessor<T> processor : processors) {
-            long startTime = System.currentTimeMillis();
-            processedData = processor.process(processedData);
-            long costTime = System.currentTimeMillis() - startTime;
-            log.debug("数据处理器执行完成: {}, 耗时: {}ms", processor.getClass().getSimpleName(), costTime);
+        List<T> processedData = new ArrayList<>(dataList);
+        DataImporterSupplier.ImportBatchResult result =
+                dataImporterSupplier.importData(processedData, importRequest.getParams());
+        long success = result != null ? result.getSuccessCount() : processedData.size();
+        long failed = result != null ? result.getFailedCount() : 0;
+        successCount.addAndGet(success);
+        failCount.addAndGet(failed);
+        importedCount.addAndGet(success);
+        if (result != null && result.getErrors() != null && !result.getErrors().isEmpty()) {
+            allErrors.addAll(result.getErrors());
+            currentSheetErrors.addAll(result.getErrors());
         }
-        return processedData;
+        dataList.clear();
     }
 }

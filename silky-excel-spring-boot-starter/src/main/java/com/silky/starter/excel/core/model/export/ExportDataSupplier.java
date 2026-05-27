@@ -1,7 +1,6 @@
 package com.silky.starter.excel.core.model.export;
 
 import com.silky.starter.excel.core.exception.ExcelExportException;
-import com.silky.starter.excel.core.model.export.ExportPageData;
 
 import java.util.Map;
 
@@ -36,23 +35,4 @@ public interface ExportDataSupplier<T> {
         return -1L;
     }
 
-    /**
-     * 数据供应器准备方法（可选实现）
-     * 在导出开始前调用，用于初始化资源或验证参数
-     *
-     * @param params 查询参数
-     */
-    default void prepare(Map<String, Object> params) throws ExcelExportException {
-        // 默认空实现
-    }
-
-    /**
-     * 数据供应器清理方法（可选实现）
-     * 在导出结束后调用，用于释放资源
-     *
-     * @param params 查询参数
-     */
-    default void cleanup(Map<String, Object> params) throws ExcelExportException {
-        // 默认空实现
-    }
 }

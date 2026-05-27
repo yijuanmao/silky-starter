@@ -1,18 +1,14 @@
 package com.silky.starter.excel.core.model.imports;
 
-import com.silky.starter.excel.core.model.DataProcessor;
-import com.silky.starter.excel.enums.CompressionType;
-import com.silky.starter.excel.enums.StorageType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
 import java.util.Map;
 
 /**
- * 导入请求模型，封装Excel数据导入的所有配置参数
+ * 导入请求参数。
  *
  * @author zy
  * @date 2025-10-27 15:05
@@ -24,112 +20,64 @@ import java.util.Map;
 public class ImportRequest<T> {
 
     /**
-     * 数据类类型，用于Excel列到Java对象的映射
+     * 数据类类型，用于 Excel 行到 Java 对象的映射。
      */
     private Class<T> dataClass;
 
     /**
-     * 导入文件名，包含文件扩展名，如："用户数据.xlsx"
+     * 导入文件名。
      */
     private String fileName;
 
     /**
-     * 文件访问URL或存储Key，指定要导入的Excel文件位置
+     * 文件访问 URL 或存储 key。
      */
     private String fileUrl;
 
     /**
-     * 数据导入器
-     * 负责将处理后的数据持久化到目标系统
+     * 数据导入器，负责批量写入业务系统。
      */
     private DataImporterSupplier<T> dataImporterSupplier;
 
-
-    // 以下参数可以为空
-
     /**
-     * 存储类型，指定文件所在的存储系统
+     * 存储类型。为空时使用全局默认配置。
      */
-    private StorageType storageType;
+    private String storageType;
 
     /**
-     * 业务类型，用于区分不同的导入业务场景
+     * 业务类型，用于生成任务号和查询记录。
      */
     @Builder.Default
     private String businessType = "default_import";
 
     /**
-     * 创建用户，发起导入任务的用户标识
-     */
-    @Builder.Default
-    private String createUser = "system";
-
-    /**
-     * 查询参数，传递给数据处理器的额外参数
+     * 业务参数，会传给数据导入器。
      */
     private Map<String, Object> params;
 
     /**
-     * 数据处理器列表，对导入的数据进行校验、转换、过滤等处理
-     */
-    private List<DataProcessor<T>> processors;
-
-    /**
-     * 分页大小
-     * 每次处理的数据条数，默认1000条
+     * 每批读取并提交给业务导入器的数据量。
      */
     private Integer pageSize;
 
     /**
-     * 是否启用事务， 默认false，导入失败时回滚已处理数据
+     * 表头行数。
      */
-    @Builder.Default
-    private boolean enableTransaction = false;
+    private Integer headRowNumber;
 
     /**
-     * 是否跳过表头，默认false，跳过Excel的第一行（表头）
-     */
-    @Builder.Default
-    private boolean skipHeader = true;
-
-    /**
-     * 超时时间（毫秒），导入任务的最大执行时间
-     */
-    private Long timeout;
-
-    /**
-     * 最大错误数量，超过此数量时停止导入
+     * 最大错误数量。
      */
     private Integer maxErrorCount;
 
-    /**
-     * 最大读取数量，限制导入的最大数据行数
-     */
-    private Integer maxReadCount;
-
-    /**
-     * 压缩类型
-     */
-    private CompressionType compressionType;
-
-    /**
-     * 压缩开关
-     */
-    private boolean compressionEnabled = false;
-
-    /**
-     * 压缩级别
-     */
-    private int compressionLevel = 6;
-
-    /**
-     * 分割大文件开关
-     */
-    private boolean splitLargeFiles = false;
-
-    /**
-     * 分割大小
-     */
-    private long splitSize = 100 * 1024 * 1024;
-
+    public static <T> ImportRequest<T> of(String fileUrl,
+                                          Class<T> dataClass,
+                                          DataImporterSupplier<T> dataImporterSupplier) {
+        return ImportRequest.<T>builder()
+                .fileUrl(fileUrl)
+                .fileName(fileUrl)
+                .dataClass(dataClass)
+                .dataImporterSupplier(dataImporterSupplier)
+                .build();
+    }
 }

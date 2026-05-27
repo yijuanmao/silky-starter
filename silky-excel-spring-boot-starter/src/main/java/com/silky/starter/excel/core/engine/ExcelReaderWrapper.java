@@ -38,11 +38,11 @@ public class ExcelReaderWrapper<T> implements Closeable {
      */
     private final List<ReadSheet> sheets;
 
-    public ExcelReaderWrapper(String filePath, boolean skipHeader, AnalysisListenersContext<T> context) {
-        this(filePath, skipHeader, new DefaultAnalysisListeners<>(context));
+    public ExcelReaderWrapper(String filePath, int headRowNumber, AnalysisListenersContext<T> context) {
+        this(filePath, headRowNumber, new DefaultAnalysisListeners<>(context));
     }
 
-    public ExcelReaderWrapper(String filePath, boolean skipHeader, BaseAnalysisListeners<T> baseAnalysisListeners) {
+    public ExcelReaderWrapper(String filePath, int headRowNumber, BaseAnalysisListeners<T> baseAnalysisListeners) {
         File file = FileUtil.newFile(filePath);
         this.filePath = filePath;
         this.baseAnalysisListeners = baseAnalysisListeners;
@@ -51,7 +51,7 @@ public class ExcelReaderWrapper<T> implements Closeable {
                     .read()
                     .file(file)
                     .autoCloseStream(false)
-                    .headRowNumber(skipHeader ? 1 : 0)
+                    .headRowNumber(headRowNumber)
                     .excelType(this.getExcelType(filePath))
                     .registerReadListener(baseAnalysisListeners)
                     .build();

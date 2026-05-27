@@ -1,10 +1,7 @@
 package com.silky.starter.excel.entity;
 
 import cn.hutool.core.date.LocalDateTimeUtil;
-import com.silky.starter.excel.enums.AsyncType;
-import com.silky.starter.excel.enums.CompressionType;
 import com.silky.starter.excel.enums.ExportStatus;
-import com.silky.starter.excel.enums.StorageType;
 import lombok.*;
 
 import java.io.Serializable;
@@ -42,19 +39,9 @@ public class ExportRecord implements Serializable {
     private ExportStatus status;
 
     /**
-     * 存储类型
+     * 存储类型。
      */
-    private StorageType storageType;
-
-    /**
-     * 异步处理类型
-     */
-    private AsyncType asyncType;
-
-    /**
-     * 创建用户标识
-     */
-    private String createUser;
+    private String storageType;
 
     /**
      * 任务创建时间
@@ -100,16 +87,6 @@ public class ExportRecord implements Serializable {
      * 已处理数据量
      */
     private Long processedCount;
-
-    /**
-     * 是否启用压缩
-     */
-    private Boolean compressionEnabled;
-
-    /**
-     * 压缩类型
-     */
-    private CompressionType compressionType;
 
     /**
      * 错误信息
@@ -212,15 +189,6 @@ public class ExportRecord implements Serializable {
      * @return 存储类型描述信息
      */
     public String getStorageTypeDescription() {
-        return storageType != null ? storageType.getDescription() : "未知存储";
-    }
-
-    /**
-     * 获取异步类型描述
-     *
-     * @return 异步类型描述信息
-     */
-    public String getAsyncTypeDescription() {
-        return asyncType != null ? asyncType.getDescription() : "未知异步方式";
+        return storageType != null ? storageType : "未知存储";
     }
 }
