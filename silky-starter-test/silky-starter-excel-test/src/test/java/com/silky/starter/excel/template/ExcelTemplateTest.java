@@ -51,7 +51,7 @@ public class ExcelTemplateTest extends ExcelApplicationTest {
     @Test
     public void testExportSync() {
         ExportRequest<UserTest> request = ExportRequest.of(
-                "D:\\test-export.xlsx",
+                "test-export.xlsx",
                 UserTest.class,
                 this::pageData
         );
