@@ -1,4 +1,13 @@
 
+## 2026-05-27
+### 💎 功能优化
+* **silky-excel-spring-boot-starter**
+  - `@ExcelDict` 新增表达式兼容能力：当 `readConverterExp` 为空且 `dictCode` 形如表达式（如 `1=男,2=女`）时，自动按表达式翻译
+  - 新增 `kvSeparator` 配置项，支持自定义表达式键值分隔符（默认 `=`，可配置 `:` 等）
+  - 优化字典翻译解析器边界：表达式模式与 `DictionaryProvider` 查询模式分离更清晰，避免兼容场景误触发 Provider 查询
+  - 同步更新 README 字典翻译说明与示例（推荐写法、兼容写法、`kvSeparator` 用法）
+  - 同步补充 ExcelTemplate 相关测试用例，覆盖兼容场景与回归校验
+
 ## 2026-05-07
 ### ⚡ 重要变更
 * **groupId 迁移**: `io.github.yijuanmao` → `top.silky`，涉及所有模块 pom.xml 及文档
